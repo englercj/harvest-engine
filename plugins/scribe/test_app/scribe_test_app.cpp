@@ -777,7 +777,8 @@ namespace he
                 m_bodyText =
                     "Scribe compiles the source TTF in memory at startup, shapes text with HarfBuzz, "
                     "and renders directly from the compiled curve and band payloads. This scene is "
-                    "the baseline paragraph demo for layout width, line metrics, and dense glyph submission.";
+                    "the baseline paragraph demo for layout width, line metrics, and dense glyph submission.\n\n"
+                    "Artifact stress: W Y / WY/WY ///";
                 break;
 
             case DemoScene::CombiningAndFallback:

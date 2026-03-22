@@ -157,6 +157,7 @@ namespace he::scribe::editor
         public:
             explicit GlyphOutlineBuilder(float cubicTolerance)
                 : m_cubicToleranceSq(cubicTolerance * cubicTolerance)
+                , m_lineControlOffset(Max(cubicTolerance * 0.5f, 0.5f))
             {
             }
 
@@ -221,7 +222,23 @@ namespace he::scribe::editor
 
             void AddLine(const Point2& from, const Point2& to)
             {
-                AddQuadratic(from, MidPoint(from, to), to);
+                Point2 control = MidPoint(from, to);
+
+                // Exact midpoint control points make the quadratic perfectly linear.
+                // That matches the segment mathematically, but it also produces a
+                // degenerate polynomial in the Slug coverage path that shows up as
+                // visible cracks on diagonal-heavy glyphs like W, Y, and slash.
+                const float dx = to.x - from.x;
+                const float dy = to.y - from.y;
+                const float lenSq = (dx * dx) + (dy * dy);
+                if (lenSq > 1.0e-8f)
+                {
+                    const float invLen = 1.0f / Sqrt(lenSq);
+                    control.x += -dy * invLen * m_lineControlOffset;
+                    control.y += dx * invLen * m_lineControlOffset;
+                }
+
+                AddQuadratic(from, control, to);
             }
 
             void AddQuadratic(const Point2& p1, const Point2& p2, const Point2& p3)
@@ -261,6 +278,7 @@ namespace he::scribe::editor
             Vector<CurveData>* m_curves{ nullptr };
             Point2 m_current{};
             float m_cubicToleranceSq{ 0.0f };
+            float m_lineControlOffset{ 0.0f };
             bool m_hasCurrent{ false };
         };
 

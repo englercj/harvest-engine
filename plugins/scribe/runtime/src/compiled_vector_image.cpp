@@ -14,6 +14,31 @@ namespace he::scribe
             return BitCast<float>(value);
         }
 
+        Vec4f GetShapeVertexColor(const LoadedVectorImageBlob& image, uint32_t shapeIndex)
+        {
+            if (!image.paint.IsValid())
+            {
+                return { 1.0f, 1.0f, 1.0f, 1.0f };
+            }
+
+            const auto layers = image.paint.GetLayers();
+            for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
+            {
+                const VectorImageLayer::Reader layer = layers[layerIndex];
+                if (layer.GetShapeIndex() == shapeIndex)
+                {
+                    return {
+                        layer.GetRed(),
+                        layer.GetGreen(),
+                        layer.GetBlue(),
+                        layer.GetAlpha()
+                    };
+                }
+            }
+
+            return { 1.0f, 1.0f, 1.0f, 1.0f };
+        }
+
         PackedGlyphVertex MakeVertex(
             float x,
             float y,
@@ -24,14 +49,15 @@ namespace he::scribe
             float glyphLocBits,
             float bandInfoBits,
             const Vec4f& jac,
-            const Vec4f& banding)
+            const Vec4f& banding,
+            const Vec4f& color)
         {
             PackedGlyphVertex vertex{};
             vertex.pos = { x, y, nx, ny };
             vertex.tex = { u, v, glyphLocBits, bandInfoBits };
             vertex.jac = jac;
             vertex.bnd = banding;
-            vertex.col = { 1.0f, 1.0f, 1.0f, 1.0f };
+            vertex.col = color;
             return vertex;
         }
     }
@@ -90,13 +116,14 @@ namespace he::scribe
             shape.GetBandOffsetX(),
             shape.GetBandOffsetY()
         };
+        const Vec4f color = GetShapeVertexColor(image, shapeIndex);
 
-        out.vertices[0] = MakeVertex(minX, minY, -1.0f, -1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding);
-        out.vertices[1] = MakeVertex(maxX, minY, 1.0f, -1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding);
-        out.vertices[2] = MakeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding);
-        out.vertices[3] = MakeVertex(minX, minY, -1.0f, -1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding);
-        out.vertices[4] = MakeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding);
-        out.vertices[5] = MakeVertex(minX, maxY, -1.0f, 1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding);
+        out.vertices[0] = MakeVertex(minX, minY, -1.0f, -1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[1] = MakeVertex(maxX, minY, 1.0f, -1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[2] = MakeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[3] = MakeVertex(minX, minY, -1.0f, -1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[4] = MakeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[5] = MakeVertex(minX, maxY, -1.0f, 1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
 
         const auto curveBytes = image.root.GetCurveData();
         const auto bandBytes = image.root.GetBandData();

@@ -167,7 +167,6 @@ namespace he
         float m_smoothedFrameMs{ 0.0f };
         float m_lastGpuFrameMs{ 0.0f };
         uint32_t m_lastDrawCount{ 0 };
-        uint32_t m_pendingDrawCount{ 0 };
         bool m_isPanning{ false };
         bool m_hasFrameTime{ false };
         bool m_initialized{ false };

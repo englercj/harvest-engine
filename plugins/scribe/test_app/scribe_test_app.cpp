@@ -593,8 +593,6 @@ namespace he
             return;
         }
 
-        m_pendingDrawCount = 0;
-
         QueueLayout(m_titleLayout, transformedTitleOrigin, titleFontSize, m_sceneZoom);
         QueueLayout(m_bodyLayout, transformedBodyOrigin, bodyFontSize, m_sceneZoom);
         if ((m_scene == DemoScene::SvgVectorImages) && (m_images.Size() >= 2))
@@ -1224,7 +1222,6 @@ namespace he
     void ScribeTestApp::QueueDraw(const scribe::DrawGlyphDesc& desc)
     {
         m_renderer.QueueDraw(desc);
-        ++m_pendingDrawCount;
     }
 
     void ScribeTestApp::QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize, float layoutScale)
@@ -1317,7 +1314,7 @@ namespace he
             desc.position = position;
             desc.size = { scale, scale };
             desc.offset = drawOffset;
-            desc.color = layer.color;
+            desc.color = { 1.0f, 1.0f, 1.0f, 1.0f };
             QueueDraw(desc);
         }
     }
@@ -1329,7 +1326,7 @@ namespace he
             return;
         }
 
-        if (!m_hasCaret || !m_caretGlyph.vertexBuffer || (m_caretHit.lineIndex >= m_bodyLayout.lines.Size()))
+        if (!m_hasCaret || !m_caretGlyph.atlas || (m_caretGlyph.vertexCount == 0) || (m_caretHit.lineIndex >= m_bodyLayout.lines.Size()))
         {
             return;
         }
@@ -1582,7 +1579,7 @@ namespace he
         cmdQueue.Submit(m_render.cmdList);
         cmdQueue.Signal(m_render.frames[m_render.frameIndex].fence);
         m_render.frames[m_render.frameIndex].hasSubmittedWork = true;
-        m_lastDrawCount = m_pendingDrawCount;
+        m_lastDrawCount = m_renderer.GetLastSubmittedDrawCount();
         r = cmdQueue.Present(m_render.swapChain);
         if (!r)
         {

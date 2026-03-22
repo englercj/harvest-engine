@@ -7,6 +7,7 @@
 
 #include "shaders/scribe.shaders.h"
 
+#include "he/core/allocator.h"
 #include "he/core/assert.h"
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
@@ -18,17 +19,34 @@
 #include "he/rhi/device.h"
 
 #include <cstddef>
+#include <utility>
 
 namespace he::scribe
 {
+    struct GlyphAtlas
+    {
+        rhi::Texture* curveTexture{ nullptr };
+        rhi::TextureView* curveView{ nullptr };
+        rhi::Texture* bandTexture{ nullptr };
+        rhi::TextureView* bandView{ nullptr };
+        rhi::DescriptorTable* descriptorTable{ nullptr };
+        const void* curveData{ nullptr };
+        Vec2u curveSize{ 0, 0 };
+        uint32_t curveRowPitch{ 0 };
+        const void* bandData{ nullptr };
+        Vec2u bandSize{ 0, 0 };
+        uint32_t bandRowPitch{ 0 };
+        uint32_t refCount{ 0 };
+        bool cached{ false };
+    };
+
     namespace
     {
-        constexpr uint32_t VertexShaderConstantCount = 24;
+        constexpr uint32_t VertexShaderConstantCount = 20;
 
-        bool CreateUploadVertexBuffer(
+        bool CreateUploadBuffer(
             rhi::Device& device,
             rhi::Buffer*& out,
-            const void* data,
             uint32_t size,
             uint32_t stride,
             const char* name)
@@ -47,10 +65,6 @@ namespace he::scribe
                 HE_LOGF_ERROR(scribe_render, "Failed to create upload vertex buffer. Error: {}", r);
                 return false;
             }
-
-            void* dst = device.Map(out);
-            MemCopy(dst, data, size);
-            device.Unmap(out);
             return true;
         }
 
@@ -189,32 +203,33 @@ namespace he::scribe
             return BitCast<float>(value);
         }
 
-        void BuildDrawConstants(
+        Vec4f MultiplyColor(const Vec4f& a, const Vec4f& b)
+        {
+            return {
+                a.x * b.x,
+                a.y * b.y,
+                a.z * b.z,
+                a.w * b.w
+            };
+        }
+
+        void BuildFrameConstants(
             float* outConstants,
-            const Vec2u& targetSize,
-            const Vec2f& position,
-            const Vec2f& size,
-            const Vec2f& basisX,
-            const Vec2f& basisY,
-            const Vec2f& offset,
-            const Vec4f& color)
+            const Vec2u& targetSize)
         {
             HE_ASSERT(outConstants);
 
             const float width = static_cast<float>(targetSize.x);
             const float height = static_cast<float>(targetSize.y);
-            const float offsetX = position.x + (size.x * offset.x);
-            const float offsetY = position.y + (size.y * offset.y);
-
-            outConstants[0] = (2.0f * size.x * basisX.x) / width;
-            outConstants[1] = (2.0f * size.x * basisY.x) / width;
+            outConstants[0] = 2.0f / width;
+            outConstants[1] = 0.0f;
             outConstants[2] = 0.0f;
-            outConstants[3] = (2.0f * offsetX) / width - 1.0f;
+            outConstants[3] = -1.0f;
 
-            outConstants[4] = (-2.0f * size.y * basisX.y) / height;
-            outConstants[5] = (-2.0f * size.y * basisY.y) / height;
+            outConstants[4] = 0.0f;
+            outConstants[5] = -2.0f / height;
             outConstants[6] = 0.0f;
-            outConstants[7] = 1.0f - (2.0f * offsetY) / height;
+            outConstants[7] = 1.0f;
 
             outConstants[8] = 0.0f;
             outConstants[9] = 0.0f;
@@ -230,10 +245,49 @@ namespace he::scribe
             outConstants[17] = height;
             outConstants[18] = 0.0f;
             outConstants[19] = 0.0f;
-            outConstants[20] = color.x;
-            outConstants[21] = color.y;
-            outConstants[22] = color.z;
-            outConstants[23] = color.w;
+        }
+
+        PackedGlyphVertex TransformVertex(const PackedGlyphVertex& in, const DrawGlyphDesc& draw)
+        {
+            const float a00 = draw.size.x * draw.basisX.x;
+            const float a01 = draw.size.x * draw.basisY.x;
+            const float a10 = draw.size.y * draw.basisX.y;
+            const float a11 = draw.size.y * draw.basisY.y;
+
+            const float offsetX = draw.position.x + (draw.size.x * draw.offset.x);
+            const float offsetY = draw.position.y + (draw.size.y * draw.offset.y);
+
+            PackedGlyphVertex out = in;
+            out.pos.x = offsetX + (a00 * in.pos.x) + (a01 * in.pos.y);
+            out.pos.y = offsetY + (a10 * in.pos.x) + (a11 * in.pos.y);
+            out.pos.z = (a00 * in.pos.z) + (a01 * in.pos.w);
+            out.pos.w = (a10 * in.pos.z) + (a11 * in.pos.w);
+
+            const float det = (a00 * a11) - (a01 * a10);
+            if (Abs(det) > 1.0e-8f)
+            {
+                const float invDet = 1.0f / det;
+                const float it00 = a11 * invDet;
+                const float it01 = -a10 * invDet;
+                const float it10 = -a01 * invDet;
+                const float it11 = a00 * invDet;
+
+                const float j0x = in.jac.x;
+                const float j0y = in.jac.y;
+                const float j1x = in.jac.z;
+                const float j1y = in.jac.w;
+                out.jac.x = (it00 * j0x) + (it10 * j0y);
+                out.jac.y = (it01 * j0x) + (it11 * j0y);
+                out.jac.z = (it00 * j1x) + (it10 * j1y);
+                out.jac.w = (it01 * j1x) + (it11 * j1y);
+            }
+            else
+            {
+                out.jac = in.jac;
+            }
+
+            out.col = MultiplyColor(in.col, draw.color);
+            return out;
         }
     }
 
@@ -266,68 +320,59 @@ namespace he::scribe
         }
 
         m_device->GetRenderCmdQueue().WaitForFlush();
-        m_draws.Clear();
+        m_batches.Clear();
+        m_streamVertices.Clear();
         m_frame = {};
+        Vector<GlyphAtlas*> cachedAtlases = std::move(m_cachedAtlases);
+        m_cachedAtlases.Clear();
+        for (GlyphAtlas*& atlas : cachedAtlases)
+        {
+            atlas->cached = false;
+            ReleaseAtlas(atlas);
+        }
+        for (StreamBuffer& streamBuffer : m_streamBuffers)
+        {
+            m_device->SafeDestroy(streamBuffer.buffer);
+            streamBuffer = {};
+        }
         DestroyDeviceResources();
         m_targetFormat = rhi::Format::Invalid;
         m_device = nullptr;
     }
 
-    bool Renderer::CreateGlyphResource(GlyphResource& out, const GlyphResourceCreateInfo& desc)
+    bool Renderer::CreateDedicatedAtlas(
+        GlyphAtlas*& out,
+        const TextureDataDesc& curveTexture,
+        const TextureDataDesc& bandTexture)
     {
         HE_ASSERT(m_device);
-
-        if (!HE_VERIFY(
-            desc.vertices != nullptr
-            && desc.vertexCount > 0
-            && desc.curveTexture.data != nullptr
-            && desc.curveTexture.size.x > 0
-            && desc.curveTexture.size.y > 0
-            && desc.bandTexture.data != nullptr
-            && desc.bandTexture.size.x > 0
-            && desc.bandTexture.size.y > 0,
-            HE_MSG("Invalid glyph resource create info.")))
-        {
-            return false;
-        }
-
-        GlyphResource resource{};
-
-        if (!CreateUploadVertexBuffer(
-            *m_device,
-            resource.vertexBuffer,
-            desc.vertices,
-            desc.vertexCount * sizeof(PackedGlyphVertex),
-            sizeof(PackedGlyphVertex),
-            "Scribe Glyph Vertex Buffer"))
-        {
-            DestroyGlyphResource(resource);
-            return false;
-        }
+        out = nullptr;
+        GlyphAtlas* atlas = Allocator::GetDefault().New<GlyphAtlas>();
+        atlas->refCount = 1;
 
         if (!UploadTexture2D(
             *m_device,
-            resource.curveTexture,
-            resource.curveView,
-            desc.curveTexture,
+            atlas->curveTexture,
+            atlas->curveView,
+            curveTexture,
             rhi::Format::RGBA16Float,
             "Scribe Curve Texture",
             "Scribe Curve Upload Buffer"))
         {
-            DestroyGlyphResource(resource);
+            ReleaseAtlas(atlas);
             return false;
         }
 
         if (!UploadTexture2D(
             *m_device,
-            resource.bandTexture,
-            resource.bandView,
-            desc.bandTexture,
+            atlas->bandTexture,
+            atlas->bandView,
+            bandTexture,
             rhi::Format::RG16Uint,
             "Scribe Band Texture",
             "Scribe Band Upload Buffer"))
         {
-            DestroyGlyphResource(resource);
+            ReleaseAtlas(atlas);
             return false;
         }
 
@@ -346,20 +391,129 @@ namespace he::scribe
         tableDesc.rangeCount = HE_LENGTH_OF(ranges);
         tableDesc.ranges = ranges;
 
-        Result r = m_device->CreateDescriptorTable(tableDesc, resource.descriptorTable);
+        Result r = m_device->CreateDescriptorTable(tableDesc, atlas->descriptorTable);
         if (!r)
         {
             HE_LOGF_ERROR(scribe_render, "Failed to create glyph descriptor table. Error: {}", r);
+            ReleaseAtlas(atlas);
+            return false;
+        }
+
+        const rhi::TextureView* curveView = atlas->curveView;
+        const rhi::TextureView* bandView = atlas->bandView;
+        m_device->SetTextureViews(atlas->descriptorTable, 0, 0, 1, &curveView);
+        m_device->SetTextureViews(atlas->descriptorTable, 1, 0, 1, &bandView);
+
+        out = atlas;
+        return true;
+    }
+
+    bool Renderer::CreateCachedAtlas(
+        GlyphAtlas*& out,
+        const TextureDataDesc& curveTexture,
+        const TextureDataDesc& bandTexture)
+    {
+        out = nullptr;
+        for (GlyphAtlas* atlas : m_cachedAtlases)
+        {
+            if (atlas
+                && atlas->cached
+                && (atlas->curveData == curveTexture.data)
+                && (atlas->curveSize.x == curveTexture.size.x)
+                && (atlas->curveSize.y == curveTexture.size.y)
+                && (atlas->curveRowPitch == curveTexture.rowPitch)
+                && (atlas->bandData == bandTexture.data)
+                && (atlas->bandSize.x == bandTexture.size.x)
+                && (atlas->bandSize.y == bandTexture.size.y)
+                && (atlas->bandRowPitch == bandTexture.rowPitch))
+            {
+                ++atlas->refCount;
+                out = atlas;
+                return true;
+            }
+        }
+
+        GlyphAtlas* atlas = nullptr;
+        if (!CreateDedicatedAtlas(atlas, curveTexture, bandTexture))
+        {
+            return false;
+        }
+
+        atlas->cached = true;
+        atlas->curveData = curveTexture.data;
+        atlas->curveSize = curveTexture.size;
+        atlas->curveRowPitch = curveTexture.rowPitch;
+        atlas->bandData = bandTexture.data;
+        atlas->bandSize = bandTexture.size;
+        atlas->bandRowPitch = bandTexture.rowPitch;
+        m_cachedAtlases.PushBack(atlas);
+        out = atlas;
+        return true;
+    }
+
+    void Renderer::ReleaseAtlas(GlyphAtlas*& atlas)
+    {
+        if (!atlas || !m_device)
+        {
+            atlas = nullptr;
+            return;
+        }
+
+        HE_ASSERT(atlas->refCount > 0);
+        --atlas->refCount;
+        if (atlas->refCount == 0)
+        {
+            if (atlas->cached)
+            {
+                for (uint32_t index = 0; index < m_cachedAtlases.Size(); ++index)
+                {
+                    if (m_cachedAtlases[index] == atlas)
+                    {
+                        m_cachedAtlases.Erase(index);
+                        break;
+                    }
+                }
+            }
+
+            m_device->SafeDestroy(atlas->descriptorTable);
+            m_device->SafeDestroy(atlas->bandView);
+            m_device->SafeDestroy(atlas->bandTexture);
+            m_device->SafeDestroy(atlas->curveView);
+            m_device->SafeDestroy(atlas->curveTexture);
+            Allocator::GetDefault().Delete(atlas);
+        }
+
+        atlas = nullptr;
+    }
+
+    bool Renderer::CreateGlyphResource(GlyphResource& out, const GlyphResourceCreateInfo& desc)
+    {
+        HE_ASSERT(m_device);
+
+        if (!HE_VERIFY(
+            desc.vertices != nullptr
+            && (desc.vertexCount > 0)
+            && (desc.vertexCount <= ScribeGlyphVertexCount)
+            && desc.curveTexture.data != nullptr
+            && desc.curveTexture.size.x > 0
+            && desc.curveTexture.size.y > 0
+            && desc.bandTexture.data != nullptr
+            && desc.bandTexture.size.x > 0
+            && desc.bandTexture.size.y > 0,
+            HE_MSG("Invalid glyph resource create info.")))
+        {
+            return false;
+        }
+
+        GlyphResource resource{};
+        MemCopy(resource.vertices, desc.vertices, desc.vertexCount * sizeof(PackedGlyphVertex));
+        resource.vertexCount = desc.vertexCount;
+        if (!CreateDedicatedAtlas(resource.atlas, desc.curveTexture, desc.bandTexture))
+        {
             DestroyGlyphResource(resource);
             return false;
         }
 
-        const rhi::TextureView* curveView = resource.curveView;
-        const rhi::TextureView* bandView = resource.bandView;
-        m_device->SetTextureViews(resource.descriptorTable, 0, 0, 1, &curveView);
-        m_device->SetTextureViews(resource.descriptorTable, 1, 0, 1, &bandView);
-
-        resource.vertexCount = desc.vertexCount;
         out = resource;
         return true;
     }
@@ -375,7 +529,17 @@ namespace he::scribe
             return false;
         }
 
-        return CreateGlyphResource(out, glyphData.createInfo);
+        GlyphResource resource{};
+        MemCopy(resource.vertices, glyphData.vertices, sizeof(glyphData.vertices));
+        resource.vertexCount = glyphData.createInfo.vertexCount;
+        if (!CreateCachedAtlas(resource.atlas, glyphData.createInfo.curveTexture, glyphData.createInfo.bandTexture))
+        {
+            DestroyGlyphResource(resource);
+            return false;
+        }
+
+        out = resource;
+        return true;
     }
 
     bool Renderer::CreateCompiledVectorShapeResource(
@@ -389,7 +553,17 @@ namespace he::scribe
             return false;
         }
 
-        return CreateGlyphResource(out, shapeData.createInfo);
+        GlyphResource resource{};
+        MemCopy(resource.vertices, shapeData.vertices, sizeof(shapeData.vertices));
+        resource.vertexCount = shapeData.createInfo.vertexCount;
+        if (!CreateCachedAtlas(resource.atlas, shapeData.createInfo.curveTexture, shapeData.createInfo.bandTexture))
+        {
+            DestroyGlyphResource(resource);
+            return false;
+        }
+
+        out = resource;
+        return true;
     }
 
     bool Renderer::CreateDebugGlyphResource(GlyphResource& out)
@@ -463,18 +637,7 @@ namespace he::scribe
 
     void Renderer::DestroyGlyphResource(GlyphResource& resource)
     {
-        if (!m_device)
-        {
-            resource = {};
-            return;
-        }
-
-        m_device->SafeDestroy(resource.descriptorTable);
-        m_device->SafeDestroy(resource.bandView);
-        m_device->SafeDestroy(resource.bandTexture);
-        m_device->SafeDestroy(resource.curveView);
-        m_device->SafeDestroy(resource.curveTexture);
-        m_device->SafeDestroy(resource.vertexBuffer);
+        ReleaseAtlas(resource.atlas);
         resource = {};
     }
 
@@ -492,25 +655,21 @@ namespace he::scribe
         }
 
         m_frame = desc;
-        m_draws.Clear();
+        m_streamBufferIndex = (m_streamBufferIndex + 1) % HE_LENGTH_OF(m_streamBuffers);
+        m_batches.Clear();
+        m_streamVertices.Clear();
+        m_lastSubmittedDrawCount = 0;
         return true;
     }
 
     void Renderer::QueueDraw(const DrawGlyphDesc& desc)
     {
-        if (!desc.glyph || !desc.glyph->vertexBuffer || (desc.glyph->vertexCount == 0))
+        if (!desc.glyph || !desc.glyph->atlas || (desc.glyph->vertexCount == 0))
         {
             return;
         }
 
-        QueuedDraw& draw = m_draws.EmplaceBack();
-        draw.glyph = desc.glyph;
-        draw.position = desc.position;
-        draw.size = desc.size;
-        draw.color = desc.color;
-        draw.basisX = desc.basisX;
-        draw.basisY = desc.basisY;
-        draw.offset = desc.offset;
+        AppendDrawVertices(desc);
     }
 
     void Renderer::EndFrame()
@@ -538,7 +697,7 @@ namespace he::scribe
             m_frame.cmdList->WriteTimestamp(m_frame.gpuTimer.querySet, m_frame.gpuTimer.startQueryIndex);
         }
 
-        if (!m_draws.IsEmpty())
+        if (!m_streamVertices.IsEmpty())
         {
             rhi::Viewport viewport{};
             viewport.x = 0.0f;
@@ -554,9 +713,34 @@ namespace he::scribe
             m_frame.cmdList->SetRenderPipeline(m_pipeline);
             m_frame.cmdList->SetBlendColor({ 0, 0, 0, 0 });
 
-            for (const QueuedDraw& draw : m_draws)
+            StreamBuffer& streamBuffer = m_streamBuffers[m_streamBufferIndex];
+            const uint32_t vertexDataSize = m_streamVertices.Size() * sizeof(PackedGlyphVertex);
+            if (EnsureStreamBufferCapacity(streamBuffer, vertexDataSize))
             {
-                EmitDraw(draw);
+                void* dst = m_device->Map(streamBuffer.buffer, 0, vertexDataSize);
+                if (dst)
+                {
+                    MemCopy(dst, m_streamVertices.Data(), vertexDataSize);
+                    m_device->Unmap(streamBuffer.buffer);
+
+                    float constants[VertexShaderConstantCount]{};
+                    BuildFrameConstants(constants, m_frame.targetSize);
+                    m_frame.cmdList->SetVertexBuffer(0, m_vertexBufferFormat, streamBuffer.buffer, 0, vertexDataSize);
+                    m_frame.cmdList->SetRender32BitConstantValues(0, constants, VertexShaderConstantCount);
+                    m_lastSubmittedDrawCount = m_batches.Size();
+
+                    for (const StreamBatch& batch : m_batches)
+                    {
+                        m_frame.cmdList->SetRenderDescriptorTable(1, batch.atlas->descriptorTable);
+
+                        rhi::DrawDesc desc{};
+                        desc.vertexCount = batch.vertexCount;
+                        desc.instanceCount = 1;
+                        desc.vertexStart = batch.vertexStart;
+                        desc.baseInstance = 0;
+                        m_frame.cmdList->Draw(desc);
+                    }
+                }
             }
         }
 
@@ -580,7 +764,57 @@ namespace he::scribe
         }
 
         m_frame = {};
-        m_draws.Clear();
+        m_batches.Clear();
+        m_streamVertices.Clear();
+    }
+
+    bool Renderer::EnsureStreamBufferCapacity(StreamBuffer& streamBuffer, uint32_t minSize)
+    {
+        if (streamBuffer.buffer && (streamBuffer.size >= minSize))
+        {
+            return true;
+        }
+
+        m_device->SafeDestroy(streamBuffer.buffer);
+        streamBuffer.size = 0;
+
+        const uint32_t requestedSize = Max(minSize, static_cast<uint32_t>(sizeof(PackedGlyphVertex) * 256));
+        if (!CreateUploadBuffer(*m_device, streamBuffer.buffer, requestedSize, sizeof(PackedGlyphVertex), "Scribe Stream Vertex Buffer"))
+        {
+            return false;
+        }
+
+        streamBuffer.size = requestedSize;
+        return true;
+    }
+
+    void Renderer::AppendDrawVertices(const DrawGlyphDesc& draw)
+    {
+        HE_ASSERT(draw.glyph);
+        HE_ASSERT(draw.glyph->atlas);
+
+        StreamBatch* batch = nullptr;
+        if (!m_batches.IsEmpty() && (m_batches.Back().atlas == draw.glyph->atlas))
+        {
+            batch = &m_batches.Back();
+        }
+        else
+        {
+            StreamBatch& newBatch = m_batches.EmplaceBack();
+            newBatch.atlas = draw.glyph->atlas;
+            newBatch.vertexStart = m_streamVertices.Size();
+            newBatch.vertexCount = 0;
+            batch = &newBatch;
+        }
+
+        const uint32_t oldSize = m_streamVertices.Size();
+        m_streamVertices.Resize(oldSize + draw.glyph->vertexCount);
+        for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
+        {
+            m_streamVertices[oldSize + vertexIndex] = TransformVertex(draw.glyph->vertices[vertexIndex], draw);
+        }
+
+        batch->vertexCount += draw.glyph->vertexCount;
     }
 
     bool Renderer::CreateDeviceResources()
@@ -741,38 +975,5 @@ namespace he::scribe
         m_device->SafeDestroy(m_pipeline);
         m_device->SafeDestroy(m_vertexBufferFormat);
         m_device->SafeDestroy(m_rootSignature);
-    }
-
-    void Renderer::EmitDraw(const QueuedDraw& draw)
-    {
-        HE_ASSERT(m_frame.cmdList);
-        HE_ASSERT(draw.glyph);
-
-        float constants[VertexShaderConstantCount]{};
-        BuildDrawConstants(
-            constants,
-            m_frame.targetSize,
-            draw.position,
-            draw.size,
-            draw.basisX,
-            draw.basisY,
-            draw.offset,
-            draw.color);
-
-        m_frame.cmdList->SetVertexBuffer(
-            0,
-            m_vertexBufferFormat,
-            draw.glyph->vertexBuffer,
-            0,
-            draw.glyph->vertexCount * sizeof(PackedGlyphVertex));
-        m_frame.cmdList->SetRender32BitConstantValues(0, constants, VertexShaderConstantCount);
-        m_frame.cmdList->SetRenderDescriptorTable(1, draw.glyph->descriptorTable);
-
-        rhi::DrawDesc desc{};
-        desc.vertexCount = draw.glyph->vertexCount;
-        desc.instanceCount = 1;
-        desc.vertexStart = 0;
-        desc.baseInstance = 0;
-        m_frame.cmdList->Draw(desc);
     }
 }

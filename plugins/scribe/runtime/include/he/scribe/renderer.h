@@ -11,6 +11,8 @@
 
 namespace he::scribe
 {
+    struct GlyphAtlas;
+
     struct PackedGlyphVertex
     {
         Vec4f pos{ 0, 0, 0, 0 };
@@ -37,12 +39,8 @@ namespace he::scribe
 
     struct GlyphResource
     {
-        rhi::Buffer* vertexBuffer{ nullptr };
-        rhi::Texture* curveTexture{ nullptr };
-        rhi::TextureView* curveView{ nullptr };
-        rhi::Texture* bandTexture{ nullptr };
-        rhi::TextureView* bandView{ nullptr };
-        rhi::DescriptorTable* descriptorTable{ nullptr };
+        PackedGlyphVertex vertices[ScribeGlyphVertexCount]{};
+        GlyphAtlas* atlas{ nullptr };
         uint32_t vertexCount{ 0 };
     };
 
@@ -108,22 +106,35 @@ namespace he::scribe
         bool BeginFrame(const FrameDesc& desc);
         void QueueDraw(const DrawGlyphDesc& desc);
         void EndFrame();
+        uint32_t GetLastSubmittedDrawCount() const { return m_lastSubmittedDrawCount; }
 
     private:
-        struct QueuedDraw
+        struct StreamBatch
         {
-            const GlyphResource* glyph{ nullptr };
-            Vec2f position{ 0, 0 };
-            Vec2f size{ 1, 1 };
-            Vec4f color{ 1, 1, 1, 1 };
-            Vec2f basisX{ 1, 0 };
-            Vec2f basisY{ 0, 1 };
-            Vec2f offset{ 0, 0 };
+            const GlyphAtlas* atlas{ nullptr };
+            uint32_t vertexStart{ 0 };
+            uint32_t vertexCount{ 0 };
         };
 
+        struct StreamBuffer
+        {
+            rhi::Buffer* buffer{ nullptr };
+            uint32_t size{ 0 };
+        };
+
+        bool CreateDedicatedAtlas(
+            GlyphAtlas*& out,
+            const TextureDataDesc& curveTexture,
+            const TextureDataDesc& bandTexture);
+        bool CreateCachedAtlas(
+            GlyphAtlas*& out,
+            const TextureDataDesc& curveTexture,
+            const TextureDataDesc& bandTexture);
+        void ReleaseAtlas(GlyphAtlas*& atlas);
+        bool EnsureStreamBufferCapacity(StreamBuffer& streamBuffer, uint32_t minSize);
         bool CreateDeviceResources();
         void DestroyDeviceResources();
-        void EmitDraw(const QueuedDraw& draw);
+        void AppendDrawVertices(const DrawGlyphDesc& draw);
 
     private:
         rhi::Device* m_device{ nullptr };
@@ -132,6 +143,11 @@ namespace he::scribe
         rhi::RenderPipeline* m_pipeline{ nullptr };
         rhi::Format m_targetFormat{ rhi::Format::Invalid };
         FrameDesc m_frame{};
-        Vector<QueuedDraw> m_draws{};
+        StreamBuffer m_streamBuffers[rhi::MaxFrameCount]{};
+        uint32_t m_streamBufferIndex{ 0 };
+        Vector<GlyphAtlas*> m_cachedAtlases{};
+        Vector<StreamBatch> m_batches{};
+        Vector<PackedGlyphVertex> m_streamVertices{};
+        uint32_t m_lastSubmittedDrawCount{ 0 };
     };
 }

@@ -200,4 +200,8 @@ HE_TEST(scribe, vector_image_pipeline, resolves_layers_and_shape_resources)
     HE_EXPECT_EQ(shape.createInfo.vertexCount, ScribeGlyphVertexCount);
     HE_EXPECT_EQ(shape.createInfo.bandTexture.size.x, ScribeBandTextureWidth);
     HE_EXPECT_EQ(shape.shape.GetFillRule(), FillRule::EvenOdd);
+    HE_EXPECT_EQ(shape.vertices[0].col.x, layers[1].color.x);
+    HE_EXPECT_EQ(shape.vertices[0].col.y, layers[1].color.y);
+    HE_EXPECT_EQ(shape.vertices[0].col.z, layers[1].color.z);
+    HE_EXPECT_EQ(shape.vertices[0].col.w, layers[1].color.w);
 }

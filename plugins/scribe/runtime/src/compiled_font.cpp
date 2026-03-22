@@ -19,6 +19,8 @@ namespace he::scribe
 
         Vec4f GetVertexColor()
         {
+            // Base glyph resources stay paint-neutral so the same compiled outline can be
+            // instantiated for monochrome text, COLR layers, and future tinted draw paths.
             return { 1.0f, 1.0f, 1.0f, 1.0f };
         }
 

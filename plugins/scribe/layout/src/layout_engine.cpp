@@ -903,7 +903,10 @@ namespace he::scribe
                 --trimmedParagraphEnd;
             }
 
-            const StringView paragraphText = text.Substring(paragraphStart, trimmedParagraphEnd - paragraphStart);
+            const char* paragraphData = (paragraphStart < text.Size())
+                ? (text.Data() + paragraphStart)
+                : "";
+            const StringView paragraphText{ paragraphData, trimmedParagraphEnd - paragraphStart };
             ParagraphInfo& paragraph = paragraphs.EmplaceBack();
             paragraph.clusterStart = out.clusters.Size();
             paragraph.direction = ResolveParagraphDirection(paragraphText, options);

@@ -1,0 +1,6 @@
+error.kind = 0
+source.file = C:\Users\engle\source\repos\harvest-engine\plugins\core\src\string_view.cpp
+source.line = 23
+source.func = class he::StringView __cdecl he::StringView::Substring(unsigned int,unsigned int) const
+error_kind = Assertion(0)
+error_expr = offset < m_size

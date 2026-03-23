@@ -241,3 +241,18 @@ HE_TEST(scribe, layout_engine, rtl_line_direction)
     HE_EXPECT_GE(layout.clusters.Size(), 3u);
     HE_EXPECT_GT(layout.clusters[0].x0, layout.clusters[layout.clusters.Size() - 1].x0);
 }
+
+HE_TEST(scribe, layout_engine, trailing_newline_paragraph)
+{
+    Vector<schema::Word> fontStorage;
+    LoadedFontFaceBlob font{};
+    HE_ASSERT(BuildLoadedFontFaceFromFile("NotoSans-Regular.ttf", fontStorage, font));
+
+    LayoutEngine engine;
+    LayoutResult layout;
+    const String text = "emoji page line\n";
+
+    HE_EXPECT(engine.LayoutText(layout, Span<const LoadedFontFaceBlob>(&font, 1), text));
+    HE_EXPECT_GE(layout.lines.Size(), 2u);
+    HE_EXPECT_GE(layout.clusters.Size(), 1u);
+}

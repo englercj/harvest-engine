@@ -35,6 +35,179 @@ namespace he
         constexpr const char* TestIconAccount = "\xf3\xb0\x80\x84";
         constexpr const char* RtlSample = "\xd9\x85\xd8\xb1\xd8\xad\xd8\xa8\xd8\xa7 \xd8\xa8\xd8\xa7\xd9\x84\xd8\xb9\xd8\xa7\xd9\x84\xd9\x85";
 
+#include "emoji_page_data.inl"
+
+        struct FeatureRowSpec
+        {
+            const char* title{ nullptr };
+            const char* description{ nullptr };
+            const char* disabledSample{ nullptr };
+            const char* enabledSample{ nullptr };
+            scribe::TextDirection disabledDirection{ scribe::TextDirection::Auto };
+            scribe::TextDirection enabledDirection{ scribe::TextDirection::Auto };
+        };
+
+        constexpr FeatureRowSpec FeatureRows[] =
+        {
+            {
+                "Font styles",
+                "Weight, italic, and code spans are part of the long-term text model. They are not mapped to real font-style runs yet.",
+                "Regular / italic / bold toggle not yet implemented.",
+                "Regular italics bold {code} target sample.",
+            },
+            {
+                "Stretch and skew",
+                "Per-run stretch and skew are not exposed through the layout API yet, but the testbed keeps them listed as a future renderer target.",
+                "Text stretched (not yet implemented).",
+                "Text skewed (not yet implemented).",
+            },
+            {
+                "Text decorations",
+                "Underline, strike-through, and other text decorations still need explicit shaping and paint support.",
+                "Text underline (not yet implemented).",
+                "Text strike-through (not yet implemented).",
+            },
+            {
+                "Tracking",
+                "Run-level tracking and letter spacing are not exposed yet. The row stays here as a roadmap checkpoint.",
+                "Tight tracking -0.05 (not yet implemented).",
+                "Loose tracking +0.05 (not yet implemented).",
+            },
+            {
+                "Multicolor emoji",
+                "COLR/CPAL glyph layers already render through the compiled font and runtime path.",
+                "Toggle-off sample not exposed in the testbed.",
+                "🙂 😀 🎨 🌈 ✨",
+            },
+            {
+                "Skin tone modifiers",
+                "Emoji modifier sequences should shape and layer correctly when the color emoji fallback face is available.",
+                "👋 🧑‍⚕️ fallback dependent.",
+                "👋🏻 👋🏽 👋🏿 🧑🏽‍⚕️",
+            },
+            {
+                "Kerning",
+                "Kerning is shaped through HarfBuzz today, but there is no UI toggle to disable it for a direct side-by-side comparison.",
+                "Toggle not exposed in the testbed.",
+                "“Too Wavy.”",
+            },
+            {
+                "Ligatures",
+                "Ligatures are shaped through HarfBuzz when the active face supports them.",
+                "Toggle not exposed in the testbed.",
+                "office firefly craft",
+            },
+            {
+                "Combining marks",
+                "Combining marks and cluster preservation are already working in the shaping path.",
+                "Slug decomposed cluster stress.",
+                "Şl̈ūg̊",
+            },
+            {
+                "Small caps",
+                "Small-cap substitutions are not wired through feature selection yet.",
+                "Small caps (not yet implemented).",
+                "SMALL CAPS target sample.",
+            },
+            {
+                "Stylistic variants",
+                "Style sets and alternate glyph forms still need a feature-selection surface in layout.",
+                "Default glyph form only.",
+                "Style-set substitution target sample.",
+            },
+            {
+                "Case-sensitive forms",
+                "Case-sensitive punctuation substitutions are still pending OpenType feature selection.",
+                "[(ALL-CAPS)] default punctuation.",
+                "[(ALL-CAPS)] target substitution sample.",
+            },
+            {
+                "Subscripts and superscripts",
+                "Native OpenType substitutions are not implemented yet, but Unicode fallback characters can still be displayed.",
+                "CH3CH2CH3 / Footnote5",
+                "CH₃CH₂CH₃ / Footnote⁵",
+            },
+            {
+                "Script transforms",
+                "Nested script transforms belong in a future styled-run model, not the current plain-text test path.",
+                "Text sub1 sub2 (not yet implemented).",
+                "Text sup1 sup2 (not yet implemented).",
+            },
+            {
+                "Ordinals and fractions",
+                "Ordinal and fraction substitutions are still pending feature-selection support.",
+                "1st 2nd 3rd 4th / 123/456",
+                "1ˢᵗ 2ⁿᵈ 3ʳᵈ 4ᵗʰ / ½ ¾",
+            },
+            {
+                "Figure styles",
+                "Old-style, tabular, and proportional figures are not yet selectable from the testbed.",
+                "0123456789 lining / proportional default.",
+                "Old-style and tabular targets not yet implemented.",
+            },
+            {
+                "Unicode support",
+                "The runtime already handles mixed-script shaping and fallback across a broad set of Unicode text.",
+                "Σύνθετη απόδοση γραμματοσειράς και διάταξη κειμένου",
+                "Улучшенный отрисовщик шрифтов и макет текста / 高级字体渲染和文本布局",
+            },
+            {
+                "Right-to-left languages",
+                "The first-pass RTL layout path is working, but full bidi and line-breaking behavior is still a later milestone.",
+                "LTR stress sample only.",
+                "مرحبا بالعالم / עיבוד גופן מתקדם",
+                scribe::TextDirection::LeftToRight,
+                scribe::TextDirection::RightToLeft,
+            },
+            {
+                "Cursive joining",
+                "Arabic joining behavior depends on shaping and fallback-font coverage. The row stays visible as a shaping checkpoint.",
+                "Isolated forms only if fallback is missing.",
+                "تقديم الخط",
+                scribe::TextDirection::RightToLeft,
+                scribe::TextDirection::RightToLeft,
+            },
+            {
+                "Bidirectional layout",
+                "Mixed-direction runs are partially supported today and need broader bidi coverage later.",
+                "Bezier نقاط التحكم with limited bidi.",
+                "GPU text مع English 123 layout stress.",
+                scribe::TextDirection::Auto,
+                scribe::TextDirection::Auto,
+            },
+            {
+                "Glyph effects",
+                "Shadows and geometric outlines are not implemented in Scribe yet, but they belong on the renderer roadmap.",
+                "Shadow / Outline / Both not yet implemented.",
+                "Effect pipeline target sample.",
+            },
+            {
+                "Per-glyph transforms",
+                "Curved text and per-glyph transforms require a richer scene model than the current layout result exposes.",
+                "Per-glyph transforms not yet implemented.",
+                "Curved baseline target sample.",
+            },
+            {
+                "Vector strokes and gradients",
+                "Stroke caps, joins, dashing, and fill gradients belong to future SVG/vector milestones and are listed here as pending.",
+                "Stroke dashing and gradients not yet implemented.",
+                "Future vector paint and stroke target.",
+            },
+        };
+
+        float ComputeCapAlignedFontSize(const scribe::LoadedFontFaceBlob& font, float capHeightPixels)
+        {
+            if (!font.metadata.IsValid())
+            {
+                return capHeightPixels;
+            }
+
+            const auto metrics = font.metadata.GetMetrics();
+            const float unitsPerEm = static_cast<float>(Max(metrics.GetUnitsPerEm(), 1u));
+            const float capHeightUnits = static_cast<float>(Max(Abs(metrics.GetCapHeight()), 1));
+            return capHeightPixels * (unitsPerEm / capHeightUnits);
+        }
+
         bool ResolveFontPath(String& out, const char* fileName)
         {
             if (File::Exists(fileName))
@@ -562,7 +735,7 @@ namespace he
 
         const float dpiScale = Max(m_view->GetDpiScale(), 1.0f);
         const float titleFontSize = 34.0f * dpiScale;
-        const float bodyFontSize = 24.0f * dpiScale;
+        const float bodyFontSize = m_bodyFontSize;
         const float footerFontSize = 16.0f * dpiScale;
         const auto ApplySceneTransform = [this](const Vec2f& point) -> Vec2f
         {
@@ -593,22 +766,22 @@ namespace he
             return;
         }
 
+        const uint32_t reservedVertexCount = m_sceneVertexEstimate
+            + m_overlayVertexEstimate
+            + (m_hasCaret ? m_caretGlyph.vertexCount : 0);
+        m_renderer.ReserveQueuedVertexCapacity(reservedVertexCount);
+
         QueueLayout(m_titleLayout, transformedTitleOrigin, titleFontSize, m_sceneZoom);
-        QueueLayout(m_bodyLayout, transformedBodyOrigin, bodyFontSize, m_sceneZoom);
-        if ((m_scene == DemoScene::SvgVectorImages) && (m_images.Size() >= 2))
+        if (!m_bodyText.IsEmpty())
         {
-            const float imageScale = 2.4f * dpiScale * m_sceneZoom;
-            QueueImage(
-                m_images[0],
-                0,
-                ApplySceneTransform({ m_bodyOrigin.x, m_bodyOrigin.y + (150.0f * dpiScale) }),
-                imageScale);
-            QueueImage(
-                m_images[1],
-                1,
-                ApplySceneTransform({ m_bodyOrigin.x + (620.0f * dpiScale), m_bodyOrigin.y + (150.0f * dpiScale) }),
-                imageScale * 0.85f);
+            QueueLayout(m_bodyLayout, transformedBodyOrigin, bodyFontSize, m_sceneZoom);
         }
+
+        for (const SceneTextBlock& block : m_sceneBlocks)
+        {
+            QueueLayout(block.layout, GetSceneBlockRenderOrigin(block), block.fontSize, m_sceneZoom, block.color);
+        }
+
         QueueLayout(m_sceneStatsLayout, m_sceneStatsOrigin, footerFontSize);
         QueueLayout(m_renderStatsLayout, m_renderStatsOrigin, footerFontSize);
         QueueLayout(m_inputHintsLayout, m_inputHintsOrigin, footerFontSize);
@@ -624,11 +797,12 @@ namespace he
             || !InitializeRenderState()
             || !m_renderer.Initialize(*m_render.device, m_render.preferredSwapChainFormat.format)
             || !m_renderer.CreateDebugGlyphResource(m_caretGlyph)
-            || !LoadDemoFonts()
-            || !LoadDemoImages())
+            || !LoadDemoFonts())
         {
             return false;
         }
+
+        BuildFontGlyphCacheState();
 
         UpdateSceneTitle();
         m_lastFrameTime = MonotonicClock::Now();
@@ -651,6 +825,7 @@ namespace he
                 m_renderer.DestroyGlyphResource(glyph.resource);
             }
             m_cachedGlyphs.Clear();
+            m_fontGlyphCache.Clear();
 
             for (CachedImageShape& shape : m_cachedImageShapes)
             {
@@ -672,10 +847,40 @@ namespace he
         m_images.Clear();
         m_titleLayout.Clear();
         m_bodyLayout.Clear();
+        m_sceneBlocks.Clear();
         m_sceneStatsLayout.Clear();
         m_renderStatsLayout.Clear();
         m_inputHintsLayout.Clear();
         m_initialized = false;
+    }
+
+    void ScribeTestApp::BuildFontGlyphCacheState()
+    {
+        m_fontGlyphCache.Resize(m_fonts.Size(), DefaultInit);
+
+        for (uint32_t fontIndex = 0; fontIndex < m_fonts.Size(); ++fontIndex)
+        {
+            FontGlyphCacheState& cacheState = m_fontGlyphCache[fontIndex];
+            cacheState.glyphResourceIndices.Clear();
+            cacheState.selectedPaletteIndex = 0;
+            cacheState.hasColorGlyphs = false;
+
+            const LoadedDemoFont& font = m_fonts[fontIndex];
+            if (!font.blob.metadata.IsValid())
+            {
+                continue;
+            }
+
+            cacheState.glyphResourceIndices.Resize(font.blob.metadata.GetGlyphCount(), int32_t(-1));
+            cacheState.hasColorGlyphs =
+                font.blob.metadata.GetHasColorGlyphs()
+                && font.blob.paint.IsValid()
+                && !font.blob.paint.GetPalettes().IsEmpty();
+            if (cacheState.hasColorGlyphs)
+            {
+                cacheState.selectedPaletteIndex = scribe::SelectCompiledFontPalette(font.blob, true);
+            }
+        }
     }
 
     bool ScribeTestApp::InitializeView()
@@ -965,31 +1170,242 @@ namespace he
         const float dpiScale = Max(m_view->GetDpiScale(), 1.0f);
         const float margin = 40.0f * dpiScale;
         const float titleFontSize = 34.0f * dpiScale;
-        const float bodyFontSize = 24.0f * dpiScale;
-        const float bodyWidth = Max(static_cast<float>(viewSize.x) - (margin * 2.0f), 128.0f);
+        float bodyFontSize = 24.0f * dpiScale;
+        float contentWidth = Max(static_cast<float>(viewSize.x) - (margin * 2.0f), 128.0f);
+        float bodyWidth = contentWidth;
+
+        m_sceneBlocks.Clear();
+        m_bodyLayout.Clear();
+        m_bodyOrigin = { 0.0f, 0.0f };
+
+        auto layoutText = [&](scribe::LayoutResult& out,
+                              Span<const scribe::LoadedFontFaceBlob> blockFaces,
+                              const String& text,
+                              float fontSize,
+                              float maxWidth,
+                              scribe::TextDirection direction,
+                              bool wrap = true) -> bool
+        {
+            scribe::LayoutOptions options{};
+            options.fontSize = fontSize;
+            options.wrap = wrap;
+            options.maxWidth = maxWidth;
+            options.direction = direction;
+            return m_layoutEngine.LayoutText(out, blockFaces, text, options);
+        };
+
+        auto addSceneBlock = [&](const char* text,
+                                 const Vec2f& origin,
+                                 float fontSize,
+                                 float maxWidth,
+                                 bool useAllFaces,
+                                 scribe::TextDirection direction,
+                                 const Vec4f& color = { 0.0f, 0.0f, 0.0f, 1.0f },
+                                 uint32_t fontFaceIndex = 0,
+                                 bool pixelAlignBaseline = false,
+                                 bool pixelAlignCapHeight = false) -> SceneTextBlock*
+        {
+            SceneTextBlock& block = m_sceneBlocks.EmplaceBack();
+            block.text = text;
+            block.origin = origin;
+            block.fontSize = fontSize;
+            block.color = color;
+            block.fontFaceIndex = fontFaceIndex;
+            block.useAllFaces = useAllFaces;
+            block.pixelAlignBaseline = pixelAlignBaseline;
+            block.pixelAlignCapHeight = pixelAlignCapHeight;
+
+            const Span<const scribe::LoadedFontFaceBlob> blockFaces = useAllFaces
+                ? faceSpan
+                : Span<const scribe::LoadedFontFaceBlob>(&faces[Min(fontFaceIndex, faceCount - 1)], 1);
+
+            if (!layoutText(block.layout, blockFaces, block.text, fontSize, maxWidth, direction))
+            {
+                return nullptr;
+            }
+
+            return &block;
+        };
 
         scribe::LayoutOptions titleOptions{};
         titleOptions.fontSize = titleFontSize;
         titleOptions.wrap = true;
-        titleOptions.maxWidth = bodyWidth;
+        titleOptions.maxWidth = contentWidth;
         titleOptions.direction = scribe::TextDirection::LeftToRight;
-
         if (!m_layoutEngine.LayoutText(m_titleLayout, primaryFace, m_titleText, titleOptions))
         {
             return false;
         }
 
-        scribe::LayoutOptions bodyOptions{};
-        bodyOptions.fontSize = bodyFontSize;
-        bodyOptions.wrap = true;
-        bodyOptions.maxWidth = bodyWidth;
-        bodyOptions.direction = m_scene == DemoScene::RightToLeft
-            ? scribe::TextDirection::RightToLeft
-            : scribe::TextDirection::Auto;
-
-        if (!m_layoutEngine.LayoutText(m_bodyLayout, faceSpan, m_bodyText, bodyOptions))
+        switch (m_scene)
         {
-            return false;
+            case DemoScene::FeatureOverview:
+            {
+                const float sectionLabelSize = 16.0f * dpiScale;
+                const float featureTitleSize = 28.0f * dpiScale;
+                const float featureDescSize = 17.0f * dpiScale;
+                const float sampleSize = 24.0f * dpiScale;
+                const float columnGap = 36.0f * dpiScale;
+                const float leftWidth = contentWidth * 0.32f;
+                const float sampleWidth = Max((contentWidth - leftWidth - (columnGap * 2.0f)) * 0.5f, 200.0f * dpiScale);
+                const float disabledX = leftWidth + columnGap;
+                const float enabledX = disabledX + sampleWidth + columnGap;
+                const Vec4f mutedColor{ 0.35f, 0.35f, 0.35f, 1.0f };
+                const Vec4f noteColor{ 0.15f, 0.45f, 0.90f, 1.0f };
+
+                if (!addSceneBlock("Feature", { 0.0f, 0.0f }, sectionLabelSize, leftWidth, false, scribe::TextDirection::LeftToRight, mutedColor)
+                    || !addSceneBlock("Disabled / current gap", { disabledX, 0.0f }, sectionLabelSize, sampleWidth, false, scribe::TextDirection::LeftToRight, mutedColor)
+                    || !addSceneBlock("Enabled / target", { enabledX, 0.0f }, sectionLabelSize, sampleWidth, false, scribe::TextDirection::LeftToRight, mutedColor))
+                {
+                    return false;
+                }
+
+                float rowY = 46.0f * dpiScale;
+                for (const FeatureRowSpec& row : FeatureRows)
+                {
+                    SceneTextBlock* titleBlock = addSceneBlock(
+                        row.title,
+                        { 0.0f, rowY },
+                        featureTitleSize,
+                        leftWidth,
+                        false,
+                        scribe::TextDirection::LeftToRight);
+                    if (!titleBlock)
+                    {
+                        return false;
+                    }
+
+                    SceneTextBlock* descriptionBlock = addSceneBlock(
+                        row.description,
+                        { 0.0f, rowY + titleBlock->layout.height + (6.0f * dpiScale) },
+                        featureDescSize,
+                        leftWidth,
+                        false,
+                        scribe::TextDirection::LeftToRight,
+                        mutedColor);
+                    SceneTextBlock* disabledBlock = addSceneBlock(
+                        row.disabledSample,
+                        { disabledX, rowY + (4.0f * dpiScale) },
+                        sampleSize,
+                        sampleWidth,
+                        true,
+                        row.disabledDirection);
+                    SceneTextBlock* enabledBlock = addSceneBlock(
+                        row.enabledSample,
+                        { enabledX, rowY + (4.0f * dpiScale) },
+                        sampleSize,
+                        sampleWidth,
+                        true,
+                        row.enabledDirection);
+                    if (!descriptionBlock || !disabledBlock || !enabledBlock)
+                    {
+                        return false;
+                    }
+
+                    const float leftHeight = (descriptionBlock->origin.y + descriptionBlock->layout.height) - rowY;
+                    const float centerHeight = (disabledBlock->origin.y + disabledBlock->layout.height) - rowY;
+                    const float rightHeight = (enabledBlock->origin.y + enabledBlock->layout.height) - rowY;
+                    const float rowHeight = Max(leftHeight, Max(centerHeight, rightHeight));
+                    rowY += rowHeight + (26.0f * dpiScale);
+                }
+
+                if (!addSceneBlock(
+                        "Rows marked as not yet implemented stay visible here so the feature scene doubles as a roadmap.",
+                        { 0.0f, rowY + (6.0f * dpiScale) },
+                        featureDescSize,
+                        contentWidth,
+                        false,
+                        scribe::TextDirection::LeftToRight,
+                        noteColor))
+                {
+                    return false;
+                }
+                break;
+            }
+
+            case DemoScene::RichParagraphs:
+            {
+                bodyWidth = Min(contentWidth, 1100.0f * dpiScale);
+                bodyFontSize = 26.0f * dpiScale;
+                if (!layoutText(m_bodyLayout, faceSpan, m_bodyText, bodyFontSize, bodyWidth, scribe::TextDirection::Auto))
+                {
+                    return false;
+                }
+                break;
+            }
+
+            case DemoScene::EmojiPage:
+            {
+                bodyWidth = Max(contentWidth, 2200.0f * dpiScale);
+                bodyFontSize = 44.0f * dpiScale;
+                if (!layoutText(
+                        m_bodyLayout,
+                        faceSpan,
+                        m_bodyText,
+                        bodyFontSize,
+                        bodyWidth,
+                        scribe::TextDirection::LeftToRight,
+                        false))
+                {
+                    return false;
+                }
+                break;
+            }
+
+            case DemoScene::SmallTextAlignment:
+            {
+                const float noteFontSize = 18.0f * dpiScale;
+                const float lineWidth = Min(contentWidth, 1500.0f * dpiScale);
+                const Vec4f mutedColor{ 0.35f, 0.35f, 0.35f, 1.0f };
+                float rowY = 0.0f;
+
+                SceneTextBlock* noteBlock = addSceneBlock(
+                    "These rows use font sizes chosen from the compiled cap-height metric so the cap line and baseline land on whole pixels at the default zoom.",
+                    { 0.0f, rowY },
+                    noteFontSize,
+                    lineWidth,
+                    false,
+                    scribe::TextDirection::LeftToRight,
+                    mutedColor);
+                if (!noteBlock)
+                {
+                    return false;
+                }
+                rowY += noteBlock->layout.height + (18.0f * dpiScale);
+
+                constexpr float CapHeights[] = { 13.0f, 12.0f, 11.0f, 10.0f, 9.0f, 8.0f };
+                for (float capHeightPixels : CapHeights)
+                {
+                    String lineText;
+                    FormatTo(
+                        lineText,
+                        "Cap {:>2.0f}px  ABCDEFGHIJKLMNOPQRSTUVWXYZ  abcdefghijklmnopqrstuvwxyz  0123456789  Cafe\u0301  Ångström  WY/WY/III",
+                        capHeightPixels);
+
+                    const float alignedFontSize = ComputeCapAlignedFontSize(m_fonts[0].blob, capHeightPixels) * dpiScale;
+                    SceneTextBlock* rowBlock = addSceneBlock(
+                        lineText.Data(),
+                        { 0.0f, rowY },
+                        alignedFontSize,
+                        lineWidth,
+                        false,
+                        scribe::TextDirection::LeftToRight,
+                        { 0.0f, 0.0f, 0.0f, 1.0f },
+                        0,
+                        true,
+                        true);
+                    if (!rowBlock)
+                    {
+                        return false;
+                    }
+
+                    rowY += rowBlock->layout.height + (10.0f * dpiScale);
+                }
+                break;
+            }
+
+            case DemoScene::_Count:
+                break;
         }
 
         if (!UpdateOverlayLayout())
@@ -999,21 +1415,28 @@ namespace he
 
         const float overlayHeight = Max(m_sceneStatsLayout.height, Max(m_renderStatsLayout.height, m_inputHintsLayout.height));
         const float sceneTop = margin + overlayHeight + (20.0f * dpiScale);
-        m_titleOrigin = { margin, sceneTop };
-        m_bodyOrigin = { margin, sceneTop + m_titleLayout.height + (22.0f * dpiScale) };
-        if (m_scene == DemoScene::SvgVectorImages)
+        m_titleOrigin = {
+            Max((static_cast<float>(viewSize.x) - m_titleLayout.width) * 0.5f, margin),
+            sceneTop
+        };
+        m_bodyOrigin = {
+            Max((static_cast<float>(viewSize.x) - bodyWidth) * 0.5f, margin),
+            sceneTop + m_titleLayout.height + (28.0f * dpiScale)
+        };
+
+        const Vec2f blockOffset{ margin, sceneTop + m_titleLayout.height + (30.0f * dpiScale) };
+        for (SceneTextBlock& block : m_sceneBlocks)
         {
-            m_bodyOrigin = { margin, sceneTop + m_titleLayout.height + (18.0f * dpiScale) };
+            block.origin = {
+                block.origin.x + blockOffset.x,
+                block.origin.y + blockOffset.y
+            };
         }
 
         m_hasCaret = false;
+        m_bodyFontSize = bodyFontSize;
 
         if (!PrimeGlyphCache())
-        {
-            return false;
-        }
-
-        if ((m_scene == DemoScene::SvgVectorImages) && !PrimeImageCache())
         {
             return false;
         }
@@ -1046,8 +1469,8 @@ namespace he
             "Fallback: {}",
             static_cast<uint32_t>(m_scene) + 1,
             static_cast<uint32_t>(DemoScene::_Count),
-            m_bodyLayout.missingGlyphCount,
-            m_bodyLayout.fallbackGlyphCount);
+            GetSceneMissingGlyphCount(),
+            GetSceneFallbackGlyphCount());
 
         m_renderStatsText.Clear();
         FormatTo(
@@ -1100,13 +1523,24 @@ namespace he
 
         m_renderStatsOrigin = { renderX, margin };
         m_inputHintsOrigin = { inputX, margin };
-        return PrimeLayoutGlyphs(m_sceneStatsLayout)
-            && PrimeLayoutGlyphs(m_renderStatsLayout)
-            && PrimeLayoutGlyphs(m_inputHintsLayout);
+        uint32_t sceneStatsVertexCount = 0;
+        uint32_t renderStatsVertexCount = 0;
+        uint32_t inputHintsVertexCount = 0;
+        if (!PrimeLayoutGlyphs(m_sceneStatsLayout, sceneStatsVertexCount)
+            || !PrimeLayoutGlyphs(m_renderStatsLayout, renderStatsVertexCount)
+            || !PrimeLayoutGlyphs(m_inputHintsLayout, inputHintsVertexCount))
+        {
+            return false;
+        }
+
+        m_overlayVertexEstimate = sceneStatsVertexCount + renderStatsVertexCount + inputHintsVertexCount;
+        return true;
     }
 
-    bool ScribeTestApp::PrimeLayoutGlyphs(const scribe::LayoutResult& layout)
+    bool ScribeTestApp::PrimeLayoutGlyphs(const scribe::LayoutResult& layout, uint32_t& outVertexCount)
     {
+        outVertexCount = 0;
+
         for (const scribe::ShapedGlyph& glyph : layout.glyphs)
         {
             if (glyph.fontFaceIndex >= m_fonts.Size())
@@ -1114,11 +1548,39 @@ namespace he
                 continue;
             }
 
+            const LoadedDemoFont& font = m_fonts[glyph.fontFaceIndex];
+            const FontGlyphCacheState& cacheState = m_fontGlyphCache[glyph.fontFaceIndex];
+            if (cacheState.hasColorGlyphs)
+            {
+                const bool hasResolvedLayers = scribe::GetCompiledColorGlyphLayers(
+                    m_colorLayerScratch,
+                    font.blob,
+                    glyph.glyphIndex,
+                    cacheState.selectedPaletteIndex,
+                    { 1.0f, 1.0f, 1.0f, 1.0f });
+                if (hasResolvedLayers && !m_colorLayerScratch.IsEmpty())
+                {
+                    for (const scribe::CompiledColorGlyphLayer& layer : m_colorLayerScratch)
+                    {
+                        const scribe::GlyphResource* glyphResource = nullptr;
+                        if (!EnsureGlyphResource(glyph.fontFaceIndex, layer.glyphIndex, glyphResource))
+                        {
+                            continue;
+                        }
+
+                        outVertexCount += glyphResource->vertexCount;
+                    }
+                    continue;
+                }
+            }
+
             const scribe::GlyphResource* glyphResource = nullptr;
             if (!EnsureGlyphResource(glyph.fontFaceIndex, glyph.glyphIndex, glyphResource))
             {
                 continue;
             }
+
+            outVertexCount += glyphResource->vertexCount;
         }
 
         return true;
@@ -1126,11 +1588,95 @@ namespace he
 
     bool ScribeTestApp::PrimeGlyphCache()
     {
-        return PrimeLayoutGlyphs(m_titleLayout)
-            && PrimeLayoutGlyphs(m_bodyLayout)
-            && PrimeLayoutGlyphs(m_sceneStatsLayout)
-            && PrimeLayoutGlyphs(m_renderStatsLayout)
-            && PrimeLayoutGlyphs(m_inputHintsLayout);
+        uint32_t titleVertexCount = 0;
+        uint32_t bodyVertexCount = 0;
+        uint32_t sceneBlockVertexCount = 0;
+        if (!PrimeLayoutGlyphs(m_titleLayout, titleVertexCount)
+            || !PrimeLayoutGlyphs(m_bodyLayout, bodyVertexCount)
+            || !PrimeSceneBlocks(sceneBlockVertexCount))
+        {
+            return false;
+        }
+
+        m_sceneVertexEstimate = titleVertexCount + bodyVertexCount + sceneBlockVertexCount;
+        return true;
+    }
+
+    bool ScribeTestApp::PrimeSceneBlocks(uint32_t& outVertexCount)
+    {
+        outVertexCount = 0;
+
+        for (const SceneTextBlock& block : m_sceneBlocks)
+        {
+            uint32_t blockVertexCount = 0;
+            if (!PrimeLayoutGlyphs(block.layout, blockVertexCount))
+            {
+                return false;
+            }
+
+            outVertexCount += blockVertexCount;
+        }
+
+        return true;
+    }
+
+    uint32_t ScribeTestApp::GetSceneMissingGlyphCount() const
+    {
+        uint32_t count = m_bodyLayout.missingGlyphCount;
+        for (const SceneTextBlock& block : m_sceneBlocks)
+        {
+            count += block.layout.missingGlyphCount;
+        }
+        return count;
+    }
+
+    uint32_t ScribeTestApp::GetSceneFallbackGlyphCount() const
+    {
+        uint32_t count = m_bodyLayout.fallbackGlyphCount;
+        for (const SceneTextBlock& block : m_sceneBlocks)
+        {
+            count += block.layout.fallbackGlyphCount;
+        }
+        return count;
+    }
+
+    Vec2f ScribeTestApp::GetSceneBlockRenderOrigin(const SceneTextBlock& block) const
+    {
+        Vec2f origin{
+            (block.origin.x * m_sceneZoom) + m_scenePan.x,
+            (block.origin.y * m_sceneZoom) + m_scenePan.y
+        };
+
+        if ((!block.pixelAlignBaseline && !block.pixelAlignCapHeight)
+            || (Abs(m_sceneZoom - 1.0f) > 0.001f)
+            || block.layout.lines.IsEmpty()
+            || (block.fontFaceIndex >= m_fonts.Size())
+            || !m_fonts[block.fontFaceIndex].blob.metadata.IsValid())
+        {
+            return origin;
+        }
+
+        const auto metrics = m_fonts[block.fontFaceIndex].blob.metadata.GetMetrics();
+        const float unitsPerEm = static_cast<float>(Max(metrics.GetUnitsPerEm(), 1u));
+        const float scale = block.fontSize / unitsPerEm;
+        const float baselineY = origin.y + block.layout.lines[0].baselineY;
+
+        float deltaY = 0.0f;
+        if (block.pixelAlignBaseline)
+        {
+            deltaY += Round(baselineY) - baselineY;
+        }
+
+        if (block.pixelAlignCapHeight)
+        {
+            const float alignedBaselineY = baselineY + deltaY;
+            const float capHeight = static_cast<float>(Max(Abs(metrics.GetCapHeight()), 1)) * scale;
+            const float capTopY = alignedBaselineY - capHeight;
+            deltaY += Round(capTopY) - capTopY;
+        }
+
+        origin.y += deltaY;
+        return origin;
     }
 
     bool ScribeTestApp::PrimeImageCache()
@@ -1161,20 +1707,26 @@ namespace he
     {
         out = nullptr;
 
-        for (CachedGlyph& cached : m_cachedGlyphs)
-        {
-            if ((cached.fontFaceIndex == fontFaceIndex) && (cached.glyphIndex == glyphIndex))
-            {
-                out = &cached.resource;
-                return true;
-            }
-        }
-
         if (fontFaceIndex >= m_fonts.Size())
         {
             return false;
         }
 
+        if (fontFaceIndex < m_fontGlyphCache.Size())
+        {
+            FontGlyphCacheState& cacheState = m_fontGlyphCache[fontFaceIndex];
+            if (glyphIndex < cacheState.glyphResourceIndices.Size())
+            {
+                const int32_t cachedIndex = cacheState.glyphResourceIndices[glyphIndex];
+                if ((cachedIndex >= 0) && (static_cast<uint32_t>(cachedIndex) < m_cachedGlyphs.Size()))
+                {
+                    out = &m_cachedGlyphs[static_cast<uint32_t>(cachedIndex)].resource;
+                    return true;
+                }
+            }
+        }
+
+        const uint32_t cacheIndex = m_cachedGlyphs.Size();
         CachedGlyph& cached = m_cachedGlyphs.EmplaceBack();
         cached.fontFaceIndex = fontFaceIndex;
         cached.glyphIndex = glyphIndex;
@@ -1182,6 +1734,17 @@ namespace he
         {
             m_cachedGlyphs.PopBack();
             return false;
+        }
+
+        if (fontFaceIndex < m_fontGlyphCache.Size())
+        {
+            FontGlyphCacheState& cacheState = m_fontGlyphCache[fontFaceIndex];
+            if (glyphIndex >= cacheState.glyphResourceIndices.Size())
+            {
+                cacheState.glyphResourceIndices.Resize(glyphIndex + 1, int32_t(-1));
+            }
+
+            cacheState.glyphResourceIndices[glyphIndex] = static_cast<int32_t>(cacheIndex);
         }
 
         out = &cached.resource;
@@ -1224,10 +1787,34 @@ namespace he
         m_renderer.QueueDraw(desc);
     }
 
-    void ScribeTestApp::QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize, float layoutScale)
+    void ScribeTestApp::QueueLayout(
+        const scribe::LayoutResult& layout,
+        const Vec2f& origin,
+        float fontSize,
+        float layoutScale,
+        const Vec4f& foregroundColor)
     {
-        Vector<scribe::CompiledColorGlyphLayer> colorLayers{};
-        const Vec4f foregroundColor{ 0.0f, 0.0f, 0.0f, 1.0f };
+        struct FontQueueState
+        {
+            float scale{ 0.0f };
+            uint32_t paletteIndex{ 0 };
+            bool hasColorGlyphs{ false };
+        };
+
+        Vector<FontQueueState> fontQueueStates{};
+        fontQueueStates.Resize(m_fonts.Size(), DefaultInit);
+        for (uint32_t fontIndex = 0; fontIndex < m_fonts.Size(); ++fontIndex)
+        {
+            const LoadedDemoFont& font = m_fonts[fontIndex];
+            const uint32_t unitsPerEm = Max(font.blob.metadata.GetMetrics().GetUnitsPerEm(), 1u);
+            FontQueueState& fontQueueState = fontQueueStates[fontIndex];
+            fontQueueState.scale = (fontSize / static_cast<float>(unitsPerEm)) * layoutScale;
+            if (fontIndex < m_fontGlyphCache.Size())
+            {
+                fontQueueState.paletteIndex = m_fontGlyphCache[fontIndex].selectedPaletteIndex;
+                fontQueueState.hasColorGlyphs = m_fontGlyphCache[fontIndex].hasColorGlyphs;
+            }
+        }
 
         for (const scribe::ShapedGlyph& glyph : layout.glyphs)
         {
@@ -1237,41 +1824,43 @@ namespace he
             }
 
             const LoadedDemoFont& font = m_fonts[glyph.fontFaceIndex];
-            const uint32_t unitsPerEm = Max(font.blob.metadata.GetMetrics().GetUnitsPerEm(), 1u);
-            const float scale = (fontSize / static_cast<float>(unitsPerEm)) * layoutScale;
+            const FontQueueState& fontQueueState = fontQueueStates[glyph.fontFaceIndex];
+            const float scale = fontQueueState.scale;
             const Vec2f position{
                 origin.x + (glyph.position.x * layoutScale),
                 origin.y + (glyph.position.y * layoutScale)
             };
-            const uint32_t paletteIndex = scribe::SelectCompiledFontPalette(font.blob, true);
-            const bool hasResolvedLayers = scribe::GetCompiledColorGlyphLayers(
-                colorLayers,
-                font.blob,
-                glyph.glyphIndex,
-                paletteIndex,
-                foregroundColor);
 
-            if (hasResolvedLayers && !colorLayers.IsEmpty())
+            if (fontQueueState.hasColorGlyphs)
             {
-                for (const scribe::CompiledColorGlyphLayer& layer : colorLayers)
+                const bool hasResolvedLayers = scribe::GetCompiledColorGlyphLayers(
+                    m_colorLayerScratch,
+                    font.blob,
+                    glyph.glyphIndex,
+                    fontQueueState.paletteIndex,
+                    foregroundColor);
+                if (hasResolvedLayers && !m_colorLayerScratch.IsEmpty())
                 {
-                    const scribe::GlyphResource* glyphResource = nullptr;
-                    if (!EnsureGlyphResource(glyph.fontFaceIndex, layer.glyphIndex, glyphResource))
+                    for (const scribe::CompiledColorGlyphLayer& layer : m_colorLayerScratch)
                     {
-                        continue;
-                    }
+                        const scribe::GlyphResource* glyphResource = nullptr;
+                        if (!EnsureGlyphResource(glyph.fontFaceIndex, layer.glyphIndex, glyphResource))
+                        {
+                            continue;
+                        }
 
-                    scribe::DrawGlyphDesc desc{};
-                    desc.glyph = glyphResource;
-                    desc.position = position;
-                    desc.size = { scale, scale };
-                    desc.color = layer.color;
-                    desc.basisX = layer.basisX;
-                    desc.basisY = layer.basisY;
-                    desc.offset = layer.offset;
-                    QueueDraw(desc);
+                        scribe::DrawGlyphDesc desc{};
+                        desc.glyph = glyphResource;
+                        desc.position = position;
+                        desc.size = { scale, scale };
+                        desc.color = layer.color;
+                        desc.basisX = layer.basisX;
+                        desc.basisY = layer.basisY;
+                        desc.offset = layer.offset;
+                        QueueDraw(desc);
+                    }
+                    continue;
                 }
-                continue;
             }
 
             const scribe::GlyphResource* glyphResource = nullptr;
@@ -1321,7 +1910,7 @@ namespace he
 
     void ScribeTestApp::QueueCaret()
     {
-        if (m_scene == DemoScene::SvgVectorImages)
+        if (m_scene != DemoScene::RichParagraphs)
         {
             return;
         }
@@ -1348,68 +1937,44 @@ namespace he
     {
         switch (m_scene)
         {
-            case DemoScene::LatinWrap:
-                m_titleText = "Scribe Testbed: paragraph wrapping and compiled font rendering";
-                m_bodyText =
-                    "Scribe compiles the source TTF in memory at startup, shapes text with HarfBuzz, "
-                    "and renders directly from the compiled curve and band payloads. This scene is "
-                    "the baseline paragraph demo for layout width, line metrics, and dense glyph submission.\n\n"
-                    "Artifact stress: W Y / WY/WY ///";
+            case DemoScene::FeatureOverview:
+                m_titleText = "Scribe Testbed: renderer and typography feature overview";
+                m_bodyText.Clear();
                 break;
 
-            case DemoScene::CombiningAndFallback:
-                m_titleText = "Scribe Testbed: combining marks and fallback";
+            case DemoScene::RichParagraphs:
+                m_titleText = "Scribe Testbed: rich text stress page";
                 m_bodyText =
-                    "Combining cluster: A\xcc\x81 cafe. "
-                    "Fallback icon from materialdesignicons: ";
+                    "Scribe compiles source fonts in memory, shapes text with HarfBuzz, and renders "
+                    "directly from compiled curve and band payloads. This page keeps the content dense "
+                    "so wrapping, fallback selection, cluster preservation, and color-glyph submission "
+                    "can all be inspected in a single view.\n\n"
+                    "Inline emoji fallback stays active here: 🙂 😀 🎨 🌈 ✨. Combining marks should remain "
+                    "clustered in words like Café, Ångström, and Ślüg. Icon fallback from the repository "
+                    "font should also remain isolated to the missing glyph itself: ";
                 m_bodyText += TestIconAccount;
                 m_bodyText +=
-                    "  The body run should stay on the primary face until a glyph is missing, then "
-                    "switch to the fallback face for only the covered cluster.";
+                    ".\n\n"
+                    "Mixed-script content exercises the current shaping and fallback path across scripts: "
+                    "Σύνθετη απόδοση γραμματοσειράς και διάταξη κειμένου. Улучшенный отрисовщик шрифтов "
+                    "и макет текста. 高级字体渲染和文本布局.\n\n"
+                    "Right-to-left and bidi behavior are still a milestone in progress, but the current "
+                    "testbed should keep these runs stable enough to inspect: مرحبا بالعالم 12345, "
+                    "עיבוד גופן מתקדם 67890, and GPU text مع English words mixed into the same paragraph.\n\n"
+                    "Text decorations, run-level style switches, tracking, and OpenType feature toggles "
+                    "are not exposed yet, so this page calls them out in prose instead of pretending they "
+                    "already exist. The goal of this scene is to make the current strengths and gaps visible "
+                    "in one long page of text.";
                 break;
 
-            case DemoScene::RightToLeft:
-                if (HasRtlDemoFallbackFont())
-                {
-                    m_titleText = "Scribe Testbed: right-to-left paragraph flow";
-                    m_bodyText = RtlSample;
-                    m_bodyText += " ";
-                    m_bodyText += RtlSample;
-                    m_bodyText += " 12345";
-                }
-                else
-                {
-                    m_titleText = "Scribe Testbed: forced RTL layout stress case";
-                    m_bodyText =
-                        "This machine does not have the optional RTL fallback font that the testbed uses "
-                        "for Arabic coverage, so this scene stays on repository fonts and exercises the "
-                        "first-pass right-to-left layout path with the currently available glyph set.";
-                }
+            case DemoScene::EmojiPage:
+                m_titleText = "Scribe Testbed: color emoji page";
+                m_bodyText = c_emoji_page_text;
                 break;
 
-            case DemoScene::ColorGlyphLayers:
-                if (HasColorDemoFont())
-                {
-                    m_titleText = "Scribe Testbed: COLR/CPAL layered color glyphs";
-                    m_bodyText =
-                        "Color font fallback should route these glyphs through explicit palette layers:\n\n"
-                        "\xF0\x9F\x99\x82 \xF0\x9F\x98\x80 \xF0\x9F\x8E\xA8 \xF0\x9F\x8C\x88 \xE2\x9C\xA8";
-                }
-                else
-                {
-                    m_titleText = "Scribe Testbed: color glyph fallback unavailable";
-                    m_bodyText =
-                        "This machine does not have the optional Segoe UI Emoji font available at the "
-                        "expected system path, so the COLR/CPAL demo scene cannot be exercised here.";
-                }
-                break;
-
-            case DemoScene::SvgVectorImages:
-                m_titleText = "Scribe Testbed: compiled SVG vector scenes";
-                m_bodyText =
-                    "These SVG files are loaded from source, compiled in memory into Scribe curve and band "
-                    "payloads, and rendered through the same coverage path as text. Left image stresses layered "
-                    "fills and transforms. Right image stresses even-odd filling.";
+            case DemoScene::SmallTextAlignment:
+                m_titleText = "Scribe Testbed: small-text cap-height alignment";
+                m_bodyText.Clear();
                 break;
 
             case DemoScene::_Count:

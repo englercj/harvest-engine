@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/scribe/compiled_font.h"
 #include "he/scribe/layout_engine.h"
 #include "he/scribe/renderer.h"
 
@@ -82,6 +83,13 @@ namespace he
             scribe::GlyphResource resource{};
         };
 
+        struct FontGlyphCacheState
+        {
+            Vector<int32_t> glyphResourceIndices{};
+            uint32_t selectedPaletteIndex{ 0 };
+            bool hasColorGlyphs{ false };
+        };
+
         struct CachedImageShape
         {
             uint32_t imageIndex{ 0 };
@@ -89,13 +97,25 @@ namespace he
             scribe::GlyphResource resource{};
         };
 
+        struct SceneTextBlock
+        {
+            String text{};
+            scribe::LayoutResult layout{};
+            Vec2f origin{ 0.0f, 0.0f };
+            float fontSize{ 16.0f };
+            Vec4f color{ 0.0f, 0.0f, 0.0f, 1.0f };
+            uint32_t fontFaceIndex{ 0 };
+            bool useAllFaces{ true };
+            bool pixelAlignBaseline{ false };
+            bool pixelAlignCapHeight{ false };
+        };
+
         enum class DemoScene : uint32_t
         {
-            LatinWrap,
-            CombiningAndFallback,
-            RightToLeft,
-            ColorGlyphLayers,
-            SvgVectorImages,
+            FeatureOverview,
+            RichParagraphs,
+            EmojiPage,
+            SmallTextAlignment,
 
             _Count,
         };
@@ -112,15 +132,22 @@ namespace he
         bool LoadDemoFont(LoadedDemoFont& out, const char* fileName);
         bool LoadOptionalDemoFont(LoadedDemoFont& out, Span<const char*> fileNames);
         bool LoadDemoImage(LoadedDemoImage& out, const char* fileName);
+        void BuildFontGlyphCacheState();
         bool RebuildLayouts();
         bool UpdateOverlayLayout();
-        bool PrimeLayoutGlyphs(const scribe::LayoutResult& layout);
+        bool PrimeLayoutGlyphs(const scribe::LayoutResult& layout, uint32_t& outVertexCount);
         bool PrimeGlyphCache();
+        bool PrimeSceneBlocks(uint32_t& outVertexCount);
         bool EnsureGlyphResource(uint32_t fontFaceIndex, uint32_t glyphIndex, const scribe::GlyphResource*& out);
         bool PrimeImageCache();
         bool EnsureImageShapeResource(uint32_t imageIndex, uint32_t shapeIndex, const scribe::GlyphResource*& out);
         void QueueDraw(const scribe::DrawGlyphDesc& desc);
-        void QueueLayout(const scribe::LayoutResult& layout, const Vec2f& origin, float fontSize, float layoutScale = 1.0f);
+        void QueueLayout(
+            const scribe::LayoutResult& layout,
+            const Vec2f& origin,
+            float fontSize,
+            float layoutScale = 1.0f,
+            const Vec4f& foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f });
         void QueueImage(const LoadedDemoImage& image, uint32_t imageIndex, const Vec2f& position, float scale);
         void QueueCaret();
         void UpdateSceneTitle();
@@ -131,6 +158,9 @@ namespace he
         void EndFrame();
         bool HasRtlDemoFallbackFont() const;
         bool HasColorDemoFont() const;
+        uint32_t GetSceneMissingGlyphCount() const;
+        uint32_t GetSceneFallbackGlyphCount() const;
+        Vec2f GetSceneBlockRenderOrigin(const SceneTextBlock& block) const;
 
     private:
         window::Device* m_windowDevice{ nullptr };
@@ -142,7 +172,9 @@ namespace he
         Vector<LoadedDemoFont> m_fonts{};
         Vector<LoadedDemoImage> m_images{};
         Vector<CachedGlyph> m_cachedGlyphs{};
+        Vector<FontGlyphCacheState> m_fontGlyphCache{};
         Vector<CachedImageShape> m_cachedImageShapes{};
+        Vector<scribe::CompiledColorGlyphLayer> m_colorLayerScratch{};
         String m_titleText{};
         String m_bodyText{};
         String m_sceneStatsText{};
@@ -150,6 +182,7 @@ namespace he
         String m_inputHintsText{};
         scribe::LayoutResult m_titleLayout{};
         scribe::LayoutResult m_bodyLayout{};
+        Vector<SceneTextBlock> m_sceneBlocks{};
         scribe::LayoutResult m_sceneStatsLayout{};
         scribe::LayoutResult m_renderStatsLayout{};
         scribe::LayoutResult m_inputHintsLayout{};
@@ -161,11 +194,14 @@ namespace he
         scribe::HitTestResult m_caretHit{};
         Vec2f m_lastPointerPos{ 0.0f, 0.0f };
         MonotonicTime m_lastFrameTime{};
-        DemoScene m_scene{ DemoScene::LatinWrap };
+        DemoScene m_scene{ DemoScene::FeatureOverview };
         Vec2f m_scenePan{ 0.0f, 0.0f };
         float m_sceneZoom{ 1.0f };
+        float m_bodyFontSize{ 24.0f };
         float m_smoothedFrameMs{ 0.0f };
         float m_lastGpuFrameMs{ 0.0f };
+        uint32_t m_sceneVertexEstimate{ 0 };
+        uint32_t m_overlayVertexEstimate{ 0 };
         uint32_t m_lastDrawCount{ 0 };
         bool m_isPanning{ false };
         bool m_hasFrameTime{ false };

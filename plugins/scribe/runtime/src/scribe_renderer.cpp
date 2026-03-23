@@ -662,6 +662,19 @@ namespace he::scribe
         return true;
     }
 
+    void Renderer::ReserveQueuedVertexCapacity(uint32_t vertexCount, uint32_t batchCount)
+    {
+        if (vertexCount > m_streamVertices.Capacity())
+        {
+            m_streamVertices.Reserve(vertexCount);
+        }
+
+        if (batchCount > m_batches.Capacity())
+        {
+            m_batches.Reserve(batchCount);
+        }
+    }
+
     void Renderer::QueueDraw(const DrawGlyphDesc& desc)
     {
         if (!desc.glyph || !desc.glyph->atlas || (desc.glyph->vertexCount == 0))
@@ -808,7 +821,7 @@ namespace he::scribe
         }
 
         const uint32_t oldSize = m_streamVertices.Size();
-        m_streamVertices.Resize(oldSize + draw.glyph->vertexCount);
+        m_streamVertices.Expand(draw.glyph->vertexCount, DefaultInit);
         for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
         {
             m_streamVertices[oldSize + vertexIndex] = TransformVertex(draw.glyph->vertices[vertexIndex], draw);

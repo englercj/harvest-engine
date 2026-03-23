@@ -104,6 +104,7 @@ namespace he::scribe
         void DestroyGlyphResource(GlyphResource& resource);
 
         bool BeginFrame(const FrameDesc& desc);
+        void ReserveQueuedVertexCapacity(uint32_t vertexCount, uint32_t batchCount = 0);
         void QueueDraw(const DrawGlyphDesc& desc);
         void EndFrame();
         uint32_t GetLastSubmittedDrawCount() const { return m_lastSubmittedDrawCount; }

@@ -42,6 +42,8 @@ namespace he
         void OnTick() override;
 
     private:
+        static constexpr uint32_t InvalidIndex = 0xFFFFFFFFu;
+
         struct RenderFrameData
         {
             rhi::CmdAllocator* cmdAlloc{ nullptr };
@@ -90,6 +92,10 @@ namespace he
             String text{};
             scribe::LayoutResult layout{};
             scribe::RetainedTextModel retainedText{};
+            Vector<uint32_t> faceIndices{};
+            Vector<scribe::TextStyle> styles{};
+            Vector<scribe::TextStyleSpan> styleSpans{};
+            Vector<scribe::TextFeatureSetting> features{};
             Vec2f origin{ 0.0f, 0.0f };
             float fontSize{ 16.0f };
             Vec4f color{ 0.0f, 0.0f, 0.0f, 1.0f };
@@ -191,6 +197,21 @@ namespace he
         uint32_t m_sceneVertexEstimate{ 0 };
         uint32_t m_overlayVertexEstimate{ 0 };
         uint32_t m_lastDrawCount{ 0 };
+        uint32_t m_uiFontIndex{ 0 };
+        uint32_t m_iconFontIndex{ 1 };
+        uint32_t m_rtlFontIndex{ InvalidIndex };
+        uint32_t m_colorFontIndex{ InvalidIndex };
+        uint32_t m_sansRegularFontIndex{ InvalidIndex };
+        uint32_t m_sansBoldFontIndex{ InvalidIndex };
+        uint32_t m_sansItalicFontIndex{ InvalidIndex };
+        uint32_t m_sansBoldItalicFontIndex{ InvalidIndex };
+        uint32_t m_monoFontIndex{ InvalidIndex };
+        uint32_t m_serifRegularFontIndex{ InvalidIndex };
+        uint32_t m_serifBoldFontIndex{ InvalidIndex };
+        uint32_t m_serifItalicFontIndex{ InvalidIndex };
+        uint32_t m_serifBoldItalicFontIndex{ InvalidIndex };
+        uint32_t m_featureFontIndex{ InvalidIndex };
+        uint32_t m_symbolFontIndex{ InvalidIndex };
         bool m_isPanning{ false };
         bool m_hasFrameTime{ false };
         bool m_initialized{ false };

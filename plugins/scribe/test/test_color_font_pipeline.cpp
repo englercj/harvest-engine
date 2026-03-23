@@ -553,6 +553,230 @@ HE_TEST(scribe, retained_text, builds_monochrome_draws_from_layout)
     }
 }
 
+HE_TEST(scribe, retained_text, applies_styled_run_color_and_transform)
+{
+    String sansPath;
+    String monoPath;
+    HE_ASSERT(ResolveRepoFontPath(sansPath, "NotoSans-Regular.ttf"));
+    HE_ASSERT(ResolveRepoFontPath(monoPath, "NotoMono-Regular.ttf"));
+
+    Vector<uint8_t> sansBytes;
+    Vector<uint8_t> monoBytes;
+    HE_ASSERT(ReadFontFile(sansBytes, sansPath.Data()));
+    HE_ASSERT(ReadFontFile(monoBytes, monoPath.Data()));
+
+    Vector<schema::Word> sansStorage;
+    Vector<schema::Word> monoStorage;
+    LoadedFontFaceBlob sans{};
+    LoadedFontFaceBlob mono{};
+    HE_ASSERT(BuildLoadedCompiledFontFace(sansStorage, sans, sansBytes, "Noto Sans"));
+    HE_ASSERT(BuildLoadedCompiledFontFace(monoStorage, mono, monoBytes, "Noto Mono"));
+
+    const LoadedFontFaceBlob faces[] = { sans, mono };
+    const String text = "alpha beta";
+    const uint32_t betaStart = 6;
+    const uint32_t betaEnd = 10;
+
+    TextStyle styles[2]{};
+    styles[1].fontFaceIndex = 1;
+    styles[1].color = { 0.20f, 0.45f, 0.90f, 1.0f };
+    styles[1].stretchX = 1.2f;
+    styles[1].stretchY = 0.9f;
+    styles[1].skewX = 0.25f;
+    styles[1].rotationRadians = 0.2f;
+    styles[1].baselineShiftEm = 0.15f;
+    styles[1].glyphScale = 0.9f;
+
+    const TextStyleSpan spans[] =
+    {
+        { betaStart, betaEnd, 1 }
+    };
+
+    StyledTextLayoutDesc layoutDesc{};
+    layoutDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.text = text;
+    layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
+    layoutDesc.options.fontSize = 28.0f;
+    layoutDesc.options.wrap = false;
+
+    LayoutEngine engine;
+    LayoutResult layout;
+    HE_ASSERT(engine.LayoutStyledText(layout, layoutDesc));
+
+    RetainedTextModel retainedText;
+    RetainedTextBuildDesc retainedDesc{};
+    retainedDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.layout = &layout;
+    retainedDesc.fontSize = layoutDesc.options.fontSize;
+    retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    HE_ASSERT(retainedText.Build(retainedDesc));
+
+    bool sawStyledDraw = false;
+    for (const RetainedTextDraw& draw : retainedText.GetDraws())
+    {
+        if (draw.fontFaceIndex != 1u)
+        {
+            continue;
+        }
+
+        sawStyledDraw = true;
+        HE_EXPECT_EQ(draw.color.x, styles[1].color.x);
+        HE_EXPECT_EQ(draw.color.y, styles[1].color.y);
+        HE_EXPECT_EQ(draw.color.z, styles[1].color.z);
+        HE_EXPECT_EQ(draw.color.w, styles[1].color.w);
+        HE_EXPECT_LT(draw.position.y, layout.glyphs[0].position.y + layoutDesc.options.fontSize);
+        HE_EXPECT_NE(draw.basisX.x, 1.0f);
+        HE_EXPECT_NE(draw.basisY.x, 0.0f);
+    }
+
+    HE_EXPECT(sawStyledDraw);
+}
+
+HE_TEST(scribe, retained_text, emits_decoration_quads_for_styled_runs)
+{
+    String repoFontPath;
+    HE_ASSERT(ResolveRepoFontPath(repoFontPath, "NotoSans-Regular.ttf"));
+
+    Vector<uint8_t> fontBytes;
+    HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
+
+    Vector<schema::Word> storage;
+    LoadedFontFaceBlob font{};
+    HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
+
+    const LoadedFontFaceBlob faces[] = { font };
+    const String text = "Underline\nStrike-through";
+
+    TextStyle styles[3]{};
+    styles[1].decorations = TextDecorationFlags::Underline;
+    styles[1].decorationColor = { 0.10f, 0.20f, 0.30f, 1.0f };
+    styles[2].decorations = TextDecorationFlags::Strikethrough;
+    styles[2].decorationColor = { 0.70f, 0.10f, 0.20f, 1.0f };
+
+    const TextStyleSpan spans[] =
+    {
+        { 0, 9, 1 },
+        { 10, 24, 2 },
+    };
+
+    StyledTextLayoutDesc layoutDesc{};
+    layoutDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.text = text;
+    layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
+    layoutDesc.options.fontSize = 28.0f;
+    layoutDesc.options.wrap = false;
+
+    LayoutEngine engine;
+    LayoutResult layout;
+    HE_ASSERT(engine.LayoutStyledText(layout, layoutDesc));
+
+    RetainedTextModel retainedText;
+    RetainedTextBuildDesc retainedDesc{};
+    retainedDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.layout = &layout;
+    retainedDesc.fontSize = layoutDesc.options.fontSize;
+    retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    HE_ASSERT(retainedText.Build(retainedDesc));
+
+    HE_EXPECT_GE(retainedText.GetQuadCount(), 2u);
+    HE_EXPECT_GE(retainedText.GetEstimatedVertexCount(), (retainedText.GetDrawCount() * ScribeGlyphVertexCount) + (2u * 6u));
+
+    bool sawUnderlineColor = false;
+    bool sawStrikeColor = false;
+    for (const RetainedTextQuad& quad : retainedText.GetQuads())
+    {
+        sawUnderlineColor |= (quad.color.x == styles[1].decorationColor.x)
+            && (quad.color.y == styles[1].decorationColor.y)
+            && (quad.color.z == styles[1].decorationColor.z);
+        sawStrikeColor |= (quad.color.x == styles[2].decorationColor.x)
+            && (quad.color.y == styles[2].decorationColor.y)
+            && (quad.color.z == styles[2].decorationColor.z);
+    }
+
+    HE_EXPECT(sawUnderlineColor);
+    HE_EXPECT(sawStrikeColor);
+}
+
+HE_TEST(scribe, retained_text, expands_shadow_and_outline_effects_into_extra_draws)
+{
+    String repoFontPath;
+    HE_ASSERT(ResolveRepoFontPath(repoFontPath, "NotoSans-Regular.ttf"));
+
+    Vector<uint8_t> fontBytes;
+    HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
+
+    Vector<schema::Word> storage;
+    LoadedFontFaceBlob font{};
+    HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
+
+    const LoadedFontFaceBlob faces[] = { font };
+    const String text = "Both";
+
+    TextStyle styles[2]{};
+    styles[1].effects = TextEffectFlags::Shadow | TextEffectFlags::Outline;
+    styles[1].color = { 0.90f, 0.20f, 0.10f, 1.0f };
+    styles[1].shadowColor = { 0.0f, 0.0f, 0.0f, 0.25f };
+    styles[1].shadowOffsetEm = { 0.08f, 0.06f };
+    styles[1].outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+    styles[1].outlineWidthEm = 0.05f;
+
+    const TextStyleSpan spans[] =
+    {
+        { 0, static_cast<uint32_t>(text.Size()), 1 },
+    };
+
+    StyledTextLayoutDesc layoutDesc{};
+    layoutDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.text = text;
+    layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
+    layoutDesc.options.fontSize = 40.0f;
+    layoutDesc.options.wrap = false;
+
+    LayoutEngine engine;
+    LayoutResult layout;
+    HE_ASSERT(engine.LayoutStyledText(layout, layoutDesc));
+
+    RetainedTextModel retainedText;
+    RetainedTextBuildDesc retainedDesc{};
+    retainedDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.layout = &layout;
+    retainedDesc.fontSize = layoutDesc.options.fontSize;
+    retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    HE_ASSERT(retainedText.Build(retainedDesc));
+
+    const uint32_t glyphCount = layout.glyphs.Size();
+    HE_EXPECT_EQ(retainedText.GetDrawCount(), glyphCount * 10u);
+
+    uint32_t outlineLikeDraws = 0;
+    uint32_t shadowLikeDraws = 0;
+    uint32_t fillDraws = 0;
+    for (const RetainedTextDraw& draw : retainedText.GetDraws())
+    {
+        if ((draw.color.x == styles[1].color.x)
+            && (draw.color.y == styles[1].color.y)
+            && (draw.color.z == styles[1].color.z))
+        {
+            ++fillDraws;
+        }
+        else if ((draw.color.w == styles[1].shadowColor.w)
+            && (draw.color.x == styles[1].shadowColor.x))
+        {
+            ++shadowLikeDraws;
+        }
+        else
+        {
+            ++outlineLikeDraws;
+        }
+    }
+
+    HE_EXPECT_EQ(fillDraws, glyphCount);
+    HE_EXPECT_EQ(shadowLikeDraws, glyphCount);
+    HE_EXPECT_EQ(outlineLikeDraws, glyphCount * 8u);
+}
+
 HE_TEST(scribe, retained_text, expands_color_glyphs_into_layered_draws)
 {
     static constexpr const char* ColorFontPath = "C:/Windows/Fonts/seguiemj.ttf";

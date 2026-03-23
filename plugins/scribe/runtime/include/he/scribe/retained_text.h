@@ -26,12 +26,23 @@ namespace he::scribe
         Vec2f offset{ 0.0f, 0.0f };
     };
 
+    struct RetainedTextQuad
+    {
+        Vec2f position{ 0.0f, 0.0f };
+        Vec2f size{ 1.0f, 1.0f };
+        Vec4f color{ 1.0f, 1.0f, 1.0f, 1.0f };
+        Vec2f basisX{ 1.0f, 0.0f };
+        Vec2f basisY{ 0.0f, 1.0f };
+        Vec2f offset{ 0.0f, 0.0f };
+    };
+
     struct RetainedTextBuildDesc
     {
         Span<const LoadedFontFaceBlob> fontFaces{};
         const LayoutResult* layout{ nullptr };
         float fontSize{ 16.0f };
         bool darkBackgroundPreferred{ true };
+        Span<const TextStyle> styles{};
     };
 
     struct RetainedTextInstanceDesc
@@ -47,15 +58,18 @@ namespace he::scribe
         bool Build(const RetainedTextBuildDesc& desc);
         void Clear();
 
-        bool IsEmpty() const { return m_draws.IsEmpty(); }
+        bool IsEmpty() const { return m_draws.IsEmpty() && m_quads.IsEmpty(); }
         uint32_t GetDrawCount() const { return m_draws.Size(); }
+        uint32_t GetQuadCount() const { return m_quads.Size(); }
         uint32_t GetEstimatedVertexCount() const { return m_estimatedVertexCount; }
         Span<const RetainedTextDraw> GetDraws() const { return m_draws; }
+        Span<const RetainedTextQuad> GetQuads() const { return m_quads; }
         const LoadedFontFaceBlob* GetFontFace(uint32_t fontFaceIndex) const;
 
     private:
         Vector<LoadedFontFaceBlob> m_fontFaces{};
         Vector<RetainedTextDraw> m_draws{};
+        Vector<RetainedTextQuad> m_quads{};
         uint32_t m_estimatedVertexCount{ 0 };
     };
 }

@@ -8,6 +8,7 @@
 #include "he/scribe/retained_vector_image.h"
 
 #include "shaders/scribe.shaders.h"
+#include "shaders/solid.shaders.h"
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
@@ -291,6 +292,14 @@ namespace he::scribe
             out.col = MultiplyColor(in.col, draw.color);
             return out;
         }
+
+        PackedQuadVertex MakeQuadVertex(float x, float y, const Vec4f& color)
+        {
+            PackedQuadVertex vertex{};
+            vertex.pos = { x, y };
+            vertex.col = color;
+            return vertex;
+        }
     }
 
     Renderer::~Renderer() noexcept
@@ -324,6 +333,7 @@ namespace he::scribe
         m_device->GetRenderCmdQueue().WaitForFlush();
         m_batches.Clear();
         m_streamVertices.Clear();
+        m_quadVertices.Clear();
         m_frame = {};
         for (CachedCompiledGlyphResource& cachedGlyph : m_cachedFontGlyphResources)
         {
@@ -345,6 +355,11 @@ namespace he::scribe
             ReleaseAtlas(atlas);
         }
         for (StreamBuffer& streamBuffer : m_streamBuffers)
+        {
+            m_device->SafeDestroy(streamBuffer.buffer);
+            streamBuffer = {};
+        }
+        for (StreamBuffer& streamBuffer : m_quadStreamBuffers)
         {
             m_device->SafeDestroy(streamBuffer.buffer);
             streamBuffer = {};
@@ -672,6 +687,7 @@ namespace he::scribe
         m_streamBufferIndex = (m_streamBufferIndex + 1) % HE_LENGTH_OF(m_streamBuffers);
         m_batches.Clear();
         m_streamVertices.Clear();
+        m_quadVertices.Clear();
         m_lastSubmittedDrawCount = 0;
         return true;
     }
@@ -739,6 +755,32 @@ namespace he::scribe
         AppendDrawVertices(desc);
     }
 
+    void Renderer::QueueQuad(const DrawQuadDesc& desc)
+    {
+        const float a00 = desc.size.x * desc.basisX.x;
+        const float a01 = desc.size.x * desc.basisY.x;
+        const float a10 = desc.size.y * desc.basisX.y;
+        const float a11 = desc.size.y * desc.basisY.y;
+
+        const float offsetX = desc.position.x + (desc.size.x * desc.offset.x);
+        const float offsetY = desc.position.y + (desc.size.y * desc.offset.y);
+
+        auto pushVertex = [&](float x, float y)
+        {
+            const float tx = offsetX + (a00 * x) + (a01 * y);
+            const float ty = offsetY + (a10 * x) + (a11 * y);
+            m_quadVertices.PushBack(MakeQuadVertex(tx, ty, desc.color));
+        };
+
+        m_quadVertices.Reserve(m_quadVertices.Size() + 6);
+        pushVertex(0.0f, 0.0f);
+        pushVertex(1.0f, 0.0f);
+        pushVertex(1.0f, 1.0f);
+        pushVertex(0.0f, 0.0f);
+        pushVertex(1.0f, 1.0f);
+        pushVertex(0.0f, 1.0f);
+    }
+
     void Renderer::QueueRetainedText(const RetainedTextModel& text, const RetainedTextInstanceDesc& instance)
     {
         ReserveQueuedVertexCapacity(
@@ -776,6 +818,24 @@ namespace he::scribe
             desc.basisY = draw.basisY;
             desc.offset = draw.offset;
             QueueDraw(desc);
+        }
+
+        for (const RetainedTextQuad& quad : text.GetQuads())
+        {
+            DrawQuadDesc desc{};
+            desc.position = {
+                instance.origin.x + (quad.position.x * instance.scale),
+                instance.origin.y + (quad.position.y * instance.scale)
+            };
+            desc.size = {
+                quad.size.x * instance.scale,
+                quad.size.y * instance.scale
+            };
+            desc.color = MultiplyColor(quad.color, instance.foregroundColor);
+            desc.basisX = quad.basisX;
+            desc.basisY = quad.basisY;
+            desc.offset = quad.offset;
+            QueueQuad(desc);
         }
     }
 
@@ -852,7 +912,11 @@ namespace he::scribe
 
             StreamBuffer& streamBuffer = m_streamBuffers[m_streamBufferIndex];
             const uint32_t vertexDataSize = m_streamVertices.Size() * sizeof(PackedGlyphVertex);
-            if (EnsureStreamBufferCapacity(streamBuffer, vertexDataSize))
+            if (EnsureStreamBufferCapacity(
+                    streamBuffer,
+                    vertexDataSize,
+                    sizeof(PackedGlyphVertex),
+                    "Scribe Stream Vertex Buffer"))
             {
                 void* dst = m_device->Map(streamBuffer.buffer, 0, vertexDataSize);
                 if (dst)
@@ -881,6 +945,40 @@ namespace he::scribe
             }
         }
 
+        if (!m_quadVertices.IsEmpty())
+        {
+            StreamBuffer& quadStreamBuffer = m_quadStreamBuffers[m_streamBufferIndex];
+            const uint32_t quadVertexDataSize = m_quadVertices.Size() * sizeof(PackedQuadVertex);
+            if (EnsureStreamBufferCapacity(
+                    quadStreamBuffer,
+                    quadVertexDataSize,
+                    sizeof(PackedQuadVertex),
+                    "Scribe Quad Vertex Buffer"))
+            {
+                void* dst = m_device->Map(quadStreamBuffer.buffer, 0, quadVertexDataSize);
+                if (dst)
+                {
+                    MemCopy(dst, m_quadVertices.Data(), quadVertexDataSize);
+                    m_device->Unmap(quadStreamBuffer.buffer);
+
+                    float constants[VertexShaderConstantCount]{};
+                    BuildFrameConstants(constants, m_frame.targetSize);
+                    m_frame.cmdList->SetRenderRootSignature(m_quadRootSignature);
+                    m_frame.cmdList->SetRenderPipeline(m_quadPipeline);
+                    m_frame.cmdList->SetRender32BitConstantValues(0, constants, VertexShaderConstantCount);
+                    m_frame.cmdList->SetVertexBuffer(0, m_quadVertexBufferFormat, quadStreamBuffer.buffer, 0, quadVertexDataSize);
+
+                    rhi::DrawDesc desc{};
+                    desc.vertexCount = m_quadVertices.Size();
+                    desc.instanceCount = 1;
+                    desc.vertexStart = 0;
+                    desc.baseInstance = 0;
+                    m_frame.cmdList->Draw(desc);
+                    ++m_lastSubmittedDrawCount;
+                }
+            }
+        }
+
         if (m_frame.gpuTimer.querySet && m_frame.gpuTimer.resolveBuffer)
         {
             m_frame.cmdList->WriteTimestamp(m_frame.gpuTimer.querySet, m_frame.gpuTimer.endQueryIndex);
@@ -903,9 +1001,10 @@ namespace he::scribe
         m_frame = {};
         m_batches.Clear();
         m_streamVertices.Clear();
+        m_quadVertices.Clear();
     }
 
-    bool Renderer::EnsureStreamBufferCapacity(StreamBuffer& streamBuffer, uint32_t minSize)
+    bool Renderer::EnsureStreamBufferCapacity(StreamBuffer& streamBuffer, uint32_t minSize, uint32_t stride, const char* name)
     {
         if (streamBuffer.buffer && (streamBuffer.size >= minSize))
         {
@@ -915,8 +1014,8 @@ namespace he::scribe
         m_device->SafeDestroy(streamBuffer.buffer);
         streamBuffer.size = 0;
 
-        const uint32_t requestedSize = Max(minSize, static_cast<uint32_t>(sizeof(PackedGlyphVertex) * 256));
-        if (!CreateUploadBuffer(*m_device, streamBuffer.buffer, requestedSize, sizeof(PackedGlyphVertex), "Scribe Stream Vertex Buffer"))
+        const uint32_t requestedSize = Max(minSize, static_cast<uint32_t>(stride * 256));
+        if (!CreateUploadBuffer(*m_device, streamBuffer.buffer, requestedSize, stride, name))
         {
             return false;
         }
@@ -1102,6 +1201,28 @@ namespace he::scribe
         }
 
         {
+            rhi::SlotDesc slots[1]{};
+            slots[0].type = rhi::SlotType::ConstantValues;
+            slots[0].stage = rhi::ShaderStage::All;
+            slots[0].constantValues.baseRegister = 0;
+            slots[0].constantValues.registerSpace = 0;
+            slots[0].constantValues.num32BitValues = VertexShaderConstantCount;
+
+            rhi::RootSignatureDesc desc{};
+            desc.slotCount = HE_LENGTH_OF(slots);
+            desc.slots = slots;
+            desc.inputAssembler = true;
+            HE_RHI_SET_NAME(desc, "Scribe Quad Root Signature");
+
+            Result r = m_device->CreateRootSignature(desc, m_quadRootSignature);
+            if (!r)
+            {
+                HE_LOGF_ERROR(scribe_render, "Failed to create quad root signature. Error: {}", r);
+                return false;
+            }
+        }
+
+        {
             rhi::VertexAttributeDesc attributes[] =
             {
                 { "ATTRIB", 0, rhi::Format::RGBA32Float, offsetof(PackedGlyphVertex, pos) },
@@ -1125,8 +1246,31 @@ namespace he::scribe
             }
         }
 
+        {
+            rhi::VertexAttributeDesc attributes[] =
+            {
+                { "ATTRIB", 0, rhi::Format::RG32Float, offsetof(PackedQuadVertex, pos) },
+                { "ATTRIB", 1, rhi::Format::RGBA32Float, offsetof(PackedQuadVertex, col) },
+            };
+
+            rhi::VertexBufferFormatDesc desc{};
+            desc.stride = sizeof(PackedQuadVertex);
+            desc.stepRate = rhi::StepRate::PerVertex;
+            desc.attributeCount = HE_LENGTH_OF(attributes);
+            desc.attributes = attributes;
+
+            Result r = m_device->CreateVertexBufferFormat(desc, m_quadVertexBufferFormat);
+            if (!r)
+            {
+                HE_LOGF_ERROR(scribe_render, "Failed to create quad vertex buffer format. Error: {}", r);
+                return false;
+            }
+        }
+
         rhi::Shader* vs = nullptr;
         rhi::Shader* ps = nullptr;
+        rhi::Shader* quadVs = nullptr;
+        rhi::Shader* quadPs = nullptr;
 
         {
             rhi::ShaderDesc desc{};
@@ -1166,6 +1310,47 @@ namespace he::scribe
         }
 
         {
+            rhi::ShaderDesc desc{};
+            desc.stage = rhi::ShaderStage::Vertex;
+        #if defined(HE_PLATFORM_API_WIN32)
+            desc.code = c_solid_vs_dxil;
+            desc.codeSize = sizeof(c_solid_vs_dxil);
+        #else
+            desc.code = c_solid_vs_spv;
+            desc.codeSize = sizeof(c_solid_vs_spv);
+        #endif
+            Result r = m_device->CreateShader(desc, quadVs);
+            if (!r)
+            {
+                HE_LOGF_ERROR(scribe_render, "Failed to create quad vertex shader. Error: {}", r);
+                m_device->SafeDestroy(ps);
+                m_device->SafeDestroy(vs);
+                return false;
+            }
+        }
+
+        {
+            rhi::ShaderDesc desc{};
+            desc.stage = rhi::ShaderStage::Pixel;
+        #if defined(HE_PLATFORM_API_WIN32)
+            desc.code = c_solid_ps_dxil;
+            desc.codeSize = sizeof(c_solid_ps_dxil);
+        #else
+            desc.code = c_solid_ps_spv;
+            desc.codeSize = sizeof(c_solid_ps_spv);
+        #endif
+            Result r = m_device->CreateShader(desc, quadPs);
+            if (!r)
+            {
+                HE_LOGF_ERROR(scribe_render, "Failed to create quad pixel shader. Error: {}", r);
+                m_device->SafeDestroy(quadVs);
+                m_device->SafeDestroy(ps);
+                m_device->SafeDestroy(vs);
+                return false;
+            }
+        }
+
+        {
             const rhi::VertexBufferFormat* vbfs[]{ m_vertexBufferFormat };
 
             rhi::RenderPipelineDesc desc{};
@@ -1195,12 +1380,54 @@ namespace he::scribe
             if (!r)
             {
                 HE_LOGF_ERROR(scribe_render, "Failed to create render pipeline. Error: {}", r);
+                m_device->SafeDestroy(quadPs);
+                m_device->SafeDestroy(quadVs);
                 m_device->SafeDestroy(ps);
                 m_device->SafeDestroy(vs);
                 return false;
             }
         }
 
+        {
+            const rhi::VertexBufferFormat* vbfs[]{ m_quadVertexBufferFormat };
+
+            rhi::RenderPipelineDesc desc{};
+            desc.rootSignature = m_quadRootSignature;
+            desc.vertexShader = quadVs;
+            desc.pixelShader = quadPs;
+            desc.vertexBufferCount = 1;
+            desc.vertexBufferFormats = vbfs;
+            desc.primitiveType = rhi::PrimitiveType::TriList;
+            desc.blend.targets[0].enable = true;
+            desc.blend.targets[0].srcRgb = rhi::BlendFactor::One;
+            desc.blend.targets[0].dstRgb = rhi::BlendFactor::InvSrcAlpha;
+            desc.blend.targets[0].opRgb = rhi::BlendOp::Add;
+            desc.blend.targets[0].srcAlpha = rhi::BlendFactor::One;
+            desc.blend.targets[0].dstAlpha = rhi::BlendFactor::InvSrcAlpha;
+            desc.blend.targets[0].opAlpha = rhi::BlendOp::Add;
+            desc.raster.cullMode = rhi::CullMode::None;
+            desc.raster.depthClamp = true;
+            desc.depth.testEnable = false;
+            desc.depth.writeEnable = false;
+            desc.depth.func = rhi::ComparisonFunc::Always;
+            desc.targets.renderTargetCount = 1;
+            desc.targets.renderTargetFormats[0] = m_targetFormat;
+            HE_RHI_SET_NAME(desc, "Scribe Quad Render Pipeline");
+
+            Result r = m_device->CreateRenderPipeline(desc, m_quadPipeline);
+            if (!r)
+            {
+                HE_LOGF_ERROR(scribe_render, "Failed to create quad render pipeline. Error: {}", r);
+                m_device->SafeDestroy(quadPs);
+                m_device->SafeDestroy(quadVs);
+                m_device->SafeDestroy(ps);
+                m_device->SafeDestroy(vs);
+                return false;
+            }
+        }
+
+        m_device->SafeDestroy(quadPs);
+        m_device->SafeDestroy(quadVs);
         m_device->SafeDestroy(ps);
         m_device->SafeDestroy(vs);
         return true;
@@ -1213,6 +1440,9 @@ namespace he::scribe
             return;
         }
 
+        m_device->SafeDestroy(m_quadPipeline);
+        m_device->SafeDestroy(m_quadVertexBufferFormat);
+        m_device->SafeDestroy(m_quadRootSignature);
         m_device->SafeDestroy(m_pipeline);
         m_device->SafeDestroy(m_vertexBufferFormat);
         m_device->SafeDestroy(m_rootSignature);

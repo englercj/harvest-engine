@@ -11,12 +11,116 @@
 
 namespace he::scribe
 {
+    constexpr uint32_t InvalidTextStyleIndex = 0xFFFFFFFFu;
+
     enum class TextDirection : uint8_t
     {
         Auto,
         LeftToRight,
         RightToLeft,
     };
+
+    enum class TextDecorationFlags : uint32_t
+    {
+        None = 0x00u,
+        Underline = 0x01u,
+        Strikethrough = 0x02u,
+    };
+
+    constexpr TextDecorationFlags operator|(TextDecorationFlags lhs, TextDecorationFlags rhs) noexcept
+    {
+        return static_cast<TextDecorationFlags>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+    }
+
+    constexpr TextDecorationFlags operator&(TextDecorationFlags lhs, TextDecorationFlags rhs) noexcept
+    {
+        return static_cast<TextDecorationFlags>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+    }
+
+    constexpr TextDecorationFlags& operator|=(TextDecorationFlags& lhs, TextDecorationFlags rhs) noexcept
+    {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    constexpr bool HasAnyFlags(TextDecorationFlags value, TextDecorationFlags flags) noexcept
+    {
+        return static_cast<uint32_t>(value & flags) != 0u;
+    }
+
+    enum class TextEffectFlags : uint32_t
+    {
+        None = 0x00u,
+        Shadow = 0x01u,
+        Outline = 0x02u,
+    };
+
+    constexpr TextEffectFlags operator|(TextEffectFlags lhs, TextEffectFlags rhs) noexcept
+    {
+        return static_cast<TextEffectFlags>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+    }
+
+    constexpr TextEffectFlags operator&(TextEffectFlags lhs, TextEffectFlags rhs) noexcept
+    {
+        return static_cast<TextEffectFlags>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+    }
+
+    constexpr TextEffectFlags& operator|=(TextEffectFlags& lhs, TextEffectFlags rhs) noexcept
+    {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    constexpr bool HasAnyFlags(TextEffectFlags value, TextEffectFlags flags) noexcept
+    {
+        return static_cast<uint32_t>(value & flags) != 0u;
+    }
+
+    struct TextFeatureSetting
+    {
+        uint32_t tag{ 0 };
+        uint32_t value{ 0 };
+    };
+
+    struct TextStyle
+    {
+        uint32_t fontFaceIndex{ InvalidTextStyleIndex };
+        TextDecorationFlags decorations{ TextDecorationFlags::None };
+        TextEffectFlags effects{ TextEffectFlags::None };
+        uint32_t firstFeature{ 0 };
+        uint32_t featureCount{ 0 };
+        Vec4f color{ 1.0f, 1.0f, 1.0f, 1.0f };
+        Vec4f decorationColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+        Vec4f outlineColor{ 0.0f, 0.0f, 0.0f, 1.0f };
+        Vec4f shadowColor{ 0.0f, 0.0f, 0.0f, 0.35f };
+        Vec2f shadowOffsetEm{ 0.0f, 0.0f };
+        float trackingEm{ 0.0f };
+        float stretchX{ 1.0f };
+        float stretchY{ 1.0f };
+        float skewX{ 0.0f };
+        float rotationRadians{ 0.0f };
+        float baselineShiftEm{ 0.0f };
+        float glyphScale{ 1.0f };
+        float outlineWidthEm{ 0.0f };
+        float decorationThicknessEm{ 0.06f };
+        float underlineOffsetEm{ 0.12f };
+        float strikethroughOffsetEm{ 0.32f };
+    };
+
+    struct TextStyleSpan
+    {
+        uint32_t textByteStart{ 0 };
+        uint32_t textByteEnd{ 0 };
+        uint32_t styleIndex{ 0 };
+    };
+
+    constexpr uint32_t MakeOpenTypeFeatureTag(char a, char b, char c, char d)
+    {
+        return static_cast<uint32_t>(static_cast<uint8_t>(a))
+            | (static_cast<uint32_t>(static_cast<uint8_t>(b)) << 8u)
+            | (static_cast<uint32_t>(static_cast<uint8_t>(c)) << 16u)
+            | (static_cast<uint32_t>(static_cast<uint8_t>(d)) << 24u);
+    }
 
     struct LayoutOptions
     {
@@ -27,12 +131,23 @@ namespace he::scribe
         bool wrap{ true };
     };
 
+    struct StyledTextLayoutDesc
+    {
+        Span<const LoadedFontFaceBlob> fontFaces{};
+        StringView text{};
+        LayoutOptions options{};
+        Span<const TextStyle> styles{};
+        Span<const TextStyleSpan> styleSpans{};
+        Span<const TextFeatureSetting> features{};
+    };
+
     struct ShapedGlyph
     {
         uint32_t glyphIndex{ 0 };
         uint32_t fontFaceIndex{ 0 };
         uint32_t clusterIndex{ 0 };
         uint32_t lineIndex{ 0 };
+        uint32_t styleIndex{ 0 };
         uint32_t textByteStart{ 0 };
         uint32_t textByteEnd{ 0 };
         Vec2f position{ 0.0f, 0.0f };
@@ -47,6 +162,7 @@ namespace he::scribe
         uint32_t glyphStart{ 0 };
         uint32_t glyphCount{ 0 };
         uint32_t fontFaceIndex{ 0 };
+        uint32_t styleIndex{ 0 };
         uint32_t lineIndex{ 0 };
         float advance{ 0.0f };
         float x0{ 0.0f };
@@ -102,6 +218,8 @@ namespace he::scribe
             Span<const LoadedFontFaceBlob> faces,
             StringView text,
             const LayoutOptions& options = {}) const;
+
+        bool LayoutStyledText(LayoutResult& out, const StyledTextLayoutDesc& desc) const;
 
         bool HitTest(const LayoutResult& layout, const Vec2f& point, HitTestResult& out) const;
     };

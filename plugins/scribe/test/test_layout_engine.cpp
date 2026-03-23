@@ -13,6 +13,14 @@ using namespace he::scribe;
 namespace
 {
     constexpr const char* TestIconAccount = "\xf3\xb0\x80\x84";
+    constexpr const char* FeatureFontCandidates[] =
+    {
+        "C:/Windows/Fonts/cambria.ttc",
+        "C:/Windows/Fonts/calibri.ttf",
+        "C:/Windows/Fonts/Candara.ttf",
+        "C:/Windows/Fonts/SitkaVF.ttf",
+        "C:/Windows/Fonts/Gabriola.ttf",
+    };
 
     bool ResolveFontPath(String& out, const char* fileName)
     {
@@ -122,6 +130,45 @@ namespace
 
         storage = Span<const schema::Word>(rootBuilder);
         return LoadCompiledFontFaceBlob(out, storage);
+    }
+
+    bool BuildLoadedFontFaceFromCandidates(
+        Span<const char* const> candidates,
+        Vector<schema::Word>& storage,
+        LoadedFontFaceBlob& out)
+    {
+        for (const char* candidate : candidates)
+        {
+            if (BuildLoadedFontFaceFromFile(candidate, storage, out))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool GlyphSequenceDiffers(const LayoutResult& a, const LayoutResult& b)
+    {
+        if (a.glyphs.Size() != b.glyphs.Size())
+        {
+            return true;
+        }
+
+        for (uint32_t glyphIndex = 0; glyphIndex < a.glyphs.Size(); ++glyphIndex)
+        {
+            const ShapedGlyph& lhs = a.glyphs[glyphIndex];
+            const ShapedGlyph& rhs = b.glyphs[glyphIndex];
+            if ((lhs.glyphIndex != rhs.glyphIndex)
+                || (lhs.fontFaceIndex != rhs.fontFaceIndex)
+                || (lhs.position.x != rhs.position.x)
+                || (lhs.advance.x != rhs.advance.x))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -255,4 +302,335 @@ HE_TEST(scribe, layout_engine, trailing_newline_paragraph)
     HE_EXPECT(engine.LayoutText(layout, Span<const LoadedFontFaceBlob>(&font, 1), text));
     HE_EXPECT_GE(layout.lines.Size(), 2u);
     HE_EXPECT_GE(layout.clusters.Size(), 1u);
+}
+
+HE_TEST(scribe, layout_engine, styled_face_override)
+{
+    Vector<schema::Word> sansStorage;
+    Vector<schema::Word> monoStorage;
+    LoadedFontFaceBlob sans{};
+    LoadedFontFaceBlob mono{};
+    HE_ASSERT(BuildLoadedFontFaceFromFile("NotoSans-Regular.ttf", sansStorage, sans));
+    HE_ASSERT(BuildLoadedFontFaceFromFile("NotoMono-Regular.ttf", monoStorage, mono));
+
+    const LoadedFontFaceBlob faces[] = { sans, mono };
+
+    const String text = "alpha beta";
+    const uint32_t betaStart = 6;
+    const uint32_t betaEnd = 10;
+
+    TextStyle styles[2]{};
+    styles[1].fontFaceIndex = 1;
+
+    const TextStyleSpan spans[] =
+    {
+        { betaStart, betaEnd, 1 }
+    };
+
+    StyledTextLayoutDesc desc{};
+    desc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    desc.text = text;
+    desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
+
+    LayoutEngine engine;
+    LayoutResult layout;
+    HE_EXPECT(engine.LayoutStyledText(layout, desc));
+
+    bool sawMonoCluster = false;
+    for (const TextCluster& cluster : layout.clusters)
+    {
+        if ((cluster.textByteStart >= betaStart) && (cluster.textByteEnd <= betaEnd))
+        {
+            HE_EXPECT_EQ(cluster.styleIndex, 1u);
+            HE_EXPECT_EQ(cluster.fontFaceIndex, 1u);
+            sawMonoCluster = true;
+        }
+    }
+
+    HE_EXPECT(sawMonoCluster);
+}
+
+HE_TEST(scribe, layout_engine, feature_flags_control_ligatures)
+{
+    Vector<schema::Word> fontStorage;
+    LoadedFontFaceBlob font{};
+    if (!BuildLoadedFontFaceFromCandidates(FeatureFontCandidates, fontStorage, font))
+    {
+        return;
+    }
+
+    const LoadedFontFaceBlob faces[] = { font };
+    const String text = "office";
+
+    LayoutEngine engine;
+    LayoutResult defaultLayout;
+    HE_ASSERT(engine.LayoutText(defaultLayout, Span<const LoadedFontFaceBlob>(faces, 1), text));
+
+    const TextFeatureSetting features[] =
+    {
+        { MakeOpenTypeFeatureTag('l', 'i', 'g', 'a'), 0 },
+        { MakeOpenTypeFeatureTag('c', 'l', 'i', 'g'), 0 },
+    };
+
+    TextStyle styles[2]{};
+    styles[1].firstFeature = 0;
+    styles[1].featureCount = HE_LENGTH_OF(features);
+
+    const TextStyleSpan spans[] =
+    {
+        { 0, static_cast<uint32_t>(text.Size()), 1 }
+    };
+
+    StyledTextLayoutDesc desc{};
+    desc.fontFaces = Span<const LoadedFontFaceBlob>(faces, 1);
+    desc.text = text;
+    desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
+    desc.features = Span<const TextFeatureSetting>(features, HE_LENGTH_OF(features));
+
+    LayoutResult noLigaLayout;
+    HE_ASSERT(engine.LayoutStyledText(noLigaLayout, desc));
+
+    HE_EXPECT(GlyphSequenceDiffers(noLigaLayout, defaultLayout));
+}
+
+HE_TEST(scribe, layout_engine, feature_flags_control_kerning_and_tracking)
+{
+    Vector<schema::Word> fontStorage;
+    LoadedFontFaceBlob font{};
+    if (!BuildLoadedFontFaceFromCandidates(FeatureFontCandidates, fontStorage, font))
+    {
+        return;
+    }
+
+    const LoadedFontFaceBlob faces[] = { font };
+    const String text = "AVATAR";
+
+    LayoutEngine engine;
+    LayoutResult defaultLayout;
+    HE_ASSERT(engine.LayoutText(defaultLayout, Span<const LoadedFontFaceBlob>(faces, 1), text));
+
+    const TextFeatureSetting features[] =
+    {
+        { MakeOpenTypeFeatureTag('k', 'e', 'r', 'n'), 0 },
+    };
+
+    TextStyle styles[3]{};
+    styles[1].firstFeature = 0;
+    styles[1].featureCount = HE_LENGTH_OF(features);
+    styles[2].trackingEm = 0.08f;
+
+    const TextStyleSpan kernOffSpans[] =
+    {
+        { 0, static_cast<uint32_t>(text.Size()), 1 }
+    };
+    const TextStyleSpan trackingSpans[] =
+    {
+        { 0, static_cast<uint32_t>(text.Size()), 2 }
+    };
+
+    StyledTextLayoutDesc kernOffDesc{};
+    kernOffDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, 1);
+    kernOffDesc.text = text;
+    kernOffDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    kernOffDesc.styleSpans = Span<const TextStyleSpan>(kernOffSpans, HE_LENGTH_OF(kernOffSpans));
+    kernOffDesc.features = Span<const TextFeatureSetting>(features, HE_LENGTH_OF(features));
+
+    LayoutResult kernOffLayout;
+    HE_ASSERT(engine.LayoutStyledText(kernOffLayout, kernOffDesc));
+
+    StyledTextLayoutDesc trackingDesc{};
+    trackingDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, 1);
+    trackingDesc.text = text;
+    trackingDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    trackingDesc.styleSpans = Span<const TextStyleSpan>(trackingSpans, HE_LENGTH_OF(trackingSpans));
+
+    LayoutResult trackingLayout;
+    HE_ASSERT(engine.LayoutStyledText(trackingLayout, trackingDesc));
+
+    HE_EXPECT_GT(kernOffLayout.width, defaultLayout.width);
+    HE_EXPECT_GT(trackingLayout.width, defaultLayout.width);
+}
+
+HE_TEST(scribe, layout_engine, feature_flags_enable_small_caps_and_case_forms)
+{
+    Vector<schema::Word> fontStorage;
+    LoadedFontFaceBlob font{};
+    if (!BuildLoadedFontFaceFromCandidates(FeatureFontCandidates, fontStorage, font))
+    {
+        return;
+    }
+
+    const LoadedFontFaceBlob faces[] = { font };
+    LayoutEngine engine;
+
+    {
+        const String text = "Harvest Engine";
+        LayoutResult defaultLayout;
+        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const LoadedFontFaceBlob>(faces, 1), text));
+
+        const TextFeatureSetting features[] =
+        {
+            { MakeOpenTypeFeatureTag('s', 'm', 'c', 'p'), 1 },
+        };
+
+        TextStyle styles[2]{};
+        styles[1].firstFeature = 0;
+        styles[1].featureCount = HE_LENGTH_OF(features);
+
+        const TextStyleSpan spans[] =
+        {
+            { 0, static_cast<uint32_t>(text.Size()), 1 }
+        };
+
+        StyledTextLayoutDesc desc{};
+        desc.fontFaces = Span<const LoadedFontFaceBlob>(faces, 1);
+        desc.text = text;
+        desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+        desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
+        desc.features = Span<const TextFeatureSetting>(features, HE_LENGTH_OF(features));
+
+        LayoutResult smallCapsLayout;
+        HE_ASSERT(engine.LayoutStyledText(smallCapsLayout, desc));
+        HE_EXPECT(GlyphSequenceDiffers(smallCapsLayout, defaultLayout));
+    }
+
+    {
+        const String text = "[(ALL-CAPS)]";
+        LayoutResult defaultLayout;
+        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const LoadedFontFaceBlob>(faces, 1), text));
+
+        const TextFeatureSetting features[] =
+        {
+            { MakeOpenTypeFeatureTag('c', 'a', 's', 'e'), 1 },
+        };
+
+        TextStyle styles[2]{};
+        styles[1].firstFeature = 0;
+        styles[1].featureCount = HE_LENGTH_OF(features);
+
+        const TextStyleSpan spans[] =
+        {
+            { 0, static_cast<uint32_t>(text.Size()), 1 }
+        };
+
+        StyledTextLayoutDesc desc{};
+        desc.fontFaces = Span<const LoadedFontFaceBlob>(faces, 1);
+        desc.text = text;
+        desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+        desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
+        desc.features = Span<const TextFeatureSetting>(features, HE_LENGTH_OF(features));
+
+        LayoutResult caseLayout;
+        HE_ASSERT(engine.LayoutStyledText(caseLayout, desc));
+        HE_EXPECT(GlyphSequenceDiffers(caseLayout, defaultLayout));
+    }
+}
+
+HE_TEST(scribe, layout_engine, feature_flags_enable_numeric_forms)
+{
+    Vector<schema::Word> fontStorage;
+    LoadedFontFaceBlob font{};
+    if (!BuildLoadedFontFaceFromCandidates(FeatureFontCandidates, fontStorage, font))
+    {
+        return;
+    }
+
+    const LoadedFontFaceBlob faces[] = { font };
+    LayoutEngine engine;
+
+    {
+        const String text = "1st 2nd 3rd 4th";
+        LayoutResult defaultLayout;
+        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const LoadedFontFaceBlob>(faces, 1), text));
+
+        const TextFeatureSetting features[] =
+        {
+            { MakeOpenTypeFeatureTag('o', 'r', 'd', 'n'), 1 },
+        };
+
+        TextStyle styles[2]{};
+        styles[1].firstFeature = 0;
+        styles[1].featureCount = HE_LENGTH_OF(features);
+
+        const TextStyleSpan spans[] =
+        {
+            { 0, static_cast<uint32_t>(text.Size()), 1 }
+        };
+
+        StyledTextLayoutDesc desc{};
+        desc.fontFaces = Span<const LoadedFontFaceBlob>(faces, 1);
+        desc.text = text;
+        desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+        desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
+        desc.features = Span<const TextFeatureSetting>(features, HE_LENGTH_OF(features));
+
+        LayoutResult ordinalLayout;
+        HE_ASSERT(engine.LayoutStyledText(ordinalLayout, desc));
+        HE_EXPECT(GlyphSequenceDiffers(ordinalLayout, defaultLayout));
+    }
+
+    {
+        const String text = "123/456";
+        LayoutResult defaultLayout;
+        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const LoadedFontFaceBlob>(faces, 1), text));
+
+        const TextFeatureSetting features[] =
+        {
+            { MakeOpenTypeFeatureTag('f', 'r', 'a', 'c'), 1 },
+        };
+
+        TextStyle styles[2]{};
+        styles[1].firstFeature = 0;
+        styles[1].featureCount = HE_LENGTH_OF(features);
+
+        const TextStyleSpan spans[] =
+        {
+            { 0, static_cast<uint32_t>(text.Size()), 1 }
+        };
+
+        StyledTextLayoutDesc desc{};
+        desc.fontFaces = Span<const LoadedFontFaceBlob>(faces, 1);
+        desc.text = text;
+        desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+        desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
+        desc.features = Span<const TextFeatureSetting>(features, HE_LENGTH_OF(features));
+
+        LayoutResult fractionLayout;
+        HE_ASSERT(engine.LayoutStyledText(fractionLayout, desc));
+        HE_EXPECT(GlyphSequenceDiffers(fractionLayout, defaultLayout));
+    }
+
+    {
+        const String text = "0123456789";
+        LayoutResult defaultLayout;
+        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const LoadedFontFaceBlob>(faces, 1), text));
+
+        const TextFeatureSetting features[] =
+        {
+            { MakeOpenTypeFeatureTag('o', 'n', 'u', 'm'), 1 },
+            { MakeOpenTypeFeatureTag('p', 'n', 'u', 'm'), 1 },
+        };
+
+        TextStyle styles[2]{};
+        styles[1].firstFeature = 0;
+        styles[1].featureCount = HE_LENGTH_OF(features);
+
+        const TextStyleSpan spans[] =
+        {
+            { 0, static_cast<uint32_t>(text.Size()), 1 }
+        };
+
+        StyledTextLayoutDesc desc{};
+        desc.fontFaces = Span<const LoadedFontFaceBlob>(faces, 1);
+        desc.text = text;
+        desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+        desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
+        desc.features = Span<const TextFeatureSetting>(features, HE_LENGTH_OF(features));
+
+        LayoutResult figureLayout;
+        HE_ASSERT(engine.LayoutStyledText(figureLayout, desc));
+        HE_EXPECT(GlyphSequenceDiffers(figureLayout, defaultLayout));
+    }
 }

@@ -42,11 +42,21 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
                 files { "runtime/src/shaders/scribe.slang" }
                 include_dirs { "runtime/src/shaders" }
             }
+
+            shader_compile "sm_6_0" scope=private {
+                files { "runtime/src/shaders/solid.slang" }
+                include_dirs { "runtime/src/shaders" }
+            }
         }
 
         when platform.system=linux {
             shader_compile "glsl_450" scope=private {
                 files { "runtime/src/shaders/scribe.slang" }
+                include_dirs { "runtime/src/shaders" }
+            }
+
+            shader_compile "glsl_450" scope=private {
+                files { "runtime/src/shaders/solid.slang" }
                 include_dirs { "runtime/src/shaders" }
             }
         }

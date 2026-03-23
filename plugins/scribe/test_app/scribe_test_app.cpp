@@ -28,6 +28,8 @@
 #include "he/window/key.h"
 #include "he/window/view.h"
 
+#include <cstring>
+
 namespace he
 {
     namespace
@@ -51,27 +53,27 @@ namespace he
         {
             {
                 "Font styles",
-                "Weight, italic, and code spans are part of the long-term text model. They are not mapped to real font-style runs yet.",
-                "Regular / italic / bold toggle not yet implemented.",
-                "Regular italics bold {code} target sample.",
+                "Styled runs can switch faces per span, which lets the testbed compare plain text against italic, bold, and monospace code spans.",
+                "Regular italic bold {code}",
+                "Regular italic bold {code}",
             },
             {
                 "Stretch and skew",
-                "Per-run stretch and skew are not exposed through the layout API yet, but the testbed keeps them listed as a future renderer target.",
-                "Text stretched (not yet implemented).",
-                "Text skewed (not yet implemented).",
+                "Retained text applies per-run stretch and skew after shaping so the same layout can be rendered with character-level transforms.",
+                "Stretched text\nSkewed text",
+                "Stretched text\nSkewed text",
             },
             {
                 "Text decorations",
-                "Underline, strike-through, and other text decorations still need explicit shaping and paint support.",
-                "Text underline (not yet implemented).",
-                "Text strike-through (not yet implemented).",
+                "Underline and strike-through decorations are emitted as retained quads so they follow the shaped cluster geometry.",
+                "Underline\nStrike-through",
+                "Underline\nStrike-through",
             },
             {
                 "Tracking",
-                "Run-level tracking and letter spacing are not exposed yet. The row stays here as a roadmap checkpoint.",
-                "Tight tracking -0.05 (not yet implemented).",
-                "Loose tracking +0.05 (not yet implemented).",
+                "Run-level tracking adjusts cluster advances after shaping, which makes loose and tight spacing easy to compare side by side.",
+                "Tight tracking\nLoose tracking",
+                "Tight tracking\nLoose tracking",
             },
             {
                 "Multicolor emoji",
@@ -87,15 +89,15 @@ namespace he
             },
             {
                 "Kerning",
-                "Kerning is shaped through HarfBuzz today, but there is no UI toggle to disable it for a direct side-by-side comparison.",
-                "Toggle not exposed in the testbed.",
-                "“Too Wavy.”",
+                "OpenType feature spans can disable kerning for a comparison against the default shaped result.",
+                "AVATAR WAVE",
+                "AVATAR WAVE",
             },
             {
                 "Ligatures",
-                "Ligatures are shaped through HarfBuzz when the active face supports them.",
-                "Toggle not exposed in the testbed.",
-                "office firefly craft",
+                "Ligature features are routed through HarfBuzz so the testbed can compare default shaping against ligatures disabled.",
+                "office official afflict",
+                "office official afflict",
             },
             {
                 "Combining marks",
@@ -105,45 +107,45 @@ namespace he
             },
             {
                 "Small caps",
-                "Small-cap substitutions are not wired through feature selection yet.",
-                "Small caps (not yet implemented).",
-                "SMALL CAPS target sample.",
+                "Small-cap substitutions are enabled through OpenType feature spans when the chosen demo font supports them.",
+                "Harvest Engine",
+                "Harvest Engine",
             },
             {
                 "Stylistic variants",
-                "Style sets and alternate glyph forms still need a feature-selection surface in layout.",
-                "Default glyph form only.",
-                "Style-set substitution target sample.",
+                "Style-set alternates are exposed as explicit OpenType feature toggles so the row can compare default and ss01 forms.",
+                "arial lqty69",
+                "arial lqty69",
             },
             {
                 "Case-sensitive forms",
-                "Case-sensitive punctuation substitutions are still pending OpenType feature selection.",
-                "[(ALL-CAPS)] default punctuation.",
-                "[(ALL-CAPS)] target substitution sample.",
+                "Case-sensitive punctuation substitutions are applied through OpenType feature spans on the enabled sample.",
+                "[(ALL-CAPS)]",
+                "[(ALL-CAPS)]",
             },
             {
                 "Subscripts and superscripts",
-                "Native OpenType substitutions are not implemented yet, but Unicode fallback characters can still be displayed.",
-                "CH3CH2CH3 / Footnote5",
-                "CH₃CH₂CH₃ / Footnote⁵",
+                "Native subscript and superscript substitutions are enabled per run where the demo font supports them.",
+                "CH3CH2CH3\nFootnote5",
+                "CH3CH2CH3\nFootnote5",
             },
             {
                 "Script transforms",
-                "Nested script transforms belong in a future styled-run model, not the current plain-text test path.",
-                "Text sub1 sub2 (not yet implemented).",
-                "Text sup1 sup2 (not yet implemented).",
+                "Per-run baseline shifts and glyph scaling provide script-style transforms even when the font does not supply dedicated OpenType substitutions.",
+                "TextSub1 Sub2\nTextSup1 Sup2",
+                "TextSub1 Sub2\nTextSup1 Sup2",
             },
             {
                 "Ordinals and fractions",
-                "Ordinal and fraction substitutions are still pending feature-selection support.",
-                "1st 2nd 3rd 4th / 123/456",
-                "1ˢᵗ 2ⁿᵈ 3ʳᵈ 4ᵗʰ / ½ ¾",
+                "Ordinal and fraction substitutions are now driven through OpenType feature spans on the enabled sample.",
+                "1st 2nd 3rd 4th\n123/456",
+                "1st 2nd 3rd 4th\n123/456",
             },
             {
                 "Figure styles",
-                "Old-style, tabular, and proportional figures are not yet selectable from the testbed.",
-                "0123456789 lining / proportional default.",
-                "Old-style and tabular targets not yet implemented.",
+                "Old-style, lining, proportional, and tabular figures are now selectable through OpenType feature spans.",
+                "0123456789\n0123456789",
+                "0123456789\n0123456789",
             },
             {
                 "Unicode support",
@@ -177,21 +179,21 @@ namespace he
             },
             {
                 "Glyph effects",
-                "Shadows and geometric outlines are not implemented in Scribe yet, but they belong on the renderer roadmap.",
-                "Shadow / Outline / Both not yet implemented.",
-                "Effect pipeline target sample.",
+                "Retained text can emit shadow and outline draws per glyph, using the same compiled glyph resources as the base fill.",
+                "Shadow Outline Both",
+                "Shadow Outline Both",
             },
             {
                 "Per-glyph transforms",
-                "Curved text and per-glyph transforms require a richer scene model than the current layout result exposes.",
-                "Per-glyph transforms not yet implemented.",
-                "Curved baseline target sample.",
+                "Style spans can target individual glyphs, which lets the testbed bend a line onto a curved baseline after shaping.",
+                "Text laid out on a curve",
+                "Text laid out on a curve",
             },
             {
                 "Vector strokes and gradients",
-                "Stroke caps, joins, dashing, and fill gradients belong to future SVG/vector milestones and are listed here as pending.",
-                "Stroke dashing and gradients not yet implemented.",
-                "Future vector paint and stroke target.",
+                "These are retained vector features rather than text features. They remain listed here as a bridge to the SVG scene.",
+                "See SVG scene",
+                "See SVG scene",
             },
         };
 
@@ -262,6 +264,62 @@ namespace he
 
             out.Clear();
             return false;
+        }
+
+        bool FindSubstringRange(
+            StringView text,
+            StringView needle,
+            uint32_t occurrence,
+            uint32_t& outStart,
+            uint32_t& outEnd)
+        {
+            if (needle.IsEmpty() || (needle.Size() > text.Size()))
+            {
+                return false;
+            }
+
+            const char* search = text.Data();
+            const char* searchEnd = text.Data() + text.Size();
+            for (uint32_t i = 0; i <= occurrence; ++i)
+            {
+                const char* match = std::strstr(search, needle.Data());
+                if (!match || (match >= searchEnd))
+                {
+                    return false;
+                }
+
+                if (i == occurrence)
+                {
+                    outStart = static_cast<uint32_t>(match - text.Data());
+                    outEnd = outStart + needle.Size();
+                    return true;
+                }
+
+                search = match + 1;
+            }
+
+            return false;
+        }
+
+        bool AddStyleSpanForSubstring(
+            Vector<scribe::TextStyleSpan>& spans,
+            StringView text,
+            StringView needle,
+            uint32_t styleIndex,
+            uint32_t occurrence = 0)
+        {
+            uint32_t start = 0;
+            uint32_t end = 0;
+            if (!FindSubstringRange(text, needle, occurrence, start, end))
+            {
+                return false;
+            }
+
+            scribe::TextStyleSpan& span = spans.EmplaceBack();
+            span.textByteStart = start;
+            span.textByteEnd = end;
+            span.styleIndex = styleIndex;
+            return true;
         }
 
         bool BuildLoadedFontFaceFromFile(const char* fileName, Vector<schema::Word>& storage, scribe::LoadedFontFaceBlob& out)
@@ -1087,38 +1145,147 @@ namespace he
     bool ScribeTestApp::LoadDemoFonts()
     {
         m_fonts.Clear();
-        m_fonts.Resize(2);
+        m_uiFontIndex = 0;
+        m_iconFontIndex = 1;
+        m_rtlFontIndex = InvalidIndex;
+        m_colorFontIndex = InvalidIndex;
+        m_sansRegularFontIndex = InvalidIndex;
+        m_sansBoldFontIndex = InvalidIndex;
+        m_sansItalicFontIndex = InvalidIndex;
+        m_sansBoldItalicFontIndex = InvalidIndex;
+        m_monoFontIndex = InvalidIndex;
+        m_serifRegularFontIndex = InvalidIndex;
+        m_serifBoldFontIndex = InvalidIndex;
+        m_serifItalicFontIndex = InvalidIndex;
+        m_serifBoldItalicFontIndex = InvalidIndex;
+        m_featureFontIndex = InvalidIndex;
+        m_symbolFontIndex = InvalidIndex;
 
-        if (!LoadDemoFont(m_fonts[0], "NotoSans-Regular.ttf")
-            || !LoadDemoFont(m_fonts[1], "materialdesignicons.ttf"))
+        auto loadRequiredFont = [&](uint32_t& outIndex, const char* fileName) -> bool
+        {
+            outIndex = m_fonts.Size();
+            LoadedDemoFont& font = m_fonts.EmplaceBack();
+            if (!LoadDemoFont(font, fileName))
+            {
+                m_fonts.Resize(outIndex);
+                outIndex = InvalidIndex;
+                return false;
+            }
+
+            return true;
+        };
+
+        auto loadOptionalFont = [&](uint32_t& outIndex, Span<const char*> candidates) -> bool
+        {
+            outIndex = m_fonts.Size();
+            LoadedDemoFont& font = m_fonts.EmplaceBack();
+            if (!LoadOptionalDemoFont(font, candidates))
+            {
+                m_fonts.Resize(outIndex);
+                outIndex = InvalidIndex;
+                return false;
+            }
+
+            return true;
+        };
+
+        if (!loadRequiredFont(m_uiFontIndex, "NotoSans-Regular.ttf")
+            || !loadRequiredFont(m_iconFontIndex, "materialdesignicons.ttf"))
         {
             return false;
         }
 
+        static const char* SansRegularCandidates[] =
+        {
+            "C:/Windows/Fonts/segoeui.ttf",
+            "C:/Windows/Fonts/calibri.ttf",
+            "C:/Windows/Fonts/Candara.ttf",
+        };
+        static const char* SansBoldCandidates[] =
+        {
+            "C:/Windows/Fonts/segoeuib.ttf",
+            "C:/Windows/Fonts/calibrib.ttf",
+            "C:/Windows/Fonts/Candarab.ttf",
+        };
+        static const char* SansItalicCandidates[] =
+        {
+            "C:/Windows/Fonts/segoeuii.ttf",
+            "C:/Windows/Fonts/calibrii.ttf",
+            "C:/Windows/Fonts/Candarai.ttf",
+        };
+        static const char* SansBoldItalicCandidates[] =
+        {
+            "C:/Windows/Fonts/segoeuiz.ttf",
+            "C:/Windows/Fonts/calibriz.ttf",
+            "C:/Windows/Fonts/Candaraz.ttf",
+        };
+        static const char* MonoCandidates[] =
+        {
+            "plugins/editor/src/fonts/NotoMono-Regular.ttf",
+            "C:/Windows/Fonts/consola.ttf",
+        };
+        static const char* SerifRegularCandidates[] =
+        {
+            "C:/Windows/Fonts/cambria.ttc",
+            "C:/Windows/Fonts/times.ttf",
+            "C:/Windows/Fonts/georgia.ttf",
+            "C:/Windows/Fonts/calibri.ttf",
+        };
+        static const char* SerifBoldCandidates[] =
+        {
+            "C:/Windows/Fonts/timesbd.ttf",
+            "C:/Windows/Fonts/georgiab.ttf",
+            "C:/Windows/Fonts/calibrib.ttf",
+        };
+        static const char* SerifItalicCandidates[] =
+        {
+            "C:/Windows/Fonts/timesi.ttf",
+            "C:/Windows/Fonts/georgiai.ttf",
+            "C:/Windows/Fonts/calibrii.ttf",
+        };
+        static const char* SerifBoldItalicCandidates[] =
+        {
+            "C:/Windows/Fonts/timesbi.ttf",
+            "C:/Windows/Fonts/georgiaz.ttf",
+            "C:/Windows/Fonts/calibriz.ttf",
+        };
+        static const char* FeatureFontCandidates[] =
+        {
+            "C:/Windows/Fonts/cambria.ttc",
+            "C:/Windows/Fonts/calibri.ttf",
+            "C:/Windows/Fonts/Candara.ttf",
+            "C:/Windows/Fonts/SitkaVF.ttf",
+            "C:/Windows/Fonts/Gabriola.ttf",
+        };
         static const char* RtlFontCandidates[] =
         {
             "C:/Windows/Fonts/segoeui.ttf",
             "C:/Windows/Fonts/arial.ttf",
             "C:/Windows/Fonts/tahoma.ttf",
         };
-
-        m_fonts.Resize(3);
-        if (!LoadOptionalDemoFont(m_fonts[2], RtlFontCandidates))
-        {
-            m_fonts.Resize(2);
-        }
-
         static const char* ColorFontCandidates[] =
         {
             "C:/Windows/Fonts/seguiemj.ttf",
         };
-
-        const uint32_t colorFontIndex = m_fonts.Size();
-        m_fonts.Resize(colorFontIndex + 1);
-        if (!LoadOptionalDemoFont(m_fonts[colorFontIndex], ColorFontCandidates))
+        static const char* SymbolFontCandidates[] =
         {
-            m_fonts.Resize(colorFontIndex);
-        }
+            "C:/Windows/Fonts/seguisym.ttf",
+            "C:/Windows/Fonts/SegoeIcons.ttf",
+        };
+
+        loadOptionalFont(m_sansRegularFontIndex, SansRegularCandidates);
+        loadOptionalFont(m_sansBoldFontIndex, SansBoldCandidates);
+        loadOptionalFont(m_sansItalicFontIndex, SansItalicCandidates);
+        loadOptionalFont(m_sansBoldItalicFontIndex, SansBoldItalicCandidates);
+        loadOptionalFont(m_monoFontIndex, MonoCandidates);
+        loadOptionalFont(m_serifRegularFontIndex, SerifRegularCandidates);
+        loadOptionalFont(m_serifBoldFontIndex, SerifBoldCandidates);
+        loadOptionalFont(m_serifItalicFontIndex, SerifItalicCandidates);
+        loadOptionalFont(m_serifBoldItalicFontIndex, SerifBoldItalicCandidates);
+        loadOptionalFont(m_featureFontIndex, FeatureFontCandidates);
+        loadOptionalFont(m_rtlFontIndex, RtlFontCandidates);
+        loadOptionalFont(m_colorFontIndex, ColorFontCandidates);
+        loadOptionalFont(m_symbolFontIndex, SymbolFontCandidates);
 
         return true;
     }
@@ -1187,23 +1354,22 @@ namespace he
 
         UpdateSceneTitle();
 
-        scribe::LoadedFontFaceBlob faces[8]{};
-        uint32_t faceCount = 0;
+        Vector<scribe::LoadedFontFaceBlob> faces{};
         for (const LoadedDemoFont& font : m_fonts)
         {
             if (font.blob.root.IsValid())
             {
-                faces[faceCount++] = font.blob;
+                faces.EmplaceBack(font.blob);
             }
         }
 
-        if (faceCount == 0)
+        if (faces.IsEmpty())
         {
             return false;
         }
 
-        const Span<const scribe::LoadedFontFaceBlob> faceSpan(faces, faceCount);
-        const Span<const scribe::LoadedFontFaceBlob> primaryFace(faces, 1);
+        const Span<const scribe::LoadedFontFaceBlob> faceSpan(faces.Data(), faces.Size());
+        const Span<const scribe::LoadedFontFaceBlob> primaryFace(faces.Data(), 1);
         const Vec2i viewSize = m_view->GetSize();
         const float dpiScale = Max(m_view->GetDpiScale(), 1.0f);
         const float margin = 40.0f * dpiScale;
@@ -1225,20 +1391,29 @@ namespace he
                               float fontSize,
                               float maxWidth,
                               scribe::TextDirection direction,
-                              bool wrap = true) -> bool
+                              bool wrap = true,
+                              Span<const scribe::TextStyle> styles = {},
+                              Span<const scribe::TextStyleSpan> styleSpans = {},
+                              Span<const scribe::TextFeatureSetting> features = {}) -> bool
         {
-            scribe::LayoutOptions options{};
-            options.fontSize = fontSize;
-            options.wrap = wrap;
-            options.maxWidth = maxWidth;
-            options.direction = direction;
-            return m_layoutEngine.LayoutText(out, blockFaces, text, options);
+            scribe::StyledTextLayoutDesc desc{};
+            desc.fontFaces = blockFaces;
+            desc.text = text;
+            desc.options.fontSize = fontSize;
+            desc.options.wrap = wrap;
+            desc.options.maxWidth = maxWidth;
+            desc.options.direction = direction;
+            desc.styles = styles;
+            desc.styleSpans = styleSpans;
+            desc.features = features;
+            return m_layoutEngine.LayoutStyledText(out, desc);
         };
 
         auto buildRetainedText = [&](scribe::RetainedTextModel& out,
                                      Span<const scribe::LoadedFontFaceBlob> blockFaces,
                                      const scribe::LayoutResult& layout,
-                                     float fontSize) -> bool
+                                     float fontSize,
+                                     Span<const scribe::TextStyle> styles = {}) -> bool
         {
             out.Clear();
 
@@ -1247,6 +1422,7 @@ namespace he
             retainedDesc.layout = &layout;
             retainedDesc.fontSize = fontSize;
             retainedDesc.darkBackgroundPreferred = true;
+            retainedDesc.styles = styles;
             return out.Build(retainedDesc) && m_renderer.PrepareRetainedText(out);
         };
 
@@ -1259,6 +1435,63 @@ namespace he
             return out.Build(retainedDesc) && m_renderer.PrepareRetainedVectorImage(out);
         };
 
+        auto resolveBlockFaces = [&](const SceneTextBlock& block, Vector<scribe::LoadedFontFaceBlob>& out) -> bool
+        {
+            out.Clear();
+
+            if (!block.faceIndices.IsEmpty())
+            {
+                out.Reserve(block.faceIndices.Size());
+                for (uint32_t fontIndex : block.faceIndices)
+                {
+                    if ((fontIndex < m_fonts.Size()) && m_fonts[fontIndex].blob.root.IsValid())
+                    {
+                        out.EmplaceBack(m_fonts[fontIndex].blob);
+                    }
+                }
+            }
+            else if (block.useAllFaces)
+            {
+                out = faceSpan;
+            }
+            else if ((block.fontFaceIndex < m_fonts.Size()) && m_fonts[block.fontFaceIndex].blob.root.IsValid())
+            {
+                out.EmplaceBack(m_fonts[block.fontFaceIndex].blob);
+            }
+
+            return !out.IsEmpty();
+        };
+
+        auto finalizeSceneBlock = [&](SceneTextBlock& block,
+                                      float maxWidth,
+                                      scribe::TextDirection direction,
+                                      bool wrap = true) -> bool
+        {
+            Vector<scribe::LoadedFontFaceBlob> blockFacesStorage{};
+            if (!resolveBlockFaces(block, blockFacesStorage))
+            {
+                return false;
+            }
+
+            const Span<const scribe::LoadedFontFaceBlob> blockFaces(blockFacesStorage.Data(), blockFacesStorage.Size());
+            if (!layoutText(
+                    block.layout,
+                    blockFaces,
+                    block.text,
+                    block.fontSize,
+                    maxWidth,
+                    direction,
+                    wrap,
+                    block.styles,
+                    block.styleSpans,
+                    block.features))
+            {
+                return false;
+            }
+
+            return buildRetainedText(block.retainedText, blockFaces, block.layout, block.fontSize, block.styles);
+        };
+
         auto addSceneBlock = [&](const char* text,
                                  const Vec2f& origin,
                                  float fontSize,
@@ -1268,8 +1501,10 @@ namespace he
                                  const Vec4f& color = { 0.0f, 0.0f, 0.0f, 1.0f },
                                  uint32_t fontFaceIndex = 0,
                                  bool pixelAlignBaseline = false,
-                                 bool pixelAlignCapHeight = false) -> SceneTextBlock*
+                                 bool pixelAlignCapHeight = false,
+                                 bool wrap = true) -> SceneTextBlock*
         {
+            const uint32_t blockIndex = m_sceneBlocks.Size();
             SceneTextBlock& block = m_sceneBlocks.EmplaceBack();
             block.text = text;
             block.origin = origin;
@@ -1280,17 +1515,25 @@ namespace he
             block.pixelAlignBaseline = pixelAlignBaseline;
             block.pixelAlignCapHeight = pixelAlignCapHeight;
 
-            const Span<const scribe::LoadedFontFaceBlob> blockFaces = useAllFaces
-                ? faceSpan
-                : Span<const scribe::LoadedFontFaceBlob>(&faces[Min(fontFaceIndex, faceCount - 1)], 1);
-
-            if (!layoutText(block.layout, blockFaces, block.text, fontSize, maxWidth, direction))
+            if (!finalizeSceneBlock(block, maxWidth, direction, wrap))
             {
+                m_sceneBlocks.Resize(blockIndex);
                 return nullptr;
             }
 
-            if (!buildRetainedText(block.retainedText, blockFaces, block.layout, fontSize))
+            return &block;
+        };
+
+        auto addPreparedSceneBlock = [&](SceneTextBlock&& prototype,
+                                         float maxWidth,
+                                         scribe::TextDirection direction,
+                                         bool wrap = true) -> SceneTextBlock*
+        {
+            const uint32_t blockIndex = m_sceneBlocks.Size();
+            SceneTextBlock& block = m_sceneBlocks.EmplaceBack(Move(prototype));
+            if (!finalizeSceneBlock(block, maxWidth, direction, wrap))
             {
+                m_sceneBlocks.Resize(blockIndex);
                 return nullptr;
             }
 
@@ -1341,6 +1584,43 @@ namespace he
                 const float enabledX = disabledX + sampleWidth + columnGap;
                 const Vec4f mutedColor{ 0.35f, 0.35f, 0.35f, 1.0f };
                 const Vec4f noteColor{ 0.15f, 0.45f, 0.90f, 1.0f };
+                const uint32_t sansRegularIndex = (m_sansRegularFontIndex != InvalidIndex) ? m_sansRegularFontIndex : m_uiFontIndex;
+                const uint32_t sansBoldIndex = (m_sansBoldFontIndex != InvalidIndex) ? m_sansBoldFontIndex : sansRegularIndex;
+                const uint32_t sansItalicIndex = (m_sansItalicFontIndex != InvalidIndex) ? m_sansItalicFontIndex : sansRegularIndex;
+                const uint32_t sansBoldItalicIndex = (m_sansBoldItalicFontIndex != InvalidIndex) ? m_sansBoldItalicFontIndex : sansBoldIndex;
+                const uint32_t monoIndex = (m_monoFontIndex != InvalidIndex) ? m_monoFontIndex : sansRegularIndex;
+                const uint32_t serifRegularIndex = (m_serifRegularFontIndex != InvalidIndex) ? m_serifRegularFontIndex : sansRegularIndex;
+                const uint32_t featureFontIndex = (m_featureFontIndex != InvalidIndex) ? m_featureFontIndex : serifRegularIndex;
+                const uint32_t rtlFontIndex = (m_rtlFontIndex != InvalidIndex) ? m_rtlFontIndex : sansRegularIndex;
+                const uint32_t colorFontIndex = (m_colorFontIndex != InvalidIndex) ? m_colorFontIndex : sansRegularIndex;
+                const uint32_t symbolFontIndex = (m_symbolFontIndex != InvalidIndex) ? m_symbolFontIndex : sansRegularIndex;
+
+                auto addFaceIndices = [](SceneTextBlock& block, Span<const uint32_t> indices)
+                {
+                    for (uint32_t fontIndex : indices)
+                    {
+                        block.faceIndices.PushBack(fontIndex);
+                    }
+                };
+
+                auto addCustomBlock = [&](SceneTextBlock&& prototype,
+                                          float x,
+                                          float y,
+                                          float fontSize,
+                                          float maxWidth,
+                                          scribe::TextDirection direction,
+                                          bool useAllFaces,
+                                          uint32_t fontFaceIndex,
+                                          const Vec4f& color = { 0.0f, 0.0f, 0.0f, 1.0f },
+                                          bool wrap = true) -> SceneTextBlock*
+                {
+                    prototype.origin = { x, y };
+                    prototype.fontSize = fontSize;
+                    prototype.color = color;
+                    prototype.fontFaceIndex = fontFaceIndex;
+                    prototype.useAllFaces = useAllFaces;
+                    return addPreparedSceneBlock(Move(prototype), maxWidth, direction, wrap);
+                };
 
                 if (!addSceneBlock("Feature", { 0.0f, 0.0f }, sectionLabelSize, leftWidth, false, scribe::TextDirection::LeftToRight, mutedColor)
                     || !addSceneBlock("Disabled / current gap", { disabledX, 0.0f }, sectionLabelSize, sampleWidth, false, scribe::TextDirection::LeftToRight, mutedColor)
@@ -1350,8 +1630,9 @@ namespace he
                 }
 
                 float rowY = 46.0f * dpiScale;
-                for (const FeatureRowSpec& row : FeatureRows)
+                for (uint32_t rowIndex = 0; rowIndex < HE_LENGTH_OF(FeatureRows); ++rowIndex)
                 {
+                    const FeatureRowSpec& row = FeatureRows[rowIndex];
                     SceneTextBlock* titleBlock = addSceneBlock(
                         row.title,
                         { 0.0f, rowY },
@@ -1372,21 +1653,395 @@ namespace he
                         false,
                         scribe::TextDirection::LeftToRight,
                         mutedColor);
-                    SceneTextBlock* disabledBlock = addSceneBlock(
-                        row.disabledSample,
-                        { disabledX, rowY + (4.0f * dpiScale) },
-                        sampleSize,
-                        sampleWidth,
-                        true,
-                        row.disabledDirection);
-                    SceneTextBlock* enabledBlock = addSceneBlock(
-                        row.enabledSample,
-                        { enabledX, rowY + (4.0f * dpiScale) },
-                        sampleSize,
-                        sampleWidth,
-                        true,
-                        row.enabledDirection);
-                    if (!descriptionBlock || !disabledBlock || !enabledBlock)
+                    if (!descriptionBlock)
+                    {
+                        return false;
+                    }
+
+                    SceneTextBlock* disabledBlock = nullptr;
+                    SceneTextBlock* enabledBlock = nullptr;
+                    switch (rowIndex)
+                    {
+                        case 0:
+                        {
+                            disabledBlock = addSceneBlock("Regular italic bold {code}", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, sansRegularIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "Regular italic bold {code}";
+                            const uint32_t styleFaces[] = { sansRegularIndex, sansBoldIndex, sansItalicIndex, sansBoldItalicIndex, monoIndex };
+                            addFaceIndices(enabled, styleFaces);
+                            enabled.styles.Resize(5, DefaultInit);
+                            enabled.styles[1].fontFaceIndex = 2;
+                            enabled.styles[2].fontFaceIndex = 1;
+                            enabled.styles[3].fontFaceIndex = 4;
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "italic", 1);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "bold", 2);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "{code}", 3);
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, sansRegularIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 1:
+                        {
+                            disabledBlock = addSceneBlock("Stretched text\nSkewed text", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, sansRegularIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "Stretched text\nSkewed text";
+                            const uint32_t faceIndices[] = { sansRegularIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(3, DefaultInit);
+                            enabled.styles[1].stretchX = 1.35f;
+                            enabled.styles[2].skewX = -0.35f;
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Stretched text", 1);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Skewed text", 2);
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, sansRegularIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 2:
+                        {
+                            disabledBlock = addSceneBlock("Underline\nStrike-through", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, sansRegularIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "Underline\nStrike-through";
+                            const uint32_t faceIndices[] = { sansRegularIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(3, DefaultInit);
+                            enabled.styles[1].decorations = scribe::TextDecorationFlags::Underline;
+                            enabled.styles[1].decorationColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+                            enabled.styles[2].decorations = scribe::TextDecorationFlags::Strikethrough;
+                            enabled.styles[2].decorationColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Underline", 1);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Strike-through", 2);
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, sansRegularIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 3:
+                        {
+                            disabledBlock = addSceneBlock("Tight tracking\nLoose tracking", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, sansRegularIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "Tight tracking\nLoose tracking";
+                            const uint32_t faceIndices[] = { sansRegularIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(3, DefaultInit);
+                            enabled.styles[1].trackingEm = -0.05f;
+                            enabled.styles[2].trackingEm = 0.05f;
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Tight tracking", 1);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Loose tracking", 2);
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, sansRegularIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 4:
+                        {
+                            disabledBlock = addSceneBlock("🙂 😀 🎨 🌈 ✨", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, symbolFontIndex, false, false, false);
+                            enabledBlock = addSceneBlock("🙂 😀 🎨 🌈 ✨", { enabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, true, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, colorFontIndex, false, false, false);
+                            break;
+                        }
+
+                        case 5:
+                        {
+                            disabledBlock = addSceneBlock("👋 👋 👋", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, colorFontIndex, false, false, false);
+                            enabledBlock = addSceneBlock("👋🏻 👋🏽 👋🏿 🧑🏽‍⚕️", { enabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, true, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, colorFontIndex, false, false, false);
+                            break;
+                        }
+
+                        case 6:
+                        {
+                            SceneTextBlock kernOff{};
+                            kernOff.text = "AVATAR WAVE";
+                            const uint32_t faceIndices[] = { featureFontIndex };
+                            addFaceIndices(kernOff, faceIndices);
+                            kernOff.styles.Resize(2, DefaultInit);
+                            kernOff.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('k', 'e', 'r', 'n'), 0 });
+                            kernOff.styles[1].firstFeature = 0;
+                            kernOff.styles[1].featureCount = 1;
+                            kernOff.styleSpans.EmplaceBack(scribe::TextStyleSpan{ 0, static_cast<uint32_t>(kernOff.text.Size()), 1 });
+                            disabledBlock = addCustomBlock(Move(kernOff), disabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, featureFontIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            enabledBlock = addSceneBlock("AVATAR WAVE", { enabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, featureFontIndex, false, false, false);
+                            break;
+                        }
+
+                        case 7:
+                        {
+                            SceneTextBlock ligaOff{};
+                            ligaOff.text = "office official afflict";
+                            const uint32_t faceIndices[] = { featureFontIndex };
+                            addFaceIndices(ligaOff, faceIndices);
+                            ligaOff.styles.Resize(2, DefaultInit);
+                            ligaOff.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('l', 'i', 'g', 'a'), 0 });
+                            ligaOff.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('c', 'l', 'i', 'g'), 0 });
+                            ligaOff.styles[1].firstFeature = 0;
+                            ligaOff.styles[1].featureCount = 2;
+                            ligaOff.styleSpans.EmplaceBack(scribe::TextStyleSpan{ 0, static_cast<uint32_t>(ligaOff.text.Size()), 1 });
+                            disabledBlock = addCustomBlock(Move(ligaOff), disabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, featureFontIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            enabledBlock = addSceneBlock("office official afflict", { enabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, featureFontIndex, false, false, false);
+                            break;
+                        }
+
+                        case 8:
+                        {
+                            disabledBlock = addSceneBlock("S ̧ l ̈ u ̄ g ̊", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, serifRegularIndex, false, false, false);
+                            enabledBlock = addSceneBlock("Şl̈ūg̊", { enabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, serifRegularIndex, false, false, false);
+                            break;
+                        }
+
+                        case 9:
+                        {
+                            disabledBlock = addSceneBlock("Harvest Engine", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, featureFontIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "Harvest Engine";
+                            const uint32_t faceIndices[] = { featureFontIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(2, DefaultInit);
+                            enabled.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('s', 'm', 'c', 'p'), 1 });
+                            enabled.styles[1].firstFeature = 0;
+                            enabled.styles[1].featureCount = 1;
+                            enabled.styleSpans.EmplaceBack(scribe::TextStyleSpan{ 0, static_cast<uint32_t>(enabled.text.Size()), 1 });
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, featureFontIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 10:
+                        {
+                            disabledBlock = addSceneBlock("arial lqty69", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, featureFontIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "arial lqty69";
+                            const uint32_t faceIndices[] = { featureFontIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(2, DefaultInit);
+                            enabled.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('s', 's', '0', '1'), 1 });
+                            enabled.styles[1].firstFeature = 0;
+                            enabled.styles[1].featureCount = 1;
+                            enabled.styleSpans.EmplaceBack(scribe::TextStyleSpan{ 0, static_cast<uint32_t>(enabled.text.Size()), 1 });
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, featureFontIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 11:
+                        {
+                            disabledBlock = addSceneBlock("[(ALL-CAPS)]", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, featureFontIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "[(ALL-CAPS)]";
+                            const uint32_t faceIndices[] = { featureFontIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(2, DefaultInit);
+                            enabled.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('c', 'a', 's', 'e'), 1 });
+                            enabled.styles[1].firstFeature = 0;
+                            enabled.styles[1].featureCount = 1;
+                            enabled.styleSpans.EmplaceBack(scribe::TextStyleSpan{ 0, static_cast<uint32_t>(enabled.text.Size()), 1 });
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, featureFontIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 12:
+                        {
+                            disabledBlock = addSceneBlock("CH3CH2CH3\nFootnote5", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, featureFontIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "CH3CH2CH3\nFootnote5";
+                            const uint32_t faceIndices[] = { featureFontIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(3, DefaultInit);
+                            enabled.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('s', 'u', 'b', 's'), 1 });
+                            enabled.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('s', 'u', 'p', 's'), 1 });
+                            enabled.styles[1].firstFeature = 0;
+                            enabled.styles[1].featureCount = 1;
+                            enabled.styles[2].firstFeature = 1;
+                            enabled.styles[2].featureCount = 1;
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "3CH2CH3", 1);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "5", 2);
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, featureFontIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 13:
+                        {
+                            disabledBlock = addSceneBlock("TextSub1 Sub2\nTextSup1 Sup2", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, sansRegularIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "TextSub1 Sub2\nTextSup1 Sup2";
+                            const uint32_t faceIndices[] = { sansRegularIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(5, DefaultInit);
+                            enabled.styles[1].baselineShiftEm = 0.20f;
+                            enabled.styles[1].glyphScale = 0.72f;
+                            enabled.styles[2].baselineShiftEm = 0.20f;
+                            enabled.styles[2].glyphScale = 0.60f;
+                            enabled.styles[3].baselineShiftEm = -0.35f;
+                            enabled.styles[3].glyphScale = 0.72f;
+                            enabled.styles[4].baselineShiftEm = -0.35f;
+                            enabled.styles[4].glyphScale = 0.60f;
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Sub1", 1);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Sub2", 2);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Sup1", 3);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Sup2", 4);
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, sansRegularIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 14:
+                        {
+                            disabledBlock = addSceneBlock("1st 2nd 3rd 4th\n123/456", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, featureFontIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "1st 2nd 3rd 4th\n123/456";
+                            const uint32_t faceIndices[] = { featureFontIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(3, DefaultInit);
+                            enabled.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('o', 'r', 'd', 'n'), 1 });
+                            enabled.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('f', 'r', 'a', 'c'), 1 });
+                            enabled.styles[1].firstFeature = 0;
+                            enabled.styles[1].featureCount = 1;
+                            enabled.styles[2].firstFeature = 1;
+                            enabled.styles[2].featureCount = 1;
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "1st 2nd 3rd 4th", 1);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "123/456", 2);
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, featureFontIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 15:
+                        {
+                            disabledBlock = addSceneBlock("0123456789\n0123456789", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, featureFontIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "0123456789\n0123456789";
+                            const uint32_t faceIndices[] = { featureFontIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(3, DefaultInit);
+                            enabled.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('o', 'n', 'u', 'm'), 1 });
+                            enabled.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('p', 'n', 'u', 'm'), 1 });
+                            enabled.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('l', 'n', 'u', 'm'), 1 });
+                            enabled.features.EmplaceBack(scribe::TextFeatureSetting{ scribe::MakeOpenTypeFeatureTag('t', 'n', 'u', 'm'), 1 });
+                            enabled.styles[1].firstFeature = 0;
+                            enabled.styles[1].featureCount = 2;
+                            enabled.styles[2].firstFeature = 2;
+                            enabled.styles[2].featureCount = 2;
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "0123456789", 1, 0);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "0123456789", 2, 1);
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, featureFontIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 16:
+                        {
+                            const char* unicodeSample = "Σύνθετη απόδοση γραμματοσειράς\nУлучшенный отрисовщик шрифтов\n高级字体渲染和文本布局";
+                            disabledBlock = addSceneBlock(unicodeSample, { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, featureFontIndex);
+                            enabledBlock = addSceneBlock(unicodeSample, { enabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, true, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, sansRegularIndex);
+                            break;
+                        }
+
+                        case 17:
+                        {
+                            const char* rtlSample = "مرحبا بالعالم\nעיבוד גופן מתקדם";
+                            disabledBlock = addSceneBlock(rtlSample, { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, rtlFontIndex, false, false, true);
+                            enabledBlock = addSceneBlock(rtlSample, { enabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, true, scribe::TextDirection::RightToLeft, { 0.0f, 0.0f, 0.0f, 1.0f }, rtlFontIndex, false, false, true);
+                            break;
+                        }
+
+                        case 18:
+                        {
+                            disabledBlock = addSceneBlock("ت\u200Cق\u200Cد\u200Cي\u200Cم\u200C الخط", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, true, scribe::TextDirection::RightToLeft, { 0.0f, 0.0f, 0.0f, 1.0f }, rtlFontIndex, false, false, true);
+                            enabledBlock = addSceneBlock("تقديم الخط", { enabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, true, scribe::TextDirection::RightToLeft, { 0.0f, 0.0f, 0.0f, 1.0f }, rtlFontIndex, false, false, true);
+                            break;
+                        }
+
+                        case 19:
+                        {
+                            const char* bidiSample = "GPU text مع English 123";
+                            disabledBlock = addSceneBlock(bidiSample, { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, true, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, rtlFontIndex, false, false, true);
+                            enabledBlock = addSceneBlock(bidiSample, { enabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, true, scribe::TextDirection::Auto, { 0.0f, 0.0f, 0.0f, 1.0f }, rtlFontIndex, false, false, true);
+                            break;
+                        }
+
+                        case 20:
+                        {
+                            disabledBlock = addSceneBlock("Shadow Outline Both", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, sansBoldIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "Shadow Outline Both";
+                            const uint32_t faceIndices[] = { sansBoldIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(4, DefaultInit);
+                            enabled.styles[1].effects = scribe::TextEffectFlags::Shadow;
+                            enabled.styles[1].color = { 0.0f, 0.55f, 0.75f, 1.0f };
+                            enabled.styles[1].shadowColor = { 0.0f, 0.35f, 0.55f, 0.45f };
+                            enabled.styles[1].shadowOffsetEm = { 0.06f, 0.08f };
+                            enabled.styles[2].effects = scribe::TextEffectFlags::Outline;
+                            enabled.styles[2].color = { 1.0f, 0.85f, 0.15f, 1.0f };
+                            enabled.styles[2].outlineColor = { 0.85f, 0.10f, 0.10f, 1.0f };
+                            enabled.styles[2].outlineWidthEm = 0.05f;
+                            enabled.styles[3].effects = scribe::TextEffectFlags::Shadow | scribe::TextEffectFlags::Outline;
+                            enabled.styles[3].color = { 0.85f, 0.10f, 0.10f, 1.0f };
+                            enabled.styles[3].shadowColor = { 0.0f, 0.0f, 0.0f, 0.35f };
+                            enabled.styles[3].shadowOffsetEm = { 0.06f, 0.08f };
+                            enabled.styles[3].outlineColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+                            enabled.styles[3].outlineWidthEm = 0.05f;
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Shadow", 1);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Outline", 2);
+                            AddStyleSpanForSubstring(enabled.styleSpans, enabled.text, "Both", 3);
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, sansBoldIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        case 21:
+                        {
+                            disabledBlock = addSceneBlock("Text laid out on a curve", { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, false, scribe::TextDirection::LeftToRight, { 0.0f, 0.0f, 0.0f, 1.0f }, serifRegularIndex, false, false, false);
+
+                            SceneTextBlock enabled{};
+                            enabled.text = "Text laid out on a curve";
+                            const uint32_t faceIndices[] = { serifRegularIndex };
+                            addFaceIndices(enabled, faceIndices);
+                            enabled.styles.Resize(enabled.text.Size() + 1u, DefaultInit);
+
+                            uint32_t nonSpaceCount = 0;
+                            for (uint32_t i = 0; i < enabled.text.Size(); ++i)
+                            {
+                                if (enabled.text.Data()[i] != ' ')
+                                {
+                                    ++nonSpaceCount;
+                                }
+                            }
+
+                            uint32_t styleIndex = 1;
+                            uint32_t nonSpaceIndex = 0;
+                            for (uint32_t i = 0; i < enabled.text.Size(); ++i)
+                            {
+                                if (enabled.text.Data()[i] == ' ')
+                                {
+                                    continue;
+                                }
+
+                                const float t = (nonSpaceCount > 1u)
+                                    ? (static_cast<float>(nonSpaceIndex) / static_cast<float>(nonSpaceCount - 1u))
+                                    : 0.5f;
+                                const float centered = (t * 2.0f) - 1.0f;
+                                enabled.styles[styleIndex].baselineShiftEm = 0.55f * (1.0f - (centered * centered));
+                                enabled.styles[styleIndex].rotationRadians = centered * -0.55f;
+                                enabled.styleSpans.EmplaceBack(scribe::TextStyleSpan{ i, i + 1u, styleIndex });
+                                ++styleIndex;
+                                ++nonSpaceIndex;
+                            }
+
+                            enabledBlock = addCustomBlock(Move(enabled), enabledX, rowY + (4.0f * dpiScale), sampleSize, sampleWidth, scribe::TextDirection::LeftToRight, false, serifRegularIndex, { 0.0f, 0.0f, 0.0f, 1.0f }, false);
+                            break;
+                        }
+
+                        default:
+                        {
+                            disabledBlock = addSceneBlock(row.disabledSample, { disabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, true, row.disabledDirection);
+                            enabledBlock = addSceneBlock(row.enabledSample, { enabledX, rowY + (4.0f * dpiScale) }, sampleSize, sampleWidth, true, row.enabledDirection);
+                            break;
+                        }
+                    }
+
+                    if (!disabledBlock || !enabledBlock)
                     {
                         return false;
                     }
@@ -1399,7 +2054,7 @@ namespace he
                 }
 
                 if (!addSceneBlock(
-                        "Rows marked as not yet implemented stay visible here so the feature scene doubles as a roadmap.",
+                        "Scene 1 is the active feature roadmap: text rows now render real current/target comparisons, while vector paint and stroke features remain tracked for the SVG scene.",
                         { 0.0f, rowY + (6.0f * dpiScale) },
                         featureDescSize,
                         contentWidth,

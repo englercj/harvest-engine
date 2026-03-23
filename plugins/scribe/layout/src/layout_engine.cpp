@@ -25,6 +25,7 @@ namespace he::scribe
             hb_blob_t* blob{ nullptr };
             hb_face_t* face{ nullptr };
             hb_font_t* font{ nullptr };
+            float fontSize{ 0.0f };
             float unitScale{ 0.0f };
             float ascent{ 0.0f };
             float descent{ 0.0f };
@@ -38,6 +39,7 @@ namespace he::scribe
             uint32_t textByteStart{ 0 };
             uint32_t textByteEnd{ 0 };
             uint32_t fontFaceIndex{ 0 };
+            uint32_t styleIndex{ 0 };
             hb_script_t script{ HB_SCRIPT_UNKNOWN };
             ClusterDirection direction{ ClusterDirection::LeftToRight };
             bool isWhitespace{ false };
@@ -52,6 +54,7 @@ namespace he::scribe
             uint32_t textByteStart{ 0 };
             uint32_t textByteEnd{ 0 };
             uint32_t fontFaceIndex{ 0 };
+            uint32_t styleIndex{ 0 };
             uint32_t paragraphIndex{ 0 };
             hb_script_t script{ HB_SCRIPT_UNKNOWN };
             ClusterDirection direction{ ClusterDirection::LeftToRight };
@@ -222,6 +225,34 @@ namespace he::scribe
             return true;
         }
 
+        const TextStyle* GetStyleByIndex(Span<const TextStyle> styles, uint32_t styleIndex)
+        {
+            if ((styleIndex == InvalidTextStyleIndex) || (styleIndex >= styles.Size()))
+            {
+                return nullptr;
+            }
+
+            return &styles[styleIndex];
+        }
+
+        uint32_t ResolveStyleIndex(
+            Span<const TextStyleSpan> spans,
+            uint32_t clusterByteStart,
+            uint32_t clusterByteEnd)
+        {
+            for (const TextStyleSpan& span : spans)
+            {
+                if ((clusterByteEnd <= span.textByteStart) || (clusterByteStart >= span.textByteEnd))
+                {
+                    continue;
+                }
+
+                return span.styleIndex;
+            }
+
+            return 0;
+        }
+
         bool BuildFontContexts(Vector<FontContext>& out, Span<const LoadedFontFaceBlob> faces, const LayoutOptions& options)
         {
             out.Clear();
@@ -233,6 +264,7 @@ namespace he::scribe
                 const auto sourceBytes = faces[i].shaping.GetSourceBytes();
                 const uint32_t unitsPerEm = Max(faces[i].metadata.GetMetrics().GetUnitsPerEm(), 1u);
 
+                ctx.fontSize = options.fontSize;
                 ctx.unitScale = options.fontSize / static_cast<float>(unitsPerEm);
                 ctx.ascent = static_cast<float>(faces[i].metadata.GetMetrics().GetAscender()) * ctx.unitScale;
                 ctx.descent = static_cast<float>(Abs(faces[i].metadata.GetMetrics().GetDescender())) * ctx.unitScale;
@@ -337,11 +369,27 @@ namespace he::scribe
 
         uint32_t ChooseClusterFaceIndex(
             Span<const FontContext> faces,
+            Span<const TextStyle> styles,
             StringView text,
             bool isWhitespace,
             uint32_t defaultFaceIndex,
-            uint32_t previousFaceIndex)
+            uint32_t previousFaceIndex,
+            uint32_t styleIndex)
         {
+            const TextStyle* style = GetStyleByIndex(styles, styleIndex);
+            if (style && (style->fontFaceIndex < faces.Size()))
+            {
+                if (isWhitespace)
+                {
+                    return style->fontFaceIndex;
+                }
+
+                if (FaceHasClusterCoverage(faces[style->fontFaceIndex], text))
+                {
+                    return style->fontFaceIndex;
+                }
+            }
+
             if (isWhitespace)
             {
                 if ((previousFaceIndex < faces.Size()) && faces[previousFaceIndex].hasSourceBytes)
@@ -404,7 +452,8 @@ namespace he::scribe
             Vector<SourceCluster>& out,
             StringView paragraphText,
             uint32_t paragraphByteOffset,
-            TextDirection paragraphDirection)
+            TextDirection paragraphDirection,
+            Span<const TextStyleSpan> styleSpans)
         {
             out.Clear();
 
@@ -454,6 +503,8 @@ namespace he::scribe
                         : ClusterDirection::LeftToRight;
                 }
 
+                out.Back().styleIndex = ResolveStyleIndex(styleSpans, out.Back().textByteStart, out.Back().textByteEnd);
+
                 previousWasJoiner = (codePoint == 0x200Du);
                 cursor += byteCount;
             }
@@ -495,7 +546,11 @@ namespace he::scribe
             }
         }
 
-        void AssignClusterFaces(Vector<SourceCluster>& clusters, Span<const FontContext> faces, StringView fullText)
+        void AssignClusterFaces(
+            Vector<SourceCluster>& clusters,
+            Span<const FontContext> faces,
+            Span<const TextStyle> styles,
+            StringView fullText)
         {
             const uint32_t defaultFaceIndex = FindDefaultFaceIndex(faces);
             uint32_t previousFaceIndex = defaultFaceIndex;
@@ -506,10 +561,12 @@ namespace he::scribe
                     cluster.textByteEnd - cluster.textByteStart);
                 cluster.fontFaceIndex = ChooseClusterFaceIndex(
                     faces,
+                    styles,
                     clusterText,
                     cluster.isWhitespace,
                     defaultFaceIndex,
-                    previousFaceIndex);
+                    previousFaceIndex,
+                    cluster.styleIndex);
                 previousFaceIndex = cluster.fontFaceIndex;
             }
         }
@@ -528,6 +585,7 @@ namespace he::scribe
             current.textByteStart = clusters[0].textByteStart;
             current.textByteEnd = clusters[0].textByteEnd;
             current.fontFaceIndex = clusters[0].fontFaceIndex;
+            current.styleIndex = clusters[0].styleIndex;
             current.paragraphIndex = paragraphIndex;
             current.script = clusters[0].script;
             current.direction = clusters[0].direction;
@@ -536,6 +594,7 @@ namespace he::scribe
             {
                 const SourceCluster& cluster = clusters[i];
                 if ((cluster.fontFaceIndex == current.fontFaceIndex)
+                    && (cluster.styleIndex == current.styleIndex)
                     && (cluster.script == current.script)
                     && (cluster.direction == current.direction))
                 {
@@ -551,6 +610,7 @@ namespace he::scribe
                     current.textByteStart = cluster.textByteStart;
                     current.textByteEnd = cluster.textByteEnd;
                     current.fontFaceIndex = cluster.fontFaceIndex;
+                    current.styleIndex = cluster.styleIndex;
                     current.paragraphIndex = paragraphIndex;
                     current.script = cluster.script;
                     current.direction = cluster.direction;
@@ -587,6 +647,8 @@ namespace he::scribe
             RunInfo& run,
             Span<const SourceCluster> runSourceClusters,
             Span<const FontContext> faces,
+            Span<const TextStyle> styles,
+            Span<const TextFeatureSetting> featureSettings,
             StringView fullText)
         {
             if (run.fontFaceIndex >= faces.Size())
@@ -606,6 +668,27 @@ namespace he::scribe
                 return false;
             }
 
+            const TextStyle* style = GetStyleByIndex(styles, run.styleIndex);
+            Vector<hb_feature_t> features{};
+            if (style)
+            {
+                features.Reserve(style->featureCount);
+                for (uint32_t featureIndex = 0; featureIndex < style->featureCount; ++featureIndex)
+                {
+                    const uint32_t index = style->firstFeature + featureIndex;
+                    if (index >= featureSettings.Size())
+                    {
+                        break;
+                    }
+
+                    hb_feature_t& feature = features.EmplaceBack();
+                    feature.tag = featureSettings[index].tag;
+                    feature.value = featureSettings[index].value;
+                    feature.start = HB_FEATURE_GLOBAL_START;
+                    feature.end = HB_FEATURE_GLOBAL_END;
+                }
+            }
+
             hb_buffer_set_cluster_level(buffer.Get(), HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
             hb_buffer_set_direction(buffer.Get(), ToHbDirection(run.direction));
             hb_buffer_set_script(buffer.Get(), run.script);
@@ -615,7 +698,7 @@ namespace he::scribe
                 static_cast<int32_t>(fullText.Size()),
                 static_cast<unsigned int>(run.textByteStart),
                 static_cast<int32_t>(run.textByteEnd - run.textByteStart));
-            hb_shape(face.font, buffer.Get(), nullptr, 0);
+            hb_shape(face.font, buffer.Get(), features.Data(), features.Size());
 
             unsigned int glyphCount = 0;
             const hb_glyph_info_t* infos = hb_buffer_get_glyph_infos(buffer.Get(), &glyphCount);
@@ -640,6 +723,7 @@ namespace he::scribe
                 ShapedGlyph& glyph = out.glyphs.EmplaceBack();
                 glyph.glyphIndex = info.codepoint;
                 glyph.fontFaceIndex = run.fontFaceIndex;
+                glyph.styleIndex = run.styleIndex;
                 glyph.textByteStart = info.cluster;
                 glyph.textByteEnd = FindClusterTextEnd(runSourceClusters, info.cluster, run.textByteEnd);
                 glyph.offset = {
@@ -687,11 +771,25 @@ namespace he::scribe
                     cluster.glyphStart = span.glyphStart;
                     cluster.glyphCount = span.glyphCount;
                     cluster.fontFaceIndex = run.fontFaceIndex;
+                    cluster.styleIndex = run.styleIndex;
                     cluster.advance = span.advance;
                     cluster.isWhitespace = sourceCluster.isWhitespace || IsAllWhitespace(fullText.Substring(
                         cluster.textByteStart,
                         cluster.textByteEnd - cluster.textByteStart));
                     break;
+                }
+            }
+
+            if (style && (style->trackingEm != 0.0f))
+            {
+                const float tracking = style->trackingEm * face.fontSize;
+                for (uint32_t clusterIndex = run.layoutClusterStart; clusterIndex < out.clusters.Size(); ++clusterIndex)
+                {
+                    TextCluster& cluster = out.clusters[clusterIndex];
+                    if (!cluster.isWhitespace)
+                    {
+                        cluster.advance += tracking;
+                    }
                 }
             }
 
@@ -862,15 +960,35 @@ namespace he::scribe
         StringView text,
         const LayoutOptions& options) const
     {
+        const TextStyle defaultStyle{};
+        const TextStyle styles[] = { defaultStyle };
+
+        StyledTextLayoutDesc desc{};
+        desc.fontFaces = faces;
+        desc.text = text;
+        desc.options = options;
+        desc.styles = Span<const TextStyle>(styles, 1);
+        return LayoutStyledText(out, desc);
+    }
+
+    bool LayoutEngine::LayoutStyledText(LayoutResult& out, const StyledTextLayoutDesc& desc) const
+    {
         out.Clear();
 
-        if (faces.IsEmpty() || !UTF8Validate(text.Data(), text.Size()))
+        if (desc.fontFaces.IsEmpty() || !UTF8Validate(desc.text.Data(), desc.text.Size()))
         {
             return false;
         }
 
+        const TextStyle defaultStyle{};
+        Span<const TextStyle> styles = desc.styles;
+        if (styles.IsEmpty())
+        {
+            styles = Span<const TextStyle>(&defaultStyle, 1);
+        }
+
         Vector<FontContext> fontContexts{};
-        if (!BuildFontContexts(fontContexts, faces, options))
+        if (!BuildFontContexts(fontContexts, desc.fontFaces, desc.options))
         {
             DestroyFontContexts(fontContexts);
             return false;
@@ -889,35 +1007,35 @@ namespace he::scribe
         Vector<RunInfo> runs{};
 
         uint32_t paragraphStart = 0;
-        while (paragraphStart <= text.Size())
+        while (paragraphStart <= desc.text.Size())
         {
             uint32_t paragraphEnd = paragraphStart;
-            while ((paragraphEnd < text.Size()) && (text[paragraphEnd] != '\n'))
+            while ((paragraphEnd < desc.text.Size()) && (desc.text[paragraphEnd] != '\n'))
             {
                 ++paragraphEnd;
             }
 
             uint32_t trimmedParagraphEnd = paragraphEnd;
-            if ((trimmedParagraphEnd > paragraphStart) && (text[trimmedParagraphEnd - 1] == '\r'))
+            if ((trimmedParagraphEnd > paragraphStart) && (desc.text[trimmedParagraphEnd - 1] == '\r'))
             {
                 --trimmedParagraphEnd;
             }
 
-            const char* paragraphData = (paragraphStart < text.Size())
-                ? (text.Data() + paragraphStart)
+            const char* paragraphData = (paragraphStart < desc.text.Size())
+                ? (desc.text.Data() + paragraphStart)
                 : "";
             const StringView paragraphText{ paragraphData, trimmedParagraphEnd - paragraphStart };
             ParagraphInfo& paragraph = paragraphs.EmplaceBack();
             paragraph.clusterStart = out.clusters.Size();
-            paragraph.direction = ResolveParagraphDirection(paragraphText, options);
+            paragraph.direction = ResolveParagraphDirection(paragraphText, desc.options);
             paragraph.ascent = fontContexts[defaultFaceIndex].ascent;
             paragraph.descent = fontContexts[defaultFaceIndex].descent;
-            paragraph.lineHeight = fontContexts[defaultFaceIndex].lineHeight * Max(options.lineHeightScale, 0.01f);
+            paragraph.lineHeight = fontContexts[defaultFaceIndex].lineHeight * Max(desc.options.lineHeightScale, 0.01f);
 
             if (!paragraphText.IsEmpty())
             {
-                BuildParagraphSourceClusters(sourceClusters, paragraphText, paragraphStart, paragraph.direction);
-                AssignClusterFaces(sourceClusters, fontContexts, text);
+                BuildParagraphSourceClusters(sourceClusters, paragraphText, paragraphStart, paragraph.direction, desc.styleSpans);
+                AssignClusterFaces(sourceClusters, fontContexts, styles, desc.text);
                 BuildRuns(runs, sourceClusters, paragraphs.Size() - 1);
 
                 for (const SourceCluster& cluster : sourceClusters)
@@ -933,7 +1051,7 @@ namespace he::scribe
                         paragraph.descent = Max(paragraph.descent, fontContexts[cluster.fontFaceIndex].descent);
                         paragraph.lineHeight = Max(
                             paragraph.lineHeight,
-                            fontContexts[cluster.fontFaceIndex].lineHeight * Max(options.lineHeightScale, 0.01f));
+                            fontContexts[cluster.fontFaceIndex].lineHeight * Max(desc.options.lineHeightScale, 0.01f));
                     }
                 }
 
@@ -947,7 +1065,9 @@ namespace he::scribe
                         run,
                         Span<const SourceCluster>(sourceClusters.Data() + run.sourceClusterStart, run.sourceClusterCount),
                         fontContexts,
-                        text))
+                        styles,
+                        desc.features,
+                        desc.text))
                     {
                         DestroyFontContexts(fontContexts);
                         return false;
@@ -965,10 +1085,10 @@ namespace he::scribe
                 while (current < (paragraph.clusterStart + paragraph.clusterCount))
                 {
                     const TextCluster& cluster = out.clusters[current];
-                    const bool exceedsWidth = options.wrap
-                        && (options.maxWidth > 0.0f)
+                    const bool exceedsWidth = desc.options.wrap
+                        && (desc.options.maxWidth > 0.0f)
                         && (width > 0.0f)
-                        && ((width + cluster.advance) > options.maxWidth);
+                        && ((width + cluster.advance) > desc.options.maxWidth);
 
                     if (exceedsWidth)
                     {
@@ -1015,7 +1135,7 @@ namespace he::scribe
                 BuildLine(out, paragraph, {}, 0, 0, out.height);
             }
 
-            if (paragraphEnd == text.Size())
+            if (paragraphEnd == desc.text.Size())
             {
                 break;
             }

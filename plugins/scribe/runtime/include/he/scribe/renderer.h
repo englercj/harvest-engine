@@ -26,6 +26,12 @@ namespace he::scribe
         Vec4f col{ 0, 0, 0, 0 };
     };
 
+    struct PackedQuadVertex
+    {
+        Vec2f pos{ 0, 0 };
+        Vec4f col{ 0, 0, 0, 0 };
+    };
+
     struct TextureDataDesc
     {
         const void* data{ nullptr };
@@ -79,6 +85,16 @@ namespace he::scribe
         Vec2f offset{ 0, 0 };
     };
 
+    struct DrawQuadDesc
+    {
+        Vec2f position{ 0, 0 };
+        Vec2f size{ 1, 1 };
+        Vec4f color{ 1, 1, 1, 1 };
+        Vec2f basisX{ 1, 0 };
+        Vec2f basisY{ 0, 1 };
+        Vec2f offset{ 0, 0 };
+    };
+
     class Renderer
     {
     public:
@@ -112,6 +128,7 @@ namespace he::scribe
         bool PrepareRetainedVectorImage(const RetainedVectorImageModel& image);
         void ReserveQueuedVertexCapacity(uint32_t vertexCount, uint32_t batchCount = 0);
         void QueueDraw(const DrawGlyphDesc& desc);
+        void QueueQuad(const DrawQuadDesc& desc);
         void QueueRetainedText(const RetainedTextModel& text, const RetainedTextInstanceDesc& instance);
         void QueueRetainedVectorImage(const RetainedVectorImageModel& image, const RetainedVectorImageInstanceDesc& instance);
         void EndFrame();
@@ -157,7 +174,7 @@ namespace he::scribe
             const TextureDataDesc& curveTexture,
             const TextureDataDesc& bandTexture);
         void ReleaseAtlas(GlyphAtlas*& atlas);
-        bool EnsureStreamBufferCapacity(StreamBuffer& streamBuffer, uint32_t minSize);
+        bool EnsureStreamBufferCapacity(StreamBuffer& streamBuffer, uint32_t minSize, uint32_t stride, const char* name);
         bool CreateDeviceResources();
         void DestroyDeviceResources();
         void AppendDrawVertices(const DrawGlyphDesc& draw);
@@ -175,9 +192,13 @@ namespace he::scribe
         rhi::RootSignature* m_rootSignature{ nullptr };
         rhi::VertexBufferFormat* m_vertexBufferFormat{ nullptr };
         rhi::RenderPipeline* m_pipeline{ nullptr };
+        rhi::RootSignature* m_quadRootSignature{ nullptr };
+        rhi::VertexBufferFormat* m_quadVertexBufferFormat{ nullptr };
+        rhi::RenderPipeline* m_quadPipeline{ nullptr };
         rhi::Format m_targetFormat{ rhi::Format::Invalid };
         FrameDesc m_frame{};
         StreamBuffer m_streamBuffers[rhi::MaxFrameCount]{};
+        StreamBuffer m_quadStreamBuffers[rhi::MaxFrameCount]{};
         uint32_t m_streamBufferIndex{ 0 };
         Vector<GlyphAtlas*> m_cachedAtlases{};
         Vector<CachedCompiledFontGlyphSet> m_cachedFontGlyphSets{};
@@ -186,6 +207,7 @@ namespace he::scribe
         Vector<CachedCompiledGlyphResource> m_cachedVectorShapeResources{};
         Vector<StreamBatch> m_batches{};
         Vector<PackedGlyphVertex> m_streamVertices{};
+        Vector<PackedQuadVertex> m_quadVertices{};
         uint32_t m_lastSubmittedDrawCount{ 0 };
     };
 }

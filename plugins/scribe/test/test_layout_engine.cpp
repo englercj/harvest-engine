@@ -304,6 +304,41 @@ HE_TEST(scribe, layout_engine, trailing_newline_paragraph)
     HE_EXPECT_GE(layout.clusters.Size(), 1u);
 }
 
+HE_TEST(scribe, layout_engine, textsub_demo_has_no_hidden_line_start_glyphs)
+{
+    Vector<schema::Word> fontStorage;
+    LoadedFontFaceBlob font{};
+    HE_ASSERT(BuildLoadedFontFaceFromFile("NotoSans-Regular.ttf", fontStorage, font));
+
+    LayoutEngine engine;
+    LayoutResult layout;
+    const String text = "TextSub1 Sub2\nTextSup1 Sup2";
+
+    HE_ASSERT(engine.LayoutText(layout, Span<const LoadedFontFaceBlob>(&font, 1), text));
+    HE_EXPECT_EQ(layout.lines.Size(), 2u);
+    HE_EXPECT_GE(layout.clusters.Size(), 4u);
+    HE_EXPECT_GE(layout.glyphs.Size(), 8u);
+
+    const TextLine& line0 = layout.lines[0];
+    const TextLine& line1 = layout.lines[1];
+    HE_EXPECT_GT(line0.clusterCount, 0u);
+    HE_EXPECT_GT(line1.clusterCount, 0u);
+
+    const TextCluster& line0Cluster0 = layout.clusters[line0.clusterStart];
+    const TextCluster& line1Cluster0 = layout.clusters[line1.clusterStart];
+    HE_EXPECT_EQ(line0Cluster0.textByteStart, 0u);
+    HE_EXPECT_EQ(line1Cluster0.textByteStart, 14u);
+    HE_EXPECT_GT(line0Cluster0.glyphCount, 0u);
+    HE_EXPECT_GT(line1Cluster0.glyphCount, 0u);
+
+    const ShapedGlyph& line0Glyph0 = layout.glyphs[line0Cluster0.glyphStart];
+    const ShapedGlyph& line1Glyph0 = layout.glyphs[line1Cluster0.glyphStart];
+    HE_EXPECT_EQ(line0Glyph0.textByteStart, 0u);
+    HE_EXPECT_EQ(line1Glyph0.textByteStart, 14u);
+    HE_EXPECT_NE(line0Glyph0.glyphIndex, 0u);
+    HE_EXPECT_NE(line1Glyph0.glyphIndex, 0u);
+}
+
 HE_TEST(scribe, layout_engine, styled_face_override)
 {
     Vector<schema::Word> sansStorage;

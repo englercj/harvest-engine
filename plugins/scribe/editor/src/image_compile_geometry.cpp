@@ -3,6 +3,7 @@
 #include "image_compile_geometry.h"
 
 #include "band_pack_utils.h"
+#include "line_curve_utils.h"
 
 #include "he/core/log.h"
 #include "he/core/math.h"
@@ -50,6 +51,7 @@ namespace he::scribe::editor
             float maxX{ 0.0f };
             float maxY{ 0.0f };
             uint32_t curveTexelIndex{ 0 };
+            bool isLineLike{ false };
         };
 
         struct CurveRef
@@ -159,6 +161,15 @@ namespace he::scribe::editor
 
         void TransformCurveBounds(CurveData& curve)
         {
+            if (curve.isLineLike)
+            {
+                curve.minX = Min(curve.p1.x, curve.p3.x);
+                curve.minY = Min(curve.p1.y, curve.p3.y);
+                curve.maxX = Max(curve.p1.x, curve.p3.x);
+                curve.maxY = Max(curve.p1.y, curve.p3.y);
+                return;
+            }
+
             curve.minX = Min(curve.p1.x, Min(curve.p2.x, curve.p3.x));
             curve.minY = Min(curve.p1.y, Min(curve.p2.y, curve.p3.y));
             curve.maxX = Max(curve.p1.x, Max(curve.p2.x, curve.p3.x));
@@ -288,7 +299,6 @@ namespace he::scribe::editor
         public:
             explicit CurveBuilder(float flatteningTolerance)
                 : m_cubicToleranceSq(flatteningTolerance * flatteningTolerance)
-                , m_lineControlTangentOffset(0.5f)
             {
             }
 
@@ -299,38 +309,49 @@ namespace he::scribe::editor
 
             void AddLine(const Point2& from, const Point2& to)
             {
-                const float dx = to.x - from.x;
-                const float dy = to.y - from.y;
-                const float lenSq = (dx * dx) + (dy * dy);
-                if (lenSq <= DegenerateLineLengthSq)
+                LineCurvePoint control{};
+                if (!TryComputeStableLineQuadraticControlPoint(
+                        control,
+                        { from.x, from.y },
+                        { to.x, to.y },
+                        DegenerateLineLengthSq))
                 {
                     return;
                 }
 
-                // Keep the control point on the segment so the curve remains an exact
-                // line, but move it slightly away from the midpoint so the quadratic
-                // coefficients do not collapse to the midpoint-degenerate case.
-                const float invLen = 1.0f / Sqrt(lenSq);
-                const float len = lenSq * invLen;
-                const float tangentOffset = Min(m_lineControlTangentOffset, len * 0.25f);
-                const float tx = dx * invLen;
-                const float ty = dy * invLen;
-                Point2 control{};
-                control.x = Lerp(from.x, to.x, 0.5f) + (tx * tangentOffset);
-                control.y = Lerp(from.y, to.y, 0.5f) + (ty * tangentOffset);
-
-                AddQuadratic(from, control, to);
+                AppendCurve(from, { control.x, control.y }, to, true);
             }
 
             void AddQuadratic(const Point2& p1, const Point2& p2, const Point2& p3)
             {
+                AppendCurve(p1, p2, p3, false);
+            }
+
+            void AppendCurve(const Point2& p1, const Point2& p2, const Point2& p3, bool isLineLike)
+            {
                 const Point2 tp1 = TransformPoint(m_transform, p1);
                 const Point2 tp2 = TransformPoint(m_transform, p2);
                 const Point2 tp3 = TransformPoint(m_transform, p3);
-                const float minX = Min(tp1.x, tp2.x, tp3.x);
-                const float minY = Min(tp1.y, tp2.y, tp3.y);
-                const float maxX = Max(tp1.x, tp2.x, tp3.x);
-                const float maxY = Max(tp1.y, tp2.y, tp3.y);
+
+                float minX = 0.0f;
+                float minY = 0.0f;
+                float maxX = 0.0f;
+                float maxY = 0.0f;
+                if (isLineLike)
+                {
+                    minX = Min(tp1.x, tp3.x);
+                    minY = Min(tp1.y, tp3.y);
+                    maxX = Max(tp1.x, tp3.x);
+                    maxY = Max(tp1.y, tp3.y);
+                }
+                else
+                {
+                    minX = Min(tp1.x, tp2.x, tp3.x);
+                    minY = Min(tp1.y, tp2.y, tp3.y);
+                    maxX = Max(tp1.x, tp2.x, tp3.x);
+                    maxY = Max(tp1.y, tp2.y, tp3.y);
+                }
+
                 if (((maxX - minX) <= DegenerateCurveExtent) && ((maxY - minY) <= DegenerateCurveExtent))
                 {
                     return;
@@ -344,6 +365,7 @@ namespace he::scribe::editor
                 curve.minY = minY;
                 curve.maxX = maxX;
                 curve.maxY = maxY;
+                curve.isLineLike = isLineLike;
             }
 
             void AddCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3)
@@ -379,7 +401,6 @@ namespace he::scribe::editor
             Vector<CurveData> m_curves{};
             Affine2D m_transform{};
             float m_cubicToleranceSq{ 0.0f };
-            float m_lineControlTangentOffset{ 0.0f };
         };
 
         void ZeroCounts(Vector<uint32_t>& counts)

@@ -698,7 +698,7 @@ namespace he
                 {
                     const float zoomFactor = Pow(1.1f, wheelDelta);
                     const float oldZoom = m_sceneZoom;
-                    const float newZoom = Clamp(oldZoom * zoomFactor, 0.25f, 12.0f);
+                    const float newZoom = Clamp(oldZoom * zoomFactor, 0.25f, 25.0f);
                     if (Abs(newZoom - oldZoom) > 0.0001f)
                     {
                         Vec2f pivot = m_hasPointerPos
@@ -798,8 +798,32 @@ namespace he
                 (point.y * m_sceneZoom) + m_scenePan.y
             };
         };
-        const Vec2f transformedTitleOrigin = ApplySceneTransform(m_titleOrigin);
-        const Vec2f transformedBodyOrigin = ApplySceneTransform(m_bodyOrigin);
+        Vec2f transformedTitleOrigin = ApplySceneTransform(m_titleOrigin);
+        Vec2f transformedBodyOrigin = ApplySceneTransform(m_bodyOrigin);
+        auto AlignTextOriginLeftEdgeX = [this](Vec2f& origin, const scribe::LayoutResult& layout)
+        {
+            float leftEdgeX = Limits<float>::Max;
+            for (const scribe::TextCluster& cluster : layout.clusters)
+            {
+                if (cluster.isWhitespace || (cluster.lineIndex != 0))
+                {
+                    continue;
+                }
+
+                leftEdgeX = Min(leftEdgeX, origin.x + (cluster.x0 * m_sceneZoom));
+            }
+
+            if (leftEdgeX != Limits<float>::Max)
+            {
+                origin.x += Round(leftEdgeX) - leftEdgeX;
+            }
+            else
+            {
+                origin.x = Round(origin.x);
+            }
+        };
+        AlignTextOriginLeftEdgeX(transformedTitleOrigin, m_titleLayout);
+        AlignTextOriginLeftEdgeX(transformedBodyOrigin, m_bodyLayout);
 
         scribe::FrameDesc frameDesc{};
         frameDesc.cmdList = m_render.cmdList;
@@ -2411,6 +2435,25 @@ namespace he
             (block.origin.x * m_sceneZoom) + m_scenePan.x,
             (block.origin.y * m_sceneZoom) + m_scenePan.y
         };
+        float leftEdgeX = Limits<float>::Max;
+        for (const scribe::TextCluster& cluster : block.layout.clusters)
+        {
+            if (cluster.isWhitespace || (cluster.lineIndex != 0))
+            {
+                continue;
+            }
+
+            leftEdgeX = Min(leftEdgeX, origin.x + (cluster.x0 * m_sceneZoom));
+        }
+
+        if (leftEdgeX != Limits<float>::Max)
+        {
+            origin.x += Round(leftEdgeX) - leftEdgeX;
+        }
+        else
+        {
+            origin.x = Round(origin.x);
+        }
 
         if ((!block.pixelAlignBaseline && !block.pixelAlignCapHeight)
             || (Abs(m_sceneZoom - 1.0f) > 0.001f)

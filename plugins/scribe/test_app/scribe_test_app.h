@@ -4,6 +4,7 @@
 
 #include "he/scribe/compiled_font.h"
 #include "he/scribe/layout_engine.h"
+#include "he/scribe/retained_text.h"
 #include "he/scribe/renderer.h"
 
 #include "he/core/clock.h"
@@ -76,38 +77,6 @@ namespace he
             scribe::LoadedVectorImageBlob blob{};
         };
 
-        struct CachedGlyph
-        {
-            uint32_t fontFaceIndex{ 0 };
-            uint32_t glyphIndex{ 0 };
-            scribe::GlyphResource resource{};
-        };
-
-        struct FontGlyphCacheState
-        {
-            struct ColorGlyphRange
-            {
-                uint32_t firstLayer{ 0 };
-                uint32_t layerCount{ 0 };
-            };
-
-            struct CachedColorGlyphLayer
-            {
-                uint32_t glyphIndex{ 0 };
-                Vec4f color{ 1.0f, 1.0f, 1.0f, 1.0f };
-                Vec2f basisX{ 1.0f, 0.0f };
-                Vec2f basisY{ 0.0f, 1.0f };
-                Vec2f offset{ 0.0f, 0.0f };
-                bool useForegroundColor{ false };
-            };
-
-            Vector<int32_t> glyphResourceIndices{};
-            Vector<ColorGlyphRange> colorGlyphRanges{};
-            Vector<CachedColorGlyphLayer> colorGlyphLayers{};
-            uint32_t selectedPaletteIndex{ 0 };
-            bool hasColorGlyphs{ false };
-        };
-
         struct CachedImageShape
         {
             uint32_t imageIndex{ 0 };
@@ -119,6 +88,7 @@ namespace he
         {
             String text{};
             scribe::LayoutResult layout{};
+            scribe::RetainedTextModel retainedText{};
             Vec2f origin{ 0.0f, 0.0f };
             float fontSize{ 16.0f };
             Vec4f color{ 0.0f, 0.0f, 0.0f, 1.0f };
@@ -150,22 +120,11 @@ namespace he
         bool LoadDemoFont(LoadedDemoFont& out, const char* fileName);
         bool LoadOptionalDemoFont(LoadedDemoFont& out, Span<const char*> fileNames);
         bool LoadDemoImage(LoadedDemoImage& out, const char* fileName);
-        void BuildFontGlyphCacheState();
         bool RebuildLayouts();
         bool UpdateOverlayLayout();
-        bool PrimeLayoutGlyphs(const scribe::LayoutResult& layout, uint32_t& outVertexCount);
-        bool PrimeGlyphCache();
-        bool PrimeSceneBlocks(uint32_t& outVertexCount);
-        bool EnsureGlyphResource(uint32_t fontFaceIndex, uint32_t glyphIndex, const scribe::GlyphResource*& out);
         bool PrimeImageCache();
         bool EnsureImageShapeResource(uint32_t imageIndex, uint32_t shapeIndex, const scribe::GlyphResource*& out);
         void QueueDraw(const scribe::DrawGlyphDesc& desc);
-        void QueueLayout(
-            const scribe::LayoutResult& layout,
-            const Vec2f& origin,
-            float fontSize,
-            float layoutScale = 1.0f,
-            const Vec4f& foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f });
         void QueueImage(const LoadedDemoImage& image, uint32_t imageIndex, const Vec2f& position, float scale);
         void QueueCaret();
         void UpdateSceneTitle();
@@ -189,8 +148,6 @@ namespace he
         scribe::GlyphResource m_caretGlyph{};
         Vector<LoadedDemoFont> m_fonts{};
         Vector<LoadedDemoImage> m_images{};
-        Vector<CachedGlyph> m_cachedGlyphs{};
-        Vector<FontGlyphCacheState> m_fontGlyphCache{};
         Vector<CachedImageShape> m_cachedImageShapes{};
         String m_titleText{};
         String m_bodyText{};
@@ -199,10 +156,15 @@ namespace he
         String m_inputHintsText{};
         scribe::LayoutResult m_titleLayout{};
         scribe::LayoutResult m_bodyLayout{};
+        scribe::RetainedTextModel m_retainedTitleText{};
+        scribe::RetainedTextModel m_retainedBodyText{};
         Vector<SceneTextBlock> m_sceneBlocks{};
         scribe::LayoutResult m_sceneStatsLayout{};
         scribe::LayoutResult m_renderStatsLayout{};
         scribe::LayoutResult m_inputHintsLayout{};
+        scribe::RetainedTextModel m_retainedSceneStatsText{};
+        scribe::RetainedTextModel m_retainedRenderStatsText{};
+        scribe::RetainedTextModel m_retainedInputHintsText{};
         Vec2f m_titleOrigin{ 0.0f, 0.0f };
         Vec2f m_bodyOrigin{ 0.0f, 0.0f };
         Vec2f m_sceneStatsOrigin{ 0.0f, 0.0f };

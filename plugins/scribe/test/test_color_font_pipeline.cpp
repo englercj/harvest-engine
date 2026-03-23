@@ -5,10 +5,14 @@
 
 #include "he/scribe/compiled_font.h"
 #include "he/scribe/layout_engine.h"
+#include "he/scribe/retained_text.h"
+#include "he/scribe/renderer.h"
 #include "he/scribe/runtime_blob.h"
 
 #include "he/core/file.h"
 #include "he/core/test.h"
+#include "he/rhi/device.h"
+#include "he/rhi/instance.h"
 
 using namespace he;
 using namespace he::scribe;
@@ -187,6 +191,98 @@ namespace
         storage = Span<const schema::Word>(rootBuilder);
         return LoadCompiledFontFaceBlob(out, storage);
     }
+
+    bool BuildRetainedTextFromTemporaryFaceCopy(
+        RetainedTextModel& out,
+        Span<const LoadedFontFaceBlob> fontFaces,
+        const char* text,
+        float fontSize,
+        bool darkBackgroundPreferred = true)
+    {
+        Vector<LoadedFontFaceBlob> temporaryFaces{};
+        temporaryFaces.Resize(fontFaces.Size(), DefaultInit);
+        for (uint32_t fontIndex = 0; fontIndex < fontFaces.Size(); ++fontIndex)
+        {
+            temporaryFaces[fontIndex] = fontFaces[fontIndex];
+        }
+
+        LayoutEngine engine;
+        LayoutResult layout;
+        LayoutOptions options{};
+        options.fontSize = fontSize;
+        options.maxWidth = 4096.0f;
+        options.wrap = false;
+        options.direction = TextDirection::Auto;
+        if (!engine.LayoutText(
+            layout,
+            Span<const LoadedFontFaceBlob>(temporaryFaces.Data(), temporaryFaces.Size()),
+            text,
+            options))
+        {
+            return false;
+        }
+
+        RetainedTextBuildDesc desc{};
+        desc.fontFaces = Span<const LoadedFontFaceBlob>(temporaryFaces.Data(), temporaryFaces.Size());
+        desc.layout = &layout;
+        desc.fontSize = fontSize;
+        desc.darkBackgroundPreferred = darkBackgroundPreferred;
+        return out.Build(desc);
+    }
+
+    struct NullRendererHarness
+    {
+        rhi::Instance* instance{ nullptr };
+        rhi::Device* device{ nullptr };
+        Renderer renderer{};
+
+        ~NullRendererHarness() noexcept
+        {
+            Terminate();
+        }
+
+        bool Initialize()
+        {
+            rhi::InstanceDesc instanceDesc{};
+            instanceDesc.api = rhi::Api_Null;
+            if (!rhi::Instance::Create(instanceDesc, instance) || !instance)
+            {
+                return false;
+            }
+
+            rhi::DeviceDesc deviceDesc{};
+            if (!instance->CreateDevice(deviceDesc, device) || !device)
+            {
+                Terminate();
+                return false;
+            }
+
+            if (!renderer.Initialize(*device, rhi::Format::BGRA8Unorm_sRGB))
+            {
+                Terminate();
+                return false;
+            }
+
+            return true;
+        }
+
+        void Terminate()
+        {
+            renderer.Terminate();
+
+            if (device)
+            {
+                instance->DestroyDevice(device);
+                device = nullptr;
+            }
+
+            if (instance)
+            {
+                rhi::Instance::Destroy(instance);
+                instance = nullptr;
+            }
+        }
+    };
 }
 
 HE_TEST(scribe, color_font_pipeline, compiles_layered_color_glyphs)
@@ -416,4 +512,186 @@ HE_TEST(scribe, color_font_pipeline, shaped_emoji_scene_resolves_nonwhite_layers
     }
 
     HE_EXPECT_EQ(resolvedGlyphCount, 5u);
+}
+
+HE_TEST(scribe, retained_text, builds_monochrome_draws_from_layout)
+{
+    String repoFontPath;
+    HE_ASSERT(ResolveRepoFontPath(repoFontPath, "NotoSans-Regular.ttf"));
+
+    Vector<uint8_t> fontBytes;
+    HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
+
+    Vector<schema::Word> storage;
+    LoadedFontFaceBlob font{};
+    HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
+
+    LayoutEngine engine;
+    LayoutResult layout;
+    LayoutOptions options{};
+    options.fontSize = 28.0f;
+    options.wrap = false;
+    HE_ASSERT(engine.LayoutText(layout, Span<const LoadedFontFaceBlob>(&font, 1), "Retained text", options));
+
+    RetainedTextModel retainedText;
+    RetainedTextBuildDesc desc{};
+    desc.fontFaces = Span<const LoadedFontFaceBlob>(&font, 1);
+    desc.layout = &layout;
+    desc.fontSize = options.fontSize;
+    HE_ASSERT(retainedText.Build(desc));
+
+    HE_EXPECT_EQ(retainedText.GetDrawCount(), layout.glyphs.Size());
+    HE_EXPECT_EQ(retainedText.GetEstimatedVertexCount(), retainedText.GetDrawCount() * ScribeGlyphVertexCount);
+    for (const RetainedTextDraw& draw : retainedText.GetDraws())
+    {
+        HE_EXPECT_EQ(draw.fontFaceIndex, 0u);
+        HE_EXPECT((draw.flags & RetainedTextDrawFlagUseForegroundColor) != 0);
+        HE_EXPECT_EQ(draw.color.x, 1.0f);
+        HE_EXPECT_EQ(draw.color.y, 1.0f);
+        HE_EXPECT_EQ(draw.color.z, 1.0f);
+        HE_EXPECT_EQ(draw.color.w, 1.0f);
+    }
+}
+
+HE_TEST(scribe, retained_text, expands_color_glyphs_into_layered_draws)
+{
+    static constexpr const char* ColorFontPath = "C:/Windows/Fonts/seguiemj.ttf";
+    if (!File::Exists(ColorFontPath))
+    {
+        return;
+    }
+
+    Vector<uint8_t> fontBytes;
+    HE_ASSERT(ReadFontFile(fontBytes, ColorFontPath));
+
+    Vector<schema::Word> storage;
+    LoadedFontFaceBlob font{};
+    HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Segoe UI Emoji"));
+
+    LayoutEngine engine;
+    LayoutResult layout;
+    LayoutOptions options{};
+    options.fontSize = 44.0f;
+    options.wrap = false;
+    HE_ASSERT(engine.LayoutText(layout, Span<const LoadedFontFaceBlob>(&font, 1), "🙂😀🎨", options));
+
+    RetainedTextModel retainedText;
+    RetainedTextBuildDesc desc{};
+    desc.fontFaces = Span<const LoadedFontFaceBlob>(&font, 1);
+    desc.layout = &layout;
+    desc.fontSize = options.fontSize;
+    HE_ASSERT(retainedText.Build(desc));
+
+    const uint32_t paletteIndex = SelectCompiledFontPalette(font, true);
+    Vector<CompiledColorGlyphLayer> layers{};
+    uint32_t expectedDrawCount = 0;
+    for (const ShapedGlyph& glyph : layout.glyphs)
+    {
+        HE_ASSERT(GetCompiledColorGlyphLayers(layers, font, glyph.glyphIndex, paletteIndex));
+        expectedDrawCount += layers.IsEmpty() ? 1u : layers.Size();
+    }
+
+    bool foundPaletteLayer = false;
+    HE_EXPECT_EQ(retainedText.GetDrawCount(), expectedDrawCount);
+    HE_EXPECT_EQ(retainedText.GetEstimatedVertexCount(), expectedDrawCount * ScribeGlyphVertexCount);
+    for (const RetainedTextDraw& draw : retainedText.GetDraws())
+    {
+        if ((draw.flags & RetainedTextDrawFlagUseForegroundColor) == 0)
+        {
+            foundPaletteLayer = true;
+            break;
+        }
+    }
+
+    HE_EXPECT(foundPaletteLayer);
+}
+
+HE_TEST(scribe, retained_text, prepares_with_renderer_after_temporary_face_span_expires)
+{
+    String repoFontPath;
+    HE_ASSERT(ResolveRepoFontPath(repoFontPath, "NotoSans-Regular.ttf"));
+
+    Vector<uint8_t> fontBytes;
+    HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
+
+    Vector<schema::Word> storage;
+    LoadedFontFaceBlob font{};
+    HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
+
+    RetainedTextModel retainedText;
+    HE_ASSERT(BuildRetainedTextFromTemporaryFaceCopy(
+        retainedText,
+        Span<const LoadedFontFaceBlob>(&font, 1),
+        "Retained text",
+        28.0f));
+
+    HE_EXPECT_GT(retainedText.GetDrawCount(), 0u);
+    for (const RetainedTextDraw& draw : retainedText.GetDraws())
+    {
+        HE_EXPECT_NE_PTR(retainedText.GetFontFace(draw.fontFaceIndex), nullptr);
+    }
+
+    NullRendererHarness harness;
+    HE_ASSERT(harness.Initialize());
+    HE_EXPECT(harness.renderer.PrepareRetainedText(retainedText));
+
+    RetainedTextInstanceDesc instance{};
+    harness.renderer.QueueRetainedText(retainedText, instance);
+}
+
+HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_face_span_expires)
+{
+    static constexpr const char* ColorFontPath = "C:/Windows/Fonts/seguiemj.ttf";
+    if (!File::Exists(ColorFontPath))
+    {
+        return;
+    }
+
+    String repoFontPath;
+    HE_ASSERT(ResolveRepoFontPath(repoFontPath, "NotoSans-Regular.ttf"));
+
+    Vector<uint8_t> repoFontBytes;
+    HE_ASSERT(ReadFontFile(repoFontBytes, repoFontPath.Data()));
+
+    Vector<uint8_t> colorFontBytes;
+    HE_ASSERT(ReadFontFile(colorFontBytes, ColorFontPath));
+
+    Vector<schema::Word> repoStorage;
+    Vector<schema::Word> colorStorage;
+    LoadedFontFaceBlob repoFont{};
+    LoadedFontFaceBlob colorFont{};
+    HE_ASSERT(BuildLoadedCompiledFontFace(repoStorage, repoFont, repoFontBytes, "NotoSans-Regular.ttf"));
+    HE_ASSERT(BuildLoadedCompiledFontFace(colorStorage, colorFont, colorFontBytes, "seguiemj.ttf"));
+
+    const LoadedFontFaceBlob faces[] =
+    {
+        repoFont,
+        colorFont,
+    };
+
+    RetainedTextModel retainedText;
+    HE_ASSERT(BuildRetainedTextFromTemporaryFaceCopy(
+        retainedText,
+        Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces)),
+        "\xF0\x9F\x99\x82 \xF0\x9F\x98\x80 \xF0\x9F\x8E\xA8 \xF0\x9F\x8C\x88 \xE2\x9C\xA8",
+        44.0f));
+
+    bool sawFallbackFaceDraw = false;
+    bool sawPaletteColorDraw = false;
+    for (const RetainedTextDraw& draw : retainedText.GetDraws())
+    {
+        HE_EXPECT_NE_PTR(retainedText.GetFontFace(draw.fontFaceIndex), nullptr);
+        sawFallbackFaceDraw |= draw.fontFaceIndex == 1u;
+        sawPaletteColorDraw |= (draw.flags & RetainedTextDrawFlagUseForegroundColor) == 0;
+    }
+
+    HE_EXPECT(sawFallbackFaceDraw);
+    HE_EXPECT(sawPaletteColorDraw);
+
+    NullRendererHarness harness;
+    HE_ASSERT(harness.Initialize());
+    HE_EXPECT(harness.renderer.PrepareRetainedText(retainedText));
+
+    RetainedTextInstanceDesc instance{};
+    harness.renderer.QueueRetainedText(retainedText, instance);
 }

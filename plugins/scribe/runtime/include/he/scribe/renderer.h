@@ -12,6 +12,8 @@
 namespace he::scribe
 {
     struct GlyphAtlas;
+    class RetainedTextModel;
+    struct RetainedTextInstanceDesc;
 
     struct PackedGlyphVertex
     {
@@ -104,8 +106,10 @@ namespace he::scribe
         void DestroyGlyphResource(GlyphResource& resource);
 
         bool BeginFrame(const FrameDesc& desc);
+        bool PrepareRetainedText(const RetainedTextModel& text);
         void ReserveQueuedVertexCapacity(uint32_t vertexCount, uint32_t batchCount = 0);
         void QueueDraw(const DrawGlyphDesc& desc);
+        void QueueRetainedText(const RetainedTextModel& text, const RetainedTextInstanceDesc& instance);
         void EndFrame();
         uint32_t GetLastSubmittedDrawCount() const { return m_lastSubmittedDrawCount; }
 
@@ -123,6 +127,17 @@ namespace he::scribe
             uint32_t size{ 0 };
         };
 
+        struct CachedCompiledGlyphResource
+        {
+            GlyphResource resource{};
+        };
+
+        struct CachedCompiledFontGlyphSet
+        {
+            const schema::Word* fontFaceData{ nullptr };
+            Vector<int32_t> glyphIndices{};
+        };
+
         bool CreateDedicatedAtlas(
             GlyphAtlas*& out,
             const TextureDataDesc& curveTexture,
@@ -136,6 +151,10 @@ namespace he::scribe
         bool CreateDeviceResources();
         void DestroyDeviceResources();
         void AppendDrawVertices(const DrawGlyphDesc& draw);
+        bool EnsureRetainedGlyphResource(
+            const LoadedFontFaceBlob& fontFace,
+            uint32_t glyphIndex,
+            const GlyphResource*& out);
 
     private:
         rhi::Device* m_device{ nullptr };
@@ -147,6 +166,8 @@ namespace he::scribe
         StreamBuffer m_streamBuffers[rhi::MaxFrameCount]{};
         uint32_t m_streamBufferIndex{ 0 };
         Vector<GlyphAtlas*> m_cachedAtlases{};
+        Vector<CachedCompiledFontGlyphSet> m_cachedFontGlyphSets{};
+        Vector<CachedCompiledGlyphResource> m_cachedFontGlyphResources{};
         Vector<StreamBatch> m_batches{};
         Vector<PackedGlyphVertex> m_streamVertices{};
         uint32_t m_lastSubmittedDrawCount{ 0 };

@@ -195,16 +195,6 @@ namespace he
             },
         };
 
-        Vec4f ToVec4f(scribe::FontFacePaletteColor::Reader color)
-        {
-            return {
-                color.GetRed(),
-                color.GetGreen(),
-                color.GetBlue(),
-                color.GetAlpha()
-            };
-        }
-
         float ComputeCapAlignedFontSize(const scribe::LoadedFontFaceBlob& font, float capHeightPixels)
         {
             if (!font.metadata.IsValid())
@@ -743,10 +733,6 @@ namespace he
             return;
         }
 
-        const float dpiScale = Max(m_view->GetDpiScale(), 1.0f);
-        const float titleFontSize = 34.0f * dpiScale;
-        const float bodyFontSize = m_bodyFontSize;
-        const float footerFontSize = 16.0f * dpiScale;
         const auto ApplySceneTransform = [this](const Vec2f& point) -> Vec2f
         {
             return {
@@ -781,20 +767,61 @@ namespace he
             + (m_hasCaret ? m_caretGlyph.vertexCount : 0);
         m_renderer.ReserveQueuedVertexCapacity(reservedVertexCount);
 
-        QueueLayout(m_titleLayout, transformedTitleOrigin, titleFontSize, m_sceneZoom);
-        if (!m_bodyText.IsEmpty())
+        if (!m_retainedTitleText.IsEmpty())
         {
-            QueueLayout(m_bodyLayout, transformedBodyOrigin, bodyFontSize, m_sceneZoom);
+            scribe::RetainedTextInstanceDesc instance{};
+            instance.origin = transformedTitleOrigin;
+            instance.scale = m_sceneZoom;
+            instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+            m_renderer.QueueRetainedText(m_retainedTitleText, instance);
+        }
+
+        if (!m_retainedBodyText.IsEmpty())
+        {
+            scribe::RetainedTextInstanceDesc instance{};
+            instance.origin = transformedBodyOrigin;
+            instance.scale = m_sceneZoom;
+            instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+            m_renderer.QueueRetainedText(m_retainedBodyText, instance);
         }
 
         for (const SceneTextBlock& block : m_sceneBlocks)
         {
-            QueueLayout(block.layout, GetSceneBlockRenderOrigin(block), block.fontSize, m_sceneZoom, block.color);
+            if (block.retainedText.IsEmpty())
+            {
+                continue;
+            }
+
+            scribe::RetainedTextInstanceDesc instance{};
+            instance.origin = GetSceneBlockRenderOrigin(block);
+            instance.scale = m_sceneZoom;
+            instance.foregroundColor = block.color;
+            m_renderer.QueueRetainedText(block.retainedText, instance);
         }
 
-        QueueLayout(m_sceneStatsLayout, m_sceneStatsOrigin, footerFontSize);
-        QueueLayout(m_renderStatsLayout, m_renderStatsOrigin, footerFontSize);
-        QueueLayout(m_inputHintsLayout, m_inputHintsOrigin, footerFontSize);
+        if (!m_retainedSceneStatsText.IsEmpty())
+        {
+            scribe::RetainedTextInstanceDesc instance{};
+            instance.origin = m_sceneStatsOrigin;
+            instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+            m_renderer.QueueRetainedText(m_retainedSceneStatsText, instance);
+        }
+
+        if (!m_retainedRenderStatsText.IsEmpty())
+        {
+            scribe::RetainedTextInstanceDesc instance{};
+            instance.origin = m_renderStatsOrigin;
+            instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+            m_renderer.QueueRetainedText(m_retainedRenderStatsText, instance);
+        }
+
+        if (!m_retainedInputHintsText.IsEmpty())
+        {
+            scribe::RetainedTextInstanceDesc instance{};
+            instance.origin = m_inputHintsOrigin;
+            instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+            m_renderer.QueueRetainedText(m_retainedInputHintsText, instance);
+        }
         QueueCaret();
 
         m_renderer.EndFrame();
@@ -812,8 +839,6 @@ namespace he
             return false;
         }
 
-        BuildFontGlyphCacheState();
-
         UpdateSceneTitle();
         m_lastFrameTime = MonotonicClock::Now();
         m_hasFrameTime = false;
@@ -830,13 +855,6 @@ namespace he
 
         if (m_render.device)
         {
-            for (CachedGlyph& glyph : m_cachedGlyphs)
-            {
-                m_renderer.DestroyGlyphResource(glyph.resource);
-            }
-            m_cachedGlyphs.Clear();
-            m_fontGlyphCache.Clear();
-
             for (CachedImageShape& shape : m_cachedImageShapes)
             {
                 m_renderer.DestroyGlyphResource(shape.resource);
@@ -857,79 +875,16 @@ namespace he
         m_images.Clear();
         m_titleLayout.Clear();
         m_bodyLayout.Clear();
+        m_retainedTitleText.Clear();
+        m_retainedBodyText.Clear();
         m_sceneBlocks.Clear();
         m_sceneStatsLayout.Clear();
         m_renderStatsLayout.Clear();
         m_inputHintsLayout.Clear();
+        m_retainedSceneStatsText.Clear();
+        m_retainedRenderStatsText.Clear();
+        m_retainedInputHintsText.Clear();
         m_initialized = false;
-    }
-
-    void ScribeTestApp::BuildFontGlyphCacheState()
-    {
-        m_fontGlyphCache.Resize(m_fonts.Size(), DefaultInit);
-
-        for (uint32_t fontIndex = 0; fontIndex < m_fonts.Size(); ++fontIndex)
-        {
-            FontGlyphCacheState& cacheState = m_fontGlyphCache[fontIndex];
-            cacheState.glyphResourceIndices.Clear();
-            cacheState.colorGlyphRanges.Clear();
-            cacheState.colorGlyphLayers.Clear();
-            cacheState.selectedPaletteIndex = 0;
-            cacheState.hasColorGlyphs = false;
-
-            const LoadedDemoFont& font = m_fonts[fontIndex];
-            if (!font.blob.metadata.IsValid() || !font.blob.paint.IsValid())
-            {
-                continue;
-            }
-
-            cacheState.glyphResourceIndices.Resize(font.blob.metadata.GetGlyphCount(), int32_t(-1));
-            cacheState.hasColorGlyphs =
-                font.blob.metadata.GetHasColorGlyphs()
-                && font.blob.paint.IsValid()
-                && !font.blob.paint.GetPalettes().IsEmpty();
-            if (cacheState.hasColorGlyphs)
-            {
-                cacheState.selectedPaletteIndex = scribe::SelectCompiledFontPalette(font.blob, true);
-
-                const auto colorGlyphs = font.blob.paint.GetColorGlyphs();
-                const auto palette = font.blob.paint.GetPalettes()[cacheState.selectedPaletteIndex];
-                const auto colors = palette.GetColors();
-                const auto layers = font.blob.paint.GetLayers();
-
-                cacheState.colorGlyphRanges.Resize(colorGlyphs.Size(), DefaultInit);
-                for (uint32_t glyphIndex = 0; glyphIndex < colorGlyphs.Size(); ++glyphIndex)
-                {
-                    const scribe::FontFaceColorGlyph::Reader colorGlyph = colorGlyphs[glyphIndex];
-                    const uint32_t layerCount = colorGlyph.GetLayerCount();
-                    FontGlyphCacheState::ColorGlyphRange& range = cacheState.colorGlyphRanges[glyphIndex];
-                    range.firstLayer = cacheState.colorGlyphLayers.Size();
-                    range.layerCount = layerCount;
-
-                    for (uint32_t layerIndex = 0; layerIndex < layerCount; ++layerIndex)
-                    {
-                        const scribe::FontFaceColorGlyphLayer::Reader layer = layers[colorGlyph.GetFirstLayer() + layerIndex];
-                        FontGlyphCacheState::CachedColorGlyphLayer& cachedLayer = cacheState.colorGlyphLayers.EmplaceBack();
-                        cachedLayer.glyphIndex = layer.GetGlyphIndex();
-                        cachedLayer.color = { 1.0f, 1.0f, 1.0f, Max(layer.GetAlphaScale(), 0.0f) };
-                        cachedLayer.basisX = { layer.GetTransform00(), layer.GetTransform10() };
-                        cachedLayer.basisY = { layer.GetTransform01(), layer.GetTransform11() };
-                        cachedLayer.offset = { layer.GetTransformTx(), layer.GetTransformTy() };
-                        cachedLayer.useForegroundColor = (layer.GetFlags() & scribe::CompiledFontColorLayerFlagUseForeground) != 0;
-
-                        if (!cachedLayer.useForegroundColor)
-                        {
-                            const uint32_t paletteEntryIndex = layer.GetPaletteEntryIndex();
-                            if (paletteEntryIndex < colors.Size())
-                            {
-                                cachedLayer.color = ToVec4f(colors[paletteEntryIndex]);
-                                cachedLayer.color.w *= Max(layer.GetAlphaScale(), 0.0f);
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     bool ScribeTestApp::InitializeView()
@@ -1225,6 +1180,8 @@ namespace he
 
         m_sceneBlocks.Clear();
         m_bodyLayout.Clear();
+        m_retainedTitleText.Clear();
+        m_retainedBodyText.Clear();
         m_bodyOrigin = { 0.0f, 0.0f };
 
         auto layoutText = [&](scribe::LayoutResult& out,
@@ -1241,6 +1198,21 @@ namespace he
             options.maxWidth = maxWidth;
             options.direction = direction;
             return m_layoutEngine.LayoutText(out, blockFaces, text, options);
+        };
+
+        auto buildRetainedText = [&](scribe::RetainedTextModel& out,
+                                     Span<const scribe::LoadedFontFaceBlob> blockFaces,
+                                     const scribe::LayoutResult& layout,
+                                     float fontSize) -> bool
+        {
+            out.Clear();
+
+            scribe::RetainedTextBuildDesc retainedDesc{};
+            retainedDesc.fontFaces = blockFaces;
+            retainedDesc.layout = &layout;
+            retainedDesc.fontSize = fontSize;
+            retainedDesc.darkBackgroundPreferred = true;
+            return out.Build(retainedDesc) && m_renderer.PrepareRetainedText(out);
         };
 
         auto addSceneBlock = [&](const char* text,
@@ -1273,6 +1245,11 @@ namespace he
                 return nullptr;
             }
 
+            if (!buildRetainedText(block.retainedText, blockFaces, block.layout, fontSize))
+            {
+                return nullptr;
+            }
+
             return &block;
         };
 
@@ -1282,6 +1259,11 @@ namespace he
         titleOptions.maxWidth = contentWidth;
         titleOptions.direction = scribe::TextDirection::LeftToRight;
         if (!m_layoutEngine.LayoutText(m_titleLayout, primaryFace, m_titleText, titleOptions))
+        {
+            return false;
+        }
+
+        if (!buildRetainedText(m_retainedTitleText, primaryFace, m_titleLayout, titleFontSize))
         {
             return false;
         }
@@ -1380,6 +1362,11 @@ namespace he
                 {
                     return false;
                 }
+
+                if (!buildRetainedText(m_retainedBodyText, faceSpan, m_bodyLayout, bodyFontSize))
+                {
+                    return false;
+                }
                 break;
             }
 
@@ -1395,6 +1382,11 @@ namespace he
                         bodyWidth,
                         scribe::TextDirection::LeftToRight,
                         false))
+                {
+                    return false;
+                }
+
+                if (!buildRetainedText(m_retainedBodyText, faceSpan, m_bodyLayout, bodyFontSize))
                 {
                     return false;
                 }
@@ -1484,10 +1476,10 @@ namespace he
 
         m_hasCaret = false;
         m_bodyFontSize = bodyFontSize;
-
-        if (!PrimeGlyphCache())
+        m_sceneVertexEstimate = m_retainedTitleText.GetEstimatedVertexCount() + m_retainedBodyText.GetEstimatedVertexCount();
+        for (const SceneTextBlock& block : m_sceneBlocks)
         {
-            return false;
+            m_sceneVertexEstimate += block.retainedText.GetEstimatedVertexCount();
         }
 
         m_layoutDirty = false;
@@ -1556,6 +1548,25 @@ namespace he
             return false;
         }
 
+        auto buildRetainedText = [&](scribe::RetainedTextModel& out, const scribe::LayoutResult& layout) -> bool
+        {
+            out.Clear();
+
+            scribe::RetainedTextBuildDesc retainedDesc{};
+            retainedDesc.fontFaces = faceSpan;
+            retainedDesc.layout = &layout;
+            retainedDesc.fontSize = overlayFontSize;
+            retainedDesc.darkBackgroundPreferred = true;
+            return out.Build(retainedDesc) && m_renderer.PrepareRetainedText(out);
+        };
+
+        if (!buildRetainedText(m_retainedSceneStatsText, m_sceneStatsLayout)
+            || !buildRetainedText(m_retainedRenderStatsText, m_renderStatsLayout)
+            || !buildRetainedText(m_retainedInputHintsText, m_inputHintsLayout))
+        {
+            return false;
+        }
+
         m_sceneStatsOrigin = { margin, margin };
         const float inputX = Max(static_cast<float>(viewSize.x) - margin - m_inputHintsLayout.width, margin);
         const float minRenderX = m_sceneStatsOrigin.x + m_sceneStatsLayout.width + columnGap;
@@ -1572,95 +1583,9 @@ namespace he
 
         m_renderStatsOrigin = { renderX, margin };
         m_inputHintsOrigin = { inputX, margin };
-        uint32_t sceneStatsVertexCount = 0;
-        uint32_t renderStatsVertexCount = 0;
-        uint32_t inputHintsVertexCount = 0;
-        if (!PrimeLayoutGlyphs(m_sceneStatsLayout, sceneStatsVertexCount)
-            || !PrimeLayoutGlyphs(m_renderStatsLayout, renderStatsVertexCount)
-            || !PrimeLayoutGlyphs(m_inputHintsLayout, inputHintsVertexCount))
-        {
-            return false;
-        }
-
-        m_overlayVertexEstimate = sceneStatsVertexCount + renderStatsVertexCount + inputHintsVertexCount;
-        return true;
-    }
-
-    bool ScribeTestApp::PrimeLayoutGlyphs(const scribe::LayoutResult& layout, uint32_t& outVertexCount)
-    {
-        outVertexCount = 0;
-
-        for (const scribe::ShapedGlyph& glyph : layout.glyphs)
-        {
-            if (glyph.fontFaceIndex >= m_fonts.Size())
-            {
-                continue;
-            }
-
-            const FontGlyphCacheState& cacheState = m_fontGlyphCache[glyph.fontFaceIndex];
-            if (cacheState.hasColorGlyphs && (glyph.glyphIndex < cacheState.colorGlyphRanges.Size()))
-            {
-                const FontGlyphCacheState::ColorGlyphRange range = cacheState.colorGlyphRanges[glyph.glyphIndex];
-                if (range.layerCount > 0)
-                {
-                    for (uint32_t layerIndex = 0; layerIndex < range.layerCount; ++layerIndex)
-                    {
-                        const FontGlyphCacheState::CachedColorGlyphLayer& layer = cacheState.colorGlyphLayers[range.firstLayer + layerIndex];
-                        const scribe::GlyphResource* glyphResource = nullptr;
-                        if (!EnsureGlyphResource(glyph.fontFaceIndex, layer.glyphIndex, glyphResource))
-                        {
-                            continue;
-                        }
-
-                        outVertexCount += glyphResource->vertexCount;
-                    }
-                    continue;
-                }
-            }
-
-            const scribe::GlyphResource* glyphResource = nullptr;
-            if (!EnsureGlyphResource(glyph.fontFaceIndex, glyph.glyphIndex, glyphResource))
-            {
-                continue;
-            }
-
-            outVertexCount += glyphResource->vertexCount;
-        }
-
-        return true;
-    }
-
-    bool ScribeTestApp::PrimeGlyphCache()
-    {
-        uint32_t titleVertexCount = 0;
-        uint32_t bodyVertexCount = 0;
-        uint32_t sceneBlockVertexCount = 0;
-        if (!PrimeLayoutGlyphs(m_titleLayout, titleVertexCount)
-            || !PrimeLayoutGlyphs(m_bodyLayout, bodyVertexCount)
-            || !PrimeSceneBlocks(sceneBlockVertexCount))
-        {
-            return false;
-        }
-
-        m_sceneVertexEstimate = titleVertexCount + bodyVertexCount + sceneBlockVertexCount;
-        return true;
-    }
-
-    bool ScribeTestApp::PrimeSceneBlocks(uint32_t& outVertexCount)
-    {
-        outVertexCount = 0;
-
-        for (const SceneTextBlock& block : m_sceneBlocks)
-        {
-            uint32_t blockVertexCount = 0;
-            if (!PrimeLayoutGlyphs(block.layout, blockVertexCount))
-            {
-                return false;
-            }
-
-            outVertexCount += blockVertexCount;
-        }
-
+        m_overlayVertexEstimate = m_retainedSceneStatsText.GetEstimatedVertexCount()
+            + m_retainedRenderStatsText.GetEstimatedVertexCount()
+            + m_retainedInputHintsText.GetEstimatedVertexCount();
         return true;
     }
 
@@ -1747,54 +1672,6 @@ namespace he
         return true;
     }
 
-    bool ScribeTestApp::EnsureGlyphResource(uint32_t fontFaceIndex, uint32_t glyphIndex, const scribe::GlyphResource*& out)
-    {
-        out = nullptr;
-
-        if (fontFaceIndex >= m_fonts.Size())
-        {
-            return false;
-        }
-
-        if (fontFaceIndex < m_fontGlyphCache.Size())
-        {
-            FontGlyphCacheState& cacheState = m_fontGlyphCache[fontFaceIndex];
-            if (glyphIndex < cacheState.glyphResourceIndices.Size())
-            {
-                const int32_t cachedIndex = cacheState.glyphResourceIndices[glyphIndex];
-                if ((cachedIndex >= 0) && (static_cast<uint32_t>(cachedIndex) < m_cachedGlyphs.Size()))
-                {
-                    out = &m_cachedGlyphs[static_cast<uint32_t>(cachedIndex)].resource;
-                    return true;
-                }
-            }
-        }
-
-        const uint32_t cacheIndex = m_cachedGlyphs.Size();
-        CachedGlyph& cached = m_cachedGlyphs.EmplaceBack();
-        cached.fontFaceIndex = fontFaceIndex;
-        cached.glyphIndex = glyphIndex;
-        if (!m_renderer.CreateCompiledGlyphResource(cached.resource, m_fonts[fontFaceIndex].blob, glyphIndex))
-        {
-            m_cachedGlyphs.PopBack();
-            return false;
-        }
-
-        if (fontFaceIndex < m_fontGlyphCache.Size())
-        {
-            FontGlyphCacheState& cacheState = m_fontGlyphCache[fontFaceIndex];
-            if (glyphIndex >= cacheState.glyphResourceIndices.Size())
-            {
-                cacheState.glyphResourceIndices.Resize(glyphIndex + 1, int32_t(-1));
-            }
-
-            cacheState.glyphResourceIndices[glyphIndex] = static_cast<int32_t>(cacheIndex);
-        }
-
-        out = &cached.resource;
-        return true;
-    }
-
     bool ScribeTestApp::EnsureImageShapeResource(uint32_t imageIndex, uint32_t shapeIndex, const scribe::GlyphResource*& out)
     {
         out = nullptr;
@@ -1829,94 +1706,6 @@ namespace he
     void ScribeTestApp::QueueDraw(const scribe::DrawGlyphDesc& desc)
     {
         m_renderer.QueueDraw(desc);
-    }
-
-    void ScribeTestApp::QueueLayout(
-        const scribe::LayoutResult& layout,
-        const Vec2f& origin,
-        float fontSize,
-        float layoutScale,
-        const Vec4f& foregroundColor)
-    {
-        struct FontQueueState
-        {
-            float scale{ 0.0f };
-            bool hasColorGlyphs{ false };
-        };
-
-        Vector<FontQueueState> fontQueueStates{};
-        fontQueueStates.Resize(m_fonts.Size(), DefaultInit);
-        for (uint32_t fontIndex = 0; fontIndex < m_fonts.Size(); ++fontIndex)
-        {
-            FontQueueState& fontQueueState = fontQueueStates[fontIndex];
-            if (fontIndex >= m_fontGlyphCache.Size())
-            {
-                continue;
-            }
-
-            const LoadedDemoFont& font = m_fonts[fontIndex];
-            const uint32_t unitsPerEm = Max(font.blob.metadata.GetMetrics().GetUnitsPerEm(), 1u);
-            fontQueueState.scale = (fontSize / static_cast<float>(unitsPerEm)) * layoutScale;
-            fontQueueState.hasColorGlyphs = m_fontGlyphCache[fontIndex].hasColorGlyphs;
-        }
-
-        for (const scribe::ShapedGlyph& glyph : layout.glyphs)
-        {
-            if (glyph.fontFaceIndex >= m_fonts.Size())
-            {
-                continue;
-            }
-
-            const FontQueueState& fontQueueState = fontQueueStates[glyph.fontFaceIndex];
-            const FontGlyphCacheState& cacheState = m_fontGlyphCache[glyph.fontFaceIndex];
-            const float scale = fontQueueState.scale;
-            const Vec2f position{
-                origin.x + (glyph.position.x * layoutScale),
-                origin.y + (glyph.position.y * layoutScale)
-            };
-
-            if (fontQueueState.hasColorGlyphs && (glyph.glyphIndex < cacheState.colorGlyphRanges.Size()))
-            {
-                const FontGlyphCacheState::ColorGlyphRange range = cacheState.colorGlyphRanges[glyph.glyphIndex];
-                if (range.layerCount > 0)
-                {
-                    for (uint32_t layerIndex = 0; layerIndex < range.layerCount; ++layerIndex)
-                    {
-                        const FontGlyphCacheState::CachedColorGlyphLayer& layer = cacheState.colorGlyphLayers[range.firstLayer + layerIndex];
-                        const scribe::GlyphResource* glyphResource = nullptr;
-                        if (!EnsureGlyphResource(glyph.fontFaceIndex, layer.glyphIndex, glyphResource))
-                        {
-                            continue;
-                        }
-
-                        scribe::DrawGlyphDesc desc{};
-                        desc.glyph = glyphResource;
-                        desc.position = position;
-                        desc.size = { scale, scale };
-                        desc.color = layer.useForegroundColor ? foregroundColor : layer.color;
-                        desc.color.w *= layer.useForegroundColor ? layer.color.w : 1.0f;
-                        desc.basisX = layer.basisX;
-                        desc.basisY = layer.basisY;
-                        desc.offset = layer.offset;
-                        QueueDraw(desc);
-                    }
-                    continue;
-                }
-            }
-
-            const scribe::GlyphResource* glyphResource = nullptr;
-            if (!EnsureGlyphResource(glyph.fontFaceIndex, glyph.glyphIndex, glyphResource))
-            {
-                continue;
-            }
-
-            scribe::DrawGlyphDesc desc{};
-            desc.glyph = glyphResource;
-            desc.position = position;
-            desc.size = { scale, scale };
-            desc.color = foregroundColor;
-            QueueDraw(desc);
-        }
     }
 
     void ScribeTestApp::QueueImage(const LoadedDemoImage& image, uint32_t imageIndex, const Vec2f& position, float scale)

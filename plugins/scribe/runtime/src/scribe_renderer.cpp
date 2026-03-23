@@ -4,6 +4,7 @@
 
 #include "he/scribe/compiled_font.h"
 #include "he/scribe/compiled_vector_image.h"
+#include "he/scribe/retained_text.h"
 
 #include "shaders/scribe.shaders.h"
 
@@ -323,6 +324,12 @@ namespace he::scribe
         m_batches.Clear();
         m_streamVertices.Clear();
         m_frame = {};
+        for (CachedCompiledGlyphResource& cachedGlyph : m_cachedFontGlyphResources)
+        {
+            DestroyGlyphResource(cachedGlyph.resource);
+        }
+        m_cachedFontGlyphResources.Clear();
+        m_cachedFontGlyphSets.Clear();
         Vector<GlyphAtlas*> cachedAtlases = std::move(m_cachedAtlases);
         m_cachedAtlases.Clear();
         for (GlyphAtlas*& atlas : cachedAtlases)
@@ -675,6 +682,26 @@ namespace he::scribe
         }
     }
 
+    bool Renderer::PrepareRetainedText(const RetainedTextModel& text)
+    {
+        for (const RetainedTextDraw& draw : text.GetDraws())
+        {
+            const LoadedFontFaceBlob* fontFace = text.GetFontFace(draw.fontFaceIndex);
+            if (!fontFace)
+            {
+                continue;
+            }
+
+            const GlyphResource* glyphResource = nullptr;
+            if (!EnsureRetainedGlyphResource(*fontFace, draw.glyphIndex, glyphResource))
+            {
+                continue;
+            }
+        }
+
+        return true;
+    }
+
     void Renderer::QueueDraw(const DrawGlyphDesc& desc)
     {
         if (!desc.glyph || !desc.glyph->atlas || (desc.glyph->vertexCount == 0))
@@ -683,6 +710,46 @@ namespace he::scribe
         }
 
         AppendDrawVertices(desc);
+    }
+
+    void Renderer::QueueRetainedText(const RetainedTextModel& text, const RetainedTextInstanceDesc& instance)
+    {
+        ReserveQueuedVertexCapacity(
+            m_streamVertices.Size() + text.GetEstimatedVertexCount(),
+            m_batches.Size() + text.GetDrawCount());
+
+        for (const RetainedTextDraw& draw : text.GetDraws())
+        {
+            const LoadedFontFaceBlob* fontFace = text.GetFontFace(draw.fontFaceIndex);
+            if (!fontFace)
+            {
+                continue;
+            }
+
+            const GlyphResource* glyphResource = nullptr;
+            if (!EnsureRetainedGlyphResource(*fontFace, draw.glyphIndex, glyphResource))
+            {
+                continue;
+            }
+
+            DrawGlyphDesc desc{};
+            desc.glyph = glyphResource;
+            desc.position = {
+                instance.origin.x + (draw.position.x * instance.scale),
+                instance.origin.y + (draw.position.y * instance.scale)
+            };
+            desc.size = {
+                draw.size.x * instance.scale,
+                draw.size.y * instance.scale
+            };
+            desc.color = (draw.flags & RetainedTextDrawFlagUseForegroundColor) != 0
+                ? MultiplyColor(instance.foregroundColor, draw.color)
+                : draw.color;
+            desc.basisX = draw.basisX;
+            desc.basisY = draw.basisY;
+            desc.offset = draw.offset;
+            QueueDraw(desc);
+        }
     }
 
     void Renderer::EndFrame()
@@ -828,6 +895,58 @@ namespace he::scribe
         }
 
         batch->vertexCount += draw.glyph->vertexCount;
+    }
+
+    bool Renderer::EnsureRetainedGlyphResource(
+        const LoadedFontFaceBlob& fontFace,
+        uint32_t glyphIndex,
+        const GlyphResource*& out)
+    {
+        out = nullptr;
+
+        CachedCompiledFontGlyphSet* glyphSet = nullptr;
+        const schema::Word* fontFaceData = fontFace.root.Data();
+        for (CachedCompiledFontGlyphSet& cachedSet : m_cachedFontGlyphSets)
+        {
+            if (cachedSet.fontFaceData == fontFaceData)
+            {
+                glyphSet = &cachedSet;
+                break;
+            }
+        }
+
+        if (!glyphSet)
+        {
+            glyphSet = &m_cachedFontGlyphSets.EmplaceBack();
+            glyphSet->fontFaceData = fontFaceData;
+            glyphSet->glyphIndices.Resize(fontFace.metadata.GetGlyphCount(), int32_t(-1));
+        }
+
+        if (glyphIndex < glyphSet->glyphIndices.Size())
+        {
+            const int32_t cachedIndex = glyphSet->glyphIndices[glyphIndex];
+            if ((cachedIndex >= 0) && (static_cast<uint32_t>(cachedIndex) < m_cachedFontGlyphResources.Size()))
+            {
+                out = &m_cachedFontGlyphResources[static_cast<uint32_t>(cachedIndex)].resource;
+                return true;
+            }
+        }
+
+        const uint32_t cacheIndex = m_cachedFontGlyphResources.Size();
+        CachedCompiledGlyphResource& cachedGlyph = m_cachedFontGlyphResources.EmplaceBack();
+        if (!CreateCompiledGlyphResource(cachedGlyph.resource, fontFace, glyphIndex))
+        {
+            m_cachedFontGlyphResources.PopBack();
+            return false;
+        }
+
+        if (glyphIndex >= glyphSet->glyphIndices.Size())
+        {
+            glyphSet->glyphIndices.Resize(glyphIndex + 1, int32_t(-1));
+        }
+        glyphSet->glyphIndices[glyphIndex] = static_cast<int32_t>(cacheIndex);
+        out = &cachedGlyph.resource;
+        return true;
     }
 
     bool Renderer::CreateDeviceResources()

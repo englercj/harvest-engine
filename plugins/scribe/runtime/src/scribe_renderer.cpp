@@ -1176,7 +1176,7 @@ namespace he::scribe
             desc.vertexBufferFormats = vbfs;
             desc.primitiveType = rhi::PrimitiveType::TriList;
             desc.blend.targets[0].enable = true;
-            desc.blend.targets[0].srcRgb = rhi::BlendFactor::SrcAlpha;
+            desc.blend.targets[0].srcRgb = rhi::BlendFactor::One;
             desc.blend.targets[0].dstRgb = rhi::BlendFactor::InvSrcAlpha;
             desc.blend.targets[0].opRgb = rhi::BlendOp::Add;
             desc.blend.targets[0].srcAlpha = rhi::BlendFactor::One;

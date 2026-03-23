@@ -712,6 +712,28 @@ namespace
                 HE_KV(coverage, coverage));
         }
     }
+
+    void DumpNamedGlyphCoverageSliceCpu(
+        const CompiledFontRenderData& renderData,
+        const CompiledGlyphRenderEntry& glyph,
+        float minX,
+        float maxX,
+        float renderY,
+        const Vec2f& pixelsPerUnit,
+        float stepX,
+        const char* label)
+    {
+        for (float renderX = minX; renderX <= maxX; renderX += stepX)
+        {
+            const float coverage = EvaluateGlyphCoverageCpu(renderData, glyph, renderX, renderY, pixelsPerUnit);
+            HE_LOG_INFO(he_scribe,
+                HE_MSG("Named coverage slice sample."),
+                HE_KV(label, label),
+                HE_KV(render_x, renderX),
+                HE_KV(render_y, renderY),
+                HE_KV(coverage, coverage));
+        }
+    }
 }
 
 HE_TEST(scribe, color_font_pipeline, compiles_layered_color_glyphs)
@@ -941,6 +963,24 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_has_no_detached_left_edg
         maxCoverageOutsideLeftY,
         pixelsPerUnit,
         0.125f);
+    DumpNamedGlyphCoverageSliceCpu(
+        renderData,
+        glyph,
+        227.0f,
+        239.0f,
+        320.0f,
+        pixelsPerUnit,
+        0.125f,
+        "stem_left_mid");
+    DumpNamedGlyphCoverageSliceCpu(
+        renderData,
+        glyph,
+        317.0f,
+        329.0f,
+        320.0f,
+        pixelsPerUnit,
+        0.125f,
+        "stem_right_mid");
 
     HE_EXPECT_LE(maxCoverageOutsideLeft, 1.0e-3f);
     HE_EXPECT_LE(maxCoverageInsideLeftMargin, 1.0e-3f);
@@ -1234,6 +1274,101 @@ HE_TEST(scribe, retained_text, applies_styled_run_color_and_transform)
     }
 
     HE_EXPECT(sawStyledDraw);
+}
+
+HE_TEST(scribe, retained_text, textsub_demo_line_starts_are_the_leftmost_rendered_glyphs)
+{
+    String repoFontPath;
+    HE_ASSERT(ResolveRepoFontPath(repoFontPath, "NotoSans-Regular.ttf"));
+
+    Vector<uint8_t> fontBytes;
+    HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
+
+    Vector<schema::Word> storage;
+    LoadedFontFaceBlob font{};
+    HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
+
+    const LoadedFontFaceBlob faces[] = { font };
+    const String text = "TextSub1 Sub2\nTextSup1 Sup2";
+
+    TextStyle styles[5]{};
+    styles[1].baselineShiftEm = 0.20f;
+    styles[1].glyphScale = 0.72f;
+    styles[2].baselineShiftEm = 0.20f;
+    styles[2].glyphScale = 0.60f;
+    styles[3].baselineShiftEm = -0.35f;
+    styles[3].glyphScale = 0.72f;
+    styles[4].baselineShiftEm = -0.35f;
+    styles[4].glyphScale = 0.60f;
+
+    const TextStyleSpan spans[] =
+    {
+        { 4u, 8u, 1u },
+        { 9u, 13u, 2u },
+        { 18u, 22u, 3u },
+        { 23u, 27u, 4u },
+    };
+
+    StyledTextLayoutDesc layoutDesc{};
+    layoutDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.text = text;
+    layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
+    layoutDesc.options.fontSize = 24.0f;
+    layoutDesc.options.wrap = false;
+
+    LayoutEngine engine;
+    LayoutResult layout;
+    HE_ASSERT(engine.LayoutStyledText(layout, layoutDesc));
+    HE_EXPECT_EQ(layout.lines.Size(), 2u);
+
+    RetainedTextModel retainedText;
+    RetainedTextBuildDesc retainedDesc{};
+    retainedDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.layout = &layout;
+    retainedDesc.fontSize = layoutDesc.options.fontSize;
+    retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
+    HE_ASSERT(retainedText.Build(retainedDesc));
+    HE_EXPECT_EQ(retainedText.GetDrawCount(), layout.glyphs.Size());
+
+    CompiledFontRenderData renderData{};
+    HE_ASSERT(BuildCompiledFontRenderData(renderData, fontBytes, 0));
+
+    for (uint32_t lineIndex = 0; lineIndex < layout.lines.Size(); ++lineIndex)
+    {
+        const TextLine& line = layout.lines[lineIndex];
+        const TextCluster& firstCluster = layout.clusters[line.clusterStart];
+        const uint32_t firstGlyphIndex = firstCluster.glyphStart;
+        HE_ASSERT(firstGlyphIndex < layout.glyphs.Size());
+        HE_ASSERT(firstGlyphIndex < retainedText.GetDrawCount());
+
+        const ShapedGlyph& firstGlyph = layout.glyphs[firstGlyphIndex];
+        HE_ASSERT(firstGlyph.glyphIndex < renderData.glyphs.Size());
+
+        float minRenderedX = Limits<float>::Max;
+        uint32_t minRenderedGlyphLayoutIndex = Limits<uint32_t>::Max;
+        for (uint32_t glyphLayoutIndex = 0; glyphLayoutIndex < layout.glyphs.Size(); ++glyphLayoutIndex)
+        {
+            const ShapedGlyph& glyph = layout.glyphs[glyphLayoutIndex];
+            if (glyph.lineIndex != lineIndex)
+            {
+                continue;
+            }
+
+            const RetainedTextDraw& draw = retainedText.GetDraws()[glyphLayoutIndex];
+            const CompiledGlyphRenderEntry& compiledGlyph = renderData.glyphs[glyph.glyphIndex];
+            const float renderedMinX = draw.position.x + (compiledGlyph.boundsMinX * draw.size.x);
+            if (renderedMinX < minRenderedX)
+            {
+                minRenderedX = renderedMinX;
+                minRenderedGlyphLayoutIndex = glyphLayoutIndex;
+            }
+        }
+
+        HE_EXPECT_EQ(minRenderedGlyphLayoutIndex, firstGlyphIndex);
+        HE_EXPECT_EQ(layout.glyphs[minRenderedGlyphLayoutIndex].textByteStart, firstGlyph.textByteStart);
+        HE_EXPECT_EQ(layout.glyphs[minRenderedGlyphLayoutIndex].glyphIndex, firstGlyph.glyphIndex);
+    }
 }
 
 HE_TEST(scribe, retained_text, emits_decoration_quads_for_styled_runs)

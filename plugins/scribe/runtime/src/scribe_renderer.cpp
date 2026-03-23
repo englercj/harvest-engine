@@ -224,15 +224,17 @@ namespace he::scribe
 
             const float width = static_cast<float>(targetSize.x);
             const float height = static_cast<float>(targetSize.y);
+            const float halfPixelX = 1.0f / width;
+            const float halfPixelY = 1.0f / height;
             outConstants[0] = 2.0f / width;
             outConstants[1] = 0.0f;
             outConstants[2] = 0.0f;
-            outConstants[3] = -1.0f;
+            outConstants[3] = -1.0f + halfPixelX;
 
             outConstants[4] = 0.0f;
             outConstants[5] = -2.0f / height;
             outConstants[6] = 0.0f;
-            outConstants[7] = 1.0f;
+            outConstants[7] = 1.0f - halfPixelY;
 
             outConstants[8] = 0.0f;
             outConstants[9] = 0.0f;

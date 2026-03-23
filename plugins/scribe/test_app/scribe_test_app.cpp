@@ -799,6 +799,19 @@ namespace he
             m_renderer.QueueRetainedText(block.retainedText, instance);
         }
 
+        for (const SceneVectorImageBlock& block : m_sceneImages)
+        {
+            if (block.retainedImage.IsEmpty())
+            {
+                continue;
+            }
+
+            scribe::RetainedVectorImageInstanceDesc instance{};
+            instance.origin = GetSceneImageRenderOrigin(block);
+            instance.scale = block.scale * m_sceneZoom;
+            m_renderer.QueueRetainedVectorImage(block.retainedImage, instance);
+        }
+
         if (!m_retainedSceneStatsText.IsEmpty())
         {
             scribe::RetainedTextInstanceDesc instance{};
@@ -834,7 +847,8 @@ namespace he
             || !InitializeRenderState()
             || !m_renderer.Initialize(*m_render.device, m_render.preferredSwapChainFormat.format)
             || !m_renderer.CreateDebugGlyphResource(m_caretGlyph)
-            || !LoadDemoFonts())
+            || !LoadDemoFonts()
+            || !LoadDemoImages())
         {
             return false;
         }
@@ -878,12 +892,14 @@ namespace he
         m_retainedTitleText.Clear();
         m_retainedBodyText.Clear();
         m_sceneBlocks.Clear();
+        m_sceneImages.Clear();
         m_sceneStatsLayout.Clear();
         m_renderStatsLayout.Clear();
         m_inputHintsLayout.Clear();
         m_retainedSceneStatsText.Clear();
         m_retainedRenderStatsText.Clear();
         m_retainedInputHintsText.Clear();
+        m_svgLoadErrors.Clear();
         m_initialized = false;
     }
 
@@ -1110,9 +1126,27 @@ namespace he
     bool ScribeTestApp::LoadDemoImages()
     {
         m_images.Clear();
-        m_images.Resize(2);
-        return LoadDemoImage(m_images[0], "vector_layers.svg")
-            && LoadDemoImage(m_images[1], "vector_evenodd.svg");
+        m_svgLoadErrors.Clear();
+        static const char* SvgFiles[] =
+        {
+            "C:/Users/engle/Downloads/svg_tests/slug_algorithm.svg",
+            "C:/Users/engle/Downloads/svg_tests/tiger.svg",
+            "C:/Users/engle/Downloads/svg_tests/Complex_arcsin_abs_01_Pengo.svg",
+        };
+
+        for (uint32_t imageIndex = 0; imageIndex < HE_LENGTH_OF(SvgFiles); ++imageIndex)
+        {
+            LoadedDemoImage image{};
+            if (LoadDemoImage(image, SvgFiles[imageIndex]))
+            {
+                m_images.EmplaceBack(Move(image));
+                continue;
+            }
+
+            m_svgLoadErrors.EmplaceBack(SvgFiles[imageIndex]);
+        }
+
+        return true;
     }
 
     bool ScribeTestApp::LoadDemoFont(LoadedDemoFont& out, const char* fileName)
@@ -1179,6 +1213,7 @@ namespace he
         float bodyWidth = contentWidth;
 
         m_sceneBlocks.Clear();
+        m_sceneImages.Clear();
         m_bodyLayout.Clear();
         m_retainedTitleText.Clear();
         m_retainedBodyText.Clear();
@@ -1215,6 +1250,15 @@ namespace he
             return out.Build(retainedDesc) && m_renderer.PrepareRetainedText(out);
         };
 
+        auto buildRetainedImage = [&](scribe::RetainedVectorImageModel& out, const LoadedDemoImage& image) -> bool
+        {
+            out.Clear();
+
+            scribe::RetainedVectorImageBuildDesc retainedDesc{};
+            retainedDesc.image = &image.blob;
+            return out.Build(retainedDesc) && m_renderer.PrepareRetainedVectorImage(out);
+        };
+
         auto addSceneBlock = [&](const char* text,
                                  const Vec2f& origin,
                                  float fontSize,
@@ -1246,6 +1290,20 @@ namespace he
             }
 
             if (!buildRetainedText(block.retainedText, blockFaces, block.layout, fontSize))
+            {
+                return nullptr;
+            }
+
+            return &block;
+        };
+
+        auto addSceneImage = [&](const LoadedDemoImage& image, const Vec2f& origin, float scale) -> SceneVectorImageBlock*
+        {
+            SceneVectorImageBlock& block = m_sceneImages.EmplaceBack();
+            block.name = image.name;
+            block.origin = origin;
+            block.scale = scale;
+            if (!buildRetainedImage(block.retainedImage, image))
             {
                 return nullptr;
             }
@@ -1393,6 +1451,78 @@ namespace he
                 break;
             }
 
+            case DemoScene::SvgGallery:
+            {
+                const float noteFontSize = 18.0f * dpiScale;
+                const float labelFontSize = 16.0f * dpiScale;
+                const float columnGap = 36.0f * dpiScale;
+                const float rowGap = 48.0f * dpiScale;
+                const float cellWidth = Max((contentWidth - columnGap) * 0.5f, 240.0f * dpiScale);
+                const float cellHeight = 420.0f * dpiScale;
+                const Vec4f mutedColor{ 0.35f, 0.35f, 0.35f, 1.0f };
+                String noteText =
+                    "These SVGs are compiled at startup into Scribe runtime blobs and then rendered through the retained vector-image path. "
+                    "Pan and zoom the page to inspect edge quality and fill-rule behavior.";
+                if (m_images.IsEmpty())
+                {
+                    noteText += " No SVGs loaded successfully from the test directory.";
+                }
+                else if (!m_svgLoadErrors.IsEmpty())
+                {
+                    noteText += " Skipped SVGs:";
+                    for (const String& failedName : m_svgLoadErrors)
+                    {
+                        noteText += "\n- ";
+                        noteText += failedName;
+                    }
+                }
+
+                SceneTextBlock* noteBlock = addSceneBlock(
+                    noteText.Data(),
+                    { 0.0f, 0.0f },
+                    noteFontSize,
+                    contentWidth,
+                    false,
+                    scribe::TextDirection::LeftToRight,
+                    mutedColor);
+                if (!noteBlock)
+                {
+                    return false;
+                }
+
+                float rowY = noteBlock->origin.y + noteBlock->layout.height + (28.0f * dpiScale);
+                for (uint32_t imageIndex = 0; imageIndex < m_images.Size(); ++imageIndex)
+                {
+                    const uint32_t columnIndex = imageIndex % 2;
+                    const uint32_t rowIndex = imageIndex / 2;
+                    const float x = static_cast<float>(columnIndex) * (cellWidth + columnGap);
+                    const float y = rowY + (static_cast<float>(rowIndex) * (cellHeight + rowGap));
+                    const Vec2f imageOrigin{ x, y };
+
+                    const float viewBoxWidth = Max(m_images[imageIndex].blob.metadata.GetSourceViewBoxWidth(), 1.0f);
+                    const float viewBoxHeight = Max(m_images[imageIndex].blob.metadata.GetSourceViewBoxHeight(), 1.0f);
+                    const float scale = Min(cellWidth / viewBoxWidth, (cellHeight - (28.0f * dpiScale)) / viewBoxHeight);
+
+                    if (!addSceneImage(m_images[imageIndex], imageOrigin, scale))
+                    {
+                        return false;
+                    }
+
+                    if (!addSceneBlock(
+                            m_images[imageIndex].name.Data(),
+                            { x, y + (viewBoxHeight * scale) + (10.0f * dpiScale) },
+                            labelFontSize,
+                            cellWidth,
+                            false,
+                            scribe::TextDirection::LeftToRight,
+                            mutedColor))
+                    {
+                        return false;
+                    }
+                }
+                break;
+            }
+
             case DemoScene::SmallTextAlignment:
             {
                 const float noteFontSize = 18.0f * dpiScale;
@@ -1473,6 +1603,13 @@ namespace he
                 block.origin.y + blockOffset.y
             };
         }
+        for (SceneVectorImageBlock& block : m_sceneImages)
+        {
+            block.origin = {
+                block.origin.x + blockOffset.x,
+                block.origin.y + blockOffset.y
+            };
+        }
 
         m_hasCaret = false;
         m_bodyFontSize = bodyFontSize;
@@ -1480,6 +1617,10 @@ namespace he
         for (const SceneTextBlock& block : m_sceneBlocks)
         {
             m_sceneVertexEstimate += block.retainedText.GetEstimatedVertexCount();
+        }
+        for (const SceneVectorImageBlock& block : m_sceneImages)
+        {
+            m_sceneVertexEstimate += block.retainedImage.GetEstimatedVertexCount();
         }
 
         m_layoutDirty = false;
@@ -1648,94 +1789,12 @@ namespace he
         return origin;
     }
 
-    bool ScribeTestApp::PrimeImageCache()
+    Vec2f ScribeTestApp::GetSceneImageRenderOrigin(const SceneVectorImageBlock& block) const
     {
-        for (uint32_t imageIndex = 0; imageIndex < m_images.Size(); ++imageIndex)
-        {
-            const LoadedDemoImage& image = m_images[imageIndex];
-            if (!image.blob.render.IsValid() || !image.blob.paint.IsValid())
-            {
-                continue;
-            }
-
-            const auto layers = image.blob.paint.GetLayers();
-            for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
-            {
-                const scribe::GlyphResource* shapeResource = nullptr;
-                if (!EnsureImageShapeResource(imageIndex, layers[layerIndex].GetShapeIndex(), shapeResource))
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    bool ScribeTestApp::EnsureImageShapeResource(uint32_t imageIndex, uint32_t shapeIndex, const scribe::GlyphResource*& out)
-    {
-        out = nullptr;
-
-        for (CachedImageShape& cached : m_cachedImageShapes)
-        {
-            if ((cached.imageIndex == imageIndex) && (cached.shapeIndex == shapeIndex))
-            {
-                out = &cached.resource;
-                return true;
-            }
-        }
-
-        if (imageIndex >= m_images.Size())
-        {
-            return false;
-        }
-
-        CachedImageShape& cached = m_cachedImageShapes.EmplaceBack();
-        cached.imageIndex = imageIndex;
-        cached.shapeIndex = shapeIndex;
-        if (!m_renderer.CreateCompiledVectorShapeResource(cached.resource, m_images[imageIndex].blob, shapeIndex))
-        {
-            m_cachedImageShapes.PopBack();
-            return false;
-        }
-
-        out = &cached.resource;
-        return true;
-    }
-
-    void ScribeTestApp::QueueDraw(const scribe::DrawGlyphDesc& desc)
-    {
-        m_renderer.QueueDraw(desc);
-    }
-
-    void ScribeTestApp::QueueImage(const LoadedDemoImage& image, uint32_t imageIndex, const Vec2f& position, float scale)
-    {
-        Vector<scribe::CompiledVectorImageLayer> layers{};
-        if (!scribe::GetCompiledVectorImageLayers(layers, image.blob))
-        {
-            return;
-        }
-
-        const float minX = image.blob.metadata.GetSourceViewBoxMinX();
-        const float minY = image.blob.metadata.GetSourceViewBoxMinY();
-        const Vec2f drawOffset{ -minX, minY };
-
-        for (const scribe::CompiledVectorImageLayer& layer : layers)
-        {
-            const scribe::GlyphResource* shapeResource = nullptr;
-            if (!EnsureImageShapeResource(imageIndex, layer.shapeIndex, shapeResource))
-            {
-                continue;
-            }
-
-            scribe::DrawGlyphDesc desc{};
-            desc.glyph = shapeResource;
-            desc.position = position;
-            desc.size = { scale, scale };
-            desc.offset = drawOffset;
-            desc.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-            QueueDraw(desc);
-        }
+        return {
+            (block.origin.x * m_sceneZoom) + m_scenePan.x,
+            (block.origin.y * m_sceneZoom) + m_scenePan.y
+        };
     }
 
     void ScribeTestApp::QueueCaret()
@@ -1760,7 +1819,7 @@ namespace he
         };
         desc.size = { 2.0f, Max(line.height, 1.0f) };
         desc.color = { 0.0f, 0.0f, 0.0f, 1.0f };
-        QueueDraw(desc);
+        m_renderer.QueueDraw(desc);
     }
 
     void ScribeTestApp::UpdateSceneTitle()
@@ -1800,6 +1859,11 @@ namespace he
             case DemoScene::EmojiPage:
                 m_titleText = "Scribe Testbed: color emoji page";
                 m_bodyText = c_emoji_page_text;
+                break;
+
+            case DemoScene::SvgGallery:
+                m_titleText = "Scribe Testbed: retained SVG gallery";
+                m_bodyText.Clear();
                 break;
 
             case DemoScene::SmallTextAlignment:

@@ -70,6 +70,12 @@ namespace he::scribe::editor
             float maxY{ 0.0f };
         };
 
+        struct ParsedDefinition
+        {
+            String id{};
+            ParsedShape shape{};
+        };
+
         struct ParsedImage
         {
             Vector<ParsedShape> shapes{};
@@ -95,6 +101,8 @@ namespace he::scribe::editor
         {
             Affine2D transform{};
             StyleState style{};
+            bool inDefinitions{ false };
+            bool suppressOutput{ false };
         };
 
         struct Attribute
@@ -122,6 +130,69 @@ namespace he::scribe::editor
                 (transform.m00 * point.x) + (transform.m01 * point.y) + transform.tx,
                 (transform.m10 * point.x) + (transform.m11 * point.y) + transform.ty
             };
+        }
+
+        void RecomputeShapeBounds(ParsedShape& shape)
+        {
+            if (shape.curves.IsEmpty())
+            {
+                shape.minX = 0.0f;
+                shape.minY = 0.0f;
+                shape.maxX = 0.0f;
+                shape.maxY = 0.0f;
+                return;
+            }
+
+            shape.minX = shape.curves[0].minX;
+            shape.minY = shape.curves[0].minY;
+            shape.maxX = shape.curves[0].maxX;
+            shape.maxY = shape.curves[0].maxY;
+            for (uint32_t curveIndex = 1; curveIndex < shape.curves.Size(); ++curveIndex)
+            {
+                const CurveData& curve = shape.curves[curveIndex];
+                shape.minX = Min(shape.minX, curve.minX);
+                shape.minY = Min(shape.minY, curve.minY);
+                shape.maxX = Max(shape.maxX, curve.maxX);
+                shape.maxY = Max(shape.maxY, curve.maxY);
+            }
+        }
+
+        void TransformCurveBounds(CurveData& curve)
+        {
+            curve.minX = Min(curve.p1.x, Min(curve.p2.x, curve.p3.x));
+            curve.minY = Min(curve.p1.y, Min(curve.p2.y, curve.p3.y));
+            curve.maxX = Max(curve.p1.x, Max(curve.p2.x, curve.p3.x));
+            curve.maxY = Max(curve.p1.y, Max(curve.p2.y, curve.p3.y));
+        }
+
+        ParsedShape CloneTransformedShape(const ParsedShape& source, const ParseState& state)
+        {
+            ParsedShape shape = source;
+            shape.fillRule = state.style.fillRule;
+            shape.color = state.style.fill;
+            for (CurveData& curve : shape.curves)
+            {
+                curve.p1 = TransformPoint(state.transform, curve.p1);
+                curve.p2 = TransformPoint(state.transform, curve.p2);
+                curve.p3 = TransformPoint(state.transform, curve.p3);
+                TransformCurveBounds(curve);
+            }
+
+            RecomputeShapeBounds(shape);
+            return shape;
+        }
+
+        const Attribute* FindAttribute(Span<const Attribute> attrs, StringView name)
+        {
+            for (const Attribute& attr : attrs)
+            {
+                if (attr.name.EqualToI(name))
+                {
+                    return &attr;
+                }
+            }
+
+            return nullptr;
         }
 
         Affine2D ComposeAffine(const Affine2D& outer, const Affine2D& inner)
@@ -884,14 +955,18 @@ namespace he::scribe::editor
             bool ParseAttributes(Vector<Attribute>& out, bool& outSelfClosing);
             void ParseSvgAttributes(ParsedImage& out, Span<const Attribute> attrs);
             bool ParsePathElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
+            bool ParseUseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
             bool ParsePathData(CurveBuilder& builder, StringView text);
             bool SkipToClosingTag(StringView tagName);
+            bool SkipElement(StringView tagName);
+            const ParsedShape* FindDefinition(StringView id) const;
 
         private:
             StringView m_text{};
             const char* m_cur{ nullptr };
             const char* m_end{ nullptr };
             float m_flatteningTolerance{ 0.25f };
+            Vector<ParsedDefinition> m_definitions{};
         };
 
         bool SvgParser::Parse(ParsedImage& out, StringView text, float flatteningTolerance)
@@ -901,6 +976,7 @@ namespace he::scribe::editor
             m_end = text.Data() + text.Size();
             m_flatteningTolerance = Max(flatteningTolerance, 0.01f);
             out = {};
+            m_definitions.Clear();
 
             ParseState rootState{};
             if (!ParseContainer(out, rootState, {}))
@@ -961,7 +1037,11 @@ namespace he::scribe::editor
 
                 if ((m_cur < m_end) && ((*m_cur == '!') || (*m_cur == '?')))
                 {
-                    return SkipMarkup();
+                    if (!SkipMarkup())
+                    {
+                        return false;
+                    }
+                    continue;
                 }
 
                 const StringView tagName = ParseName();
@@ -984,6 +1064,18 @@ namespace he::scribe::editor
                 {
                     ParseSvgAttributes(out, attrs);
                 }
+                else if (tagName.EqualToI("defs"))
+                {
+                    state.inDefinitions = true;
+                    state.suppressOutput = true;
+                }
+                else if (tagName.EqualToI("clipPath")
+                    || tagName.EqualToI("mask")
+                    || tagName.EqualToI("filter")
+                    || tagName.EqualToI("symbol"))
+                {
+                    state.suppressOutput = true;
+                }
 
                 if (tagName.EqualToI("path"))
                 {
@@ -993,6 +1085,31 @@ namespace he::scribe::editor
                     }
 
                     if (!selfClosing && !SkipToClosingTag(tagName))
+                    {
+                        return false;
+                    }
+                }
+                else if (tagName.EqualToI("use"))
+                {
+                    if (!ParseUseElement(out, state, attrs))
+                    {
+                        return false;
+                    }
+
+                    if (!selfClosing && !SkipToClosingTag(tagName))
+                    {
+                        return false;
+                    }
+                }
+                else if (tagName.EqualToI("text")
+                    || tagName.EqualToI("tspan")
+                    || tagName.EqualToI("title")
+                    || tagName.EqualToI("desc")
+                    || tagName.EqualToI("metadata")
+                    || tagName.EqualToI("style")
+                    || tagName.EqualToI("script"))
+                {
+                    if (!selfClosing && !SkipElement(tagName))
                     {
                         return false;
                     }
@@ -1173,16 +1290,20 @@ namespace he::scribe::editor
         bool SvgParser::ParsePathElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
         {
             StringView d{};
+            StringView id{};
             for (const Attribute& attr : attrs)
             {
                 if (attr.name.EqualToI("d"))
                 {
                     d = attr.value;
-                    break;
+                }
+                else if (attr.name.EqualToI("id"))
+                {
+                    id = attr.value;
                 }
             }
 
-            if (d.IsEmpty() || state.style.fillNone || (state.style.fill.w <= 0.0f))
+            if (d.IsEmpty())
             {
                 return true;
             }
@@ -1201,37 +1322,116 @@ namespace he::scribe::editor
                 return true;
             }
 
-            ParsedShape& shape = out.shapes.EmplaceBack();
+            ParsedShape shape{};
             shape.curves = std::move(curves);
             shape.fillRule = state.style.fillRule;
             shape.color = state.style.fill;
-            shape.minX = shape.curves[0].minX;
-            shape.minY = shape.curves[0].minY;
-            shape.maxX = shape.curves[0].maxX;
-            shape.maxY = shape.curves[0].maxY;
+            RecomputeShapeBounds(shape);
 
-            for (uint32_t i = 1; i < shape.curves.Size(); ++i)
+            if (state.inDefinitions)
             {
-                const CurveData& curve = shape.curves[i];
-                shape.minX = Min(shape.minX, curve.minX);
-                shape.minY = Min(shape.minY, curve.minY);
-                shape.maxX = Max(shape.maxX, curve.maxX);
-                shape.maxY = Max(shape.maxY, curve.maxY);
+                if (!id.IsEmpty())
+                {
+                    ParsedDefinition& definition = m_definitions.EmplaceBack();
+                    definition.id = String(id);
+                    definition.shape = std::move(shape);
+                }
+
+                return true;
             }
 
+            if (state.suppressOutput || state.style.fillNone || (state.style.fill.w <= 0.0f))
+            {
+                return true;
+            }
+
+            ParsedShape& outShape = out.shapes.EmplaceBack();
+            outShape = std::move(shape);
             if (out.shapes.Size() == 1)
             {
-                out.boundsMinX = shape.minX;
-                out.boundsMinY = shape.minY;
-                out.boundsMaxX = shape.maxX;
-                out.boundsMaxY = shape.maxY;
+                out.boundsMinX = outShape.minX;
+                out.boundsMinY = outShape.minY;
+                out.boundsMaxX = outShape.maxX;
+                out.boundsMaxY = outShape.maxY;
             }
             else
             {
-                out.boundsMinX = Min(out.boundsMinX, shape.minX);
-                out.boundsMinY = Min(out.boundsMinY, shape.minY);
-                out.boundsMaxX = Max(out.boundsMaxX, shape.maxX);
-                out.boundsMaxY = Max(out.boundsMaxY, shape.maxY);
+                out.boundsMinX = Min(out.boundsMinX, outShape.minX);
+                out.boundsMinY = Min(out.boundsMinY, outShape.minY);
+                out.boundsMaxX = Max(out.boundsMaxX, outShape.maxX);
+                out.boundsMaxY = Max(out.boundsMaxY, outShape.maxY);
+            }
+
+            return true;
+        }
+
+        bool SvgParser::ParseUseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
+        {
+            if (state.suppressOutput || state.style.fillNone || (state.style.fill.w <= 0.0f))
+            {
+                return true;
+            }
+
+            const Attribute* hrefAttr = FindAttribute(attrs, "href");
+            if (!hrefAttr)
+            {
+                hrefAttr = FindAttribute(attrs, "xlink:href");
+            }
+
+            if (!hrefAttr || hrefAttr->value.IsEmpty())
+            {
+                return true;
+            }
+
+            StringView refId = hrefAttr->value;
+            if ((refId.Size() > 0) && (refId[0] == '#'))
+            {
+                refId = refId.Substring(1);
+            }
+
+            const ParsedShape* definition = FindDefinition(refId);
+            if (!definition)
+            {
+                return true;
+            }
+
+            ParseState instanceState = state;
+
+            float x = 0.0f;
+            float y = 0.0f;
+            if (const Attribute* xAttr = FindAttribute(attrs, "x"))
+            {
+                ParseFloat(xAttr->value, x);
+            }
+
+            if (const Attribute* yAttr = FindAttribute(attrs, "y"))
+            {
+                ParseFloat(yAttr->value, y);
+            }
+
+            if ((x != 0.0f) || (y != 0.0f))
+            {
+                Affine2D translation{};
+                translation.tx = x;
+                translation.ty = y;
+                instanceState.transform = ComposeAffine(instanceState.transform, translation);
+            }
+
+            ParsedShape& outShape = out.shapes.EmplaceBack();
+            outShape = CloneTransformedShape(*definition, instanceState);
+            if (out.shapes.Size() == 1)
+            {
+                out.boundsMinX = outShape.minX;
+                out.boundsMinY = outShape.minY;
+                out.boundsMaxX = outShape.maxX;
+                out.boundsMaxY = outShape.maxY;
+            }
+            else
+            {
+                out.boundsMinX = Min(out.boundsMinX, outShape.minX);
+                out.boundsMinY = Min(out.boundsMinY, outShape.minY);
+                out.boundsMaxX = Max(out.boundsMaxX, outShape.maxX);
+                out.boundsMaxY = Max(out.boundsMaxY, outShape.maxY);
             }
 
             return true;
@@ -1451,6 +1651,76 @@ namespace he::scribe::editor
             }
 
             return false;
+        }
+
+        bool SvgParser::SkipElement(StringView tagName)
+        {
+            uint32_t depth = 1;
+            while (m_cur < m_end)
+            {
+                if (*m_cur != '<')
+                {
+                    ++m_cur;
+                    continue;
+                }
+
+                ++m_cur;
+                if ((m_cur < m_end) && ((*m_cur == '!') || (*m_cur == '?')))
+                {
+                    if (!SkipMarkup())
+                    {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                const bool isClosing = Consume('/');
+                const StringView nestedTag = ParseName();
+                if (nestedTag.IsEmpty())
+                {
+                    return false;
+                }
+
+                Vector<Attribute> attrs{};
+                bool selfClosing = false;
+                if (!ParseAttributes(attrs, selfClosing))
+                {
+                    return false;
+                }
+
+                if (isClosing)
+                {
+                    if (nestedTag.EqualToI(tagName))
+                    {
+                        --depth;
+                        if (depth == 0)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                else if (!selfClosing && nestedTag.EqualToI(tagName))
+                {
+                    ++depth;
+                }
+            }
+
+            return false;
+        }
+
+        const ParsedShape* SvgParser::FindDefinition(StringView id) const
+        {
+            for (const ParsedDefinition& definition : m_definitions)
+            {
+                const StringView definitionId(definition.id.Data(), definition.id.Size());
+                if (definitionId.EqualToI(id))
+                {
+                    return &definition.shape;
+                }
+            }
+
+            return nullptr;
         }
 
         bool BuildCompiledShape(

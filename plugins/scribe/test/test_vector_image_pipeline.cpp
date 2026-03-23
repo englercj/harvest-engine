@@ -3,9 +3,13 @@
 #include "image_compile_geometry.h"
 
 #include "he/scribe/compiled_vector_image.h"
+#include "he/scribe/retained_vector_image.h"
+#include "he/scribe/renderer.h"
 #include "he/scribe/runtime_blob.h"
 
 #include "he/core/test.h"
+#include "he/rhi/device.h"
+#include "he/rhi/instance.h"
 
 using namespace he;
 using namespace he::scribe;
@@ -18,6 +22,23 @@ namespace
         "<path fill=\"#111827\" d=\"M0 0 L180 0 L180 180 L0 180 Z\"/>"
         "<path fill=\"#e5e7eb\" fill-rule=\"evenodd\" d=\"M24 24 L156 24 L156 156 L24 156 Z M52 52 L52 128 L128 128 L128 52 Z\"/>"
         "<path fill=\"#22c55e\" d=\"M90 36 L108 72 L148 78 L118 106 L126 146 L90 126 L54 146 L62 106 L32 78 L72 72 Z\"/>"
+        "</svg>";
+
+    constexpr const char* kSvgWithUse =
+        "<svg viewBox=\"0 0 64 64\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">"
+        "<defs>"
+        "<path id=\"diamond\" d=\"M8 0 L16 8 L8 16 L0 8 Z\"/>"
+        "</defs>"
+        "<g fill=\"#ef4444\">"
+        "<use xlink:href=\"#diamond\" x=\"8\" y=\"8\"/>"
+        "</g>"
+        "</svg>";
+
+    constexpr const char* kSvgWithTextNodes =
+        "<svg viewBox=\"0 0 64 64\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<path fill=\"#111827\" d=\"M4 4 L60 4 L60 60 L4 60 Z\"/>"
+        "<text x=\"8\" y=\"20\">Scribe SVG</text>"
+        "<path fill=\"#22c55e\" d=\"M16 16 L48 16 L48 48 L16 48 Z\"/>"
         "</svg>";
 
     bool BuildLoadedVectorImage(Vector<schema::Word>& storage, LoadedVectorImageBlob& out)
@@ -100,6 +121,69 @@ namespace
         storage = Span<const schema::Word>(rootBuilder);
         return LoadCompiledVectorImageBlob(out, storage);
     }
+
+    bool BuildRetainedVectorImageFromTemporaryCopy(RetainedVectorImageModel& out, const LoadedVectorImageBlob& image)
+    {
+        LoadedVectorImageBlob temporaryImage = image;
+
+        RetainedVectorImageBuildDesc desc{};
+        desc.image = &temporaryImage;
+        return out.Build(desc);
+    }
+
+    struct NullRendererHarness
+    {
+        rhi::Instance* instance{ nullptr };
+        rhi::Device* device{ nullptr };
+        Renderer renderer{};
+
+        ~NullRendererHarness() noexcept
+        {
+            Terminate();
+        }
+
+        bool Initialize()
+        {
+            rhi::InstanceDesc instanceDesc{};
+            instanceDesc.api = rhi::Api_Null;
+            if (!rhi::Instance::Create(instanceDesc, instance) || !instance)
+            {
+                return false;
+            }
+
+            rhi::DeviceDesc deviceDesc{};
+            if (!instance->CreateDevice(deviceDesc, device) || !device)
+            {
+                Terminate();
+                return false;
+            }
+
+            if (!renderer.Initialize(*device, rhi::Format::BGRA8Unorm_sRGB))
+            {
+                Terminate();
+                return false;
+            }
+
+            return true;
+        }
+
+        void Terminate()
+        {
+            renderer.Terminate();
+
+            if (device)
+            {
+                instance->DestroyDevice(device);
+                device = nullptr;
+            }
+
+            if (instance)
+            {
+                rhi::Instance::Destroy(instance);
+                instance = nullptr;
+            }
+        }
+    };
 }
 
 HE_TEST(scribe, vector_image_pipeline, compiles_svg_source_to_payloads)
@@ -167,6 +251,35 @@ HE_TEST(scribe, vector_image_pipeline, compiles_repeatable_svg_payloads)
         first.layers.Size() * sizeof(CompiledVectorImageLayerEntry));
 }
 
+HE_TEST(scribe, vector_image_pipeline, ignores_definition_geometry_and_instantiates_use_references)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithUse), StrLen(kSvgWithUse)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.layers.Size(), 1u);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 1u);
+    HE_EXPECT_EQ(imageData.layers[0].red, 239.0f / 255.0f);
+    HE_EXPECT_EQ(imageData.layers[0].green, 68.0f / 255.0f);
+    HE_EXPECT_EQ(imageData.layers[0].blue, 68.0f / 255.0f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, skips_text_elements_without_failing_svg_compile)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithTextNodes), StrLen(kSvgWithTextNodes)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.layers.Size(), 2u);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 2u);
+}
+
 HE_TEST(scribe, vector_image_pipeline, loads_compiled_vector_blob)
 {
     Vector<schema::Word> storage;
@@ -204,4 +317,41 @@ HE_TEST(scribe, vector_image_pipeline, resolves_layers_and_shape_resources)
     HE_EXPECT_EQ(shape.vertices[0].col.y, layers[1].color.y);
     HE_EXPECT_EQ(shape.vertices[0].col.z, layers[1].color.z);
     HE_EXPECT_EQ(shape.vertices[0].col.w, layers[1].color.w);
+}
+
+HE_TEST(scribe, retained_vector_image, builds_layered_draws_from_runtime_blob)
+{
+    Vector<schema::Word> storage;
+    LoadedVectorImageBlob image{};
+    HE_ASSERT(BuildLoadedVectorImage(storage, image));
+
+    RetainedVectorImageModel retainedImage;
+    RetainedVectorImageBuildDesc desc{};
+    desc.image = &image;
+    HE_ASSERT(retainedImage.Build(desc));
+
+    HE_EXPECT_EQ(retainedImage.GetDrawCount(), image.paint.GetLayers().Size());
+    HE_EXPECT_EQ(retainedImage.GetEstimatedVertexCount(), retainedImage.GetDrawCount() * ScribeGlyphVertexCount);
+    HE_EXPECT_EQ(retainedImage.GetViewBoxSize().x, 180.0f);
+    HE_EXPECT_EQ(retainedImage.GetViewBoxSize().y, 180.0f);
+    HE_EXPECT_NE_PTR(retainedImage.GetImage(), nullptr);
+}
+
+HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_image_copy_expires)
+{
+    Vector<schema::Word> storage;
+    LoadedVectorImageBlob image{};
+    HE_ASSERT(BuildLoadedVectorImage(storage, image));
+
+    RetainedVectorImageModel retainedImage;
+    HE_ASSERT(BuildRetainedVectorImageFromTemporaryCopy(retainedImage, image));
+    HE_EXPECT_GT(retainedImage.GetDrawCount(), 0u);
+    HE_EXPECT_NE_PTR(retainedImage.GetImage(), nullptr);
+
+    NullRendererHarness harness;
+    HE_ASSERT(harness.Initialize());
+    HE_EXPECT(harness.renderer.PrepareRetainedVectorImage(retainedImage));
+
+    RetainedVectorImageInstanceDesc instance{};
+    harness.renderer.QueueRetainedVectorImage(retainedImage, instance);
 }

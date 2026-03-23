@@ -5,6 +5,7 @@
 #include "he/scribe/compiled_font.h"
 #include "he/scribe/layout_engine.h"
 #include "he/scribe/retained_text.h"
+#include "he/scribe/retained_vector_image.h"
 #include "he/scribe/renderer.h"
 
 #include "he/core/clock.h"
@@ -98,11 +99,20 @@ namespace he
             bool pixelAlignCapHeight{ false };
         };
 
+        struct SceneVectorImageBlock
+        {
+            String name{};
+            scribe::RetainedVectorImageModel retainedImage{};
+            Vec2f origin{ 0.0f, 0.0f };
+            float scale{ 1.0f };
+        };
+
         enum class DemoScene : uint32_t
         {
             FeatureOverview,
             RichParagraphs,
             EmojiPage,
+            SvgGallery,
             SmallTextAlignment,
 
             _Count,
@@ -122,10 +132,6 @@ namespace he
         bool LoadDemoImage(LoadedDemoImage& out, const char* fileName);
         bool RebuildLayouts();
         bool UpdateOverlayLayout();
-        bool PrimeImageCache();
-        bool EnsureImageShapeResource(uint32_t imageIndex, uint32_t shapeIndex, const scribe::GlyphResource*& out);
-        void QueueDraw(const scribe::DrawGlyphDesc& desc);
-        void QueueImage(const LoadedDemoImage& image, uint32_t imageIndex, const Vec2f& position, float scale);
         void QueueCaret();
         void UpdateSceneTitle();
         void ResetSceneView();
@@ -138,6 +144,7 @@ namespace he
         uint32_t GetSceneMissingGlyphCount() const;
         uint32_t GetSceneFallbackGlyphCount() const;
         Vec2f GetSceneBlockRenderOrigin(const SceneTextBlock& block) const;
+        Vec2f GetSceneImageRenderOrigin(const SceneVectorImageBlock& block) const;
 
     private:
         window::Device* m_windowDevice{ nullptr };
@@ -148,6 +155,7 @@ namespace he
         scribe::GlyphResource m_caretGlyph{};
         Vector<LoadedDemoFont> m_fonts{};
         Vector<LoadedDemoImage> m_images{};
+        Vector<String> m_svgLoadErrors{};
         Vector<CachedImageShape> m_cachedImageShapes{};
         String m_titleText{};
         String m_bodyText{};
@@ -159,6 +167,7 @@ namespace he
         scribe::RetainedTextModel m_retainedTitleText{};
         scribe::RetainedTextModel m_retainedBodyText{};
         Vector<SceneTextBlock> m_sceneBlocks{};
+        Vector<SceneVectorImageBlock> m_sceneImages{};
         scribe::LayoutResult m_sceneStatsLayout{};
         scribe::LayoutResult m_renderStatsLayout{};
         scribe::LayoutResult m_inputHintsLayout{};

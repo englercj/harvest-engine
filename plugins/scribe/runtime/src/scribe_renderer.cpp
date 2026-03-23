@@ -5,6 +5,7 @@
 #include "he/scribe/compiled_font.h"
 #include "he/scribe/compiled_vector_image.h"
 #include "he/scribe/retained_text.h"
+#include "he/scribe/retained_vector_image.h"
 
 #include "shaders/scribe.shaders.h"
 
@@ -330,6 +331,12 @@ namespace he::scribe
         }
         m_cachedFontGlyphResources.Clear();
         m_cachedFontGlyphSets.Clear();
+        for (CachedCompiledGlyphResource& cachedShape : m_cachedVectorShapeResources)
+        {
+            DestroyGlyphResource(cachedShape.resource);
+        }
+        m_cachedVectorShapeResources.Clear();
+        m_cachedVectorShapeSets.Clear();
         Vector<GlyphAtlas*> cachedAtlases = std::move(m_cachedAtlases);
         m_cachedAtlases.Clear();
         for (GlyphAtlas*& atlas : cachedAtlases)
@@ -702,6 +709,26 @@ namespace he::scribe
         return true;
     }
 
+    bool Renderer::PrepareRetainedVectorImage(const RetainedVectorImageModel& image)
+    {
+        const LoadedVectorImageBlob* loadedImage = image.GetImage();
+        if (!loadedImage)
+        {
+            return false;
+        }
+
+        for (const RetainedVectorImageDraw& draw : image.GetDraws())
+        {
+            const GlyphResource* shapeResource = nullptr;
+            if (!EnsureRetainedVectorShapeResource(*loadedImage, draw.shapeIndex, shapeResource))
+            {
+                continue;
+            }
+        }
+
+        return true;
+    }
+
     void Renderer::QueueDraw(const DrawGlyphDesc& desc)
     {
         if (!desc.glyph || !desc.glyph->atlas || (desc.glyph->vertexCount == 0))
@@ -747,6 +774,36 @@ namespace he::scribe
                 : draw.color;
             desc.basisX = draw.basisX;
             desc.basisY = draw.basisY;
+            desc.offset = draw.offset;
+            QueueDraw(desc);
+        }
+    }
+
+    void Renderer::QueueRetainedVectorImage(const RetainedVectorImageModel& image, const RetainedVectorImageInstanceDesc& instance)
+    {
+        const LoadedVectorImageBlob* loadedImage = image.GetImage();
+        if (!loadedImage)
+        {
+            return;
+        }
+
+        ReserveQueuedVertexCapacity(
+            m_streamVertices.Size() + image.GetEstimatedVertexCount(),
+            m_batches.Size() + image.GetDrawCount());
+
+        for (const RetainedVectorImageDraw& draw : image.GetDraws())
+        {
+            const GlyphResource* shapeResource = nullptr;
+            if (!EnsureRetainedVectorShapeResource(*loadedImage, draw.shapeIndex, shapeResource))
+            {
+                continue;
+            }
+
+            DrawGlyphDesc desc{};
+            desc.glyph = shapeResource;
+            desc.position = instance.origin;
+            desc.size = { instance.scale, instance.scale };
+            desc.color = MultiplyColor(draw.color, instance.tint);
             desc.offset = draw.offset;
             QueueDraw(desc);
         }
@@ -946,6 +1003,58 @@ namespace he::scribe
         }
         glyphSet->glyphIndices[glyphIndex] = static_cast<int32_t>(cacheIndex);
         out = &cachedGlyph.resource;
+        return true;
+    }
+
+    bool Renderer::EnsureRetainedVectorShapeResource(
+        const LoadedVectorImageBlob& image,
+        uint32_t shapeIndex,
+        const GlyphResource*& out)
+    {
+        out = nullptr;
+
+        CachedCompiledVectorShapeSet* shapeSet = nullptr;
+        const schema::Word* imageData = image.root.Data();
+        for (CachedCompiledVectorShapeSet& cachedSet : m_cachedVectorShapeSets)
+        {
+            if (cachedSet.imageData == imageData)
+            {
+                shapeSet = &cachedSet;
+                break;
+            }
+        }
+
+        if (!shapeSet)
+        {
+            shapeSet = &m_cachedVectorShapeSets.EmplaceBack();
+            shapeSet->imageData = imageData;
+            shapeSet->shapeIndices.Resize(image.render.GetShapes().Size(), int32_t(-1));
+        }
+
+        if (shapeIndex < shapeSet->shapeIndices.Size())
+        {
+            const int32_t cachedIndex = shapeSet->shapeIndices[shapeIndex];
+            if ((cachedIndex >= 0) && (static_cast<uint32_t>(cachedIndex) < m_cachedVectorShapeResources.Size()))
+            {
+                out = &m_cachedVectorShapeResources[static_cast<uint32_t>(cachedIndex)].resource;
+                return true;
+            }
+        }
+
+        const uint32_t cacheIndex = m_cachedVectorShapeResources.Size();
+        CachedCompiledGlyphResource& cachedShape = m_cachedVectorShapeResources.EmplaceBack();
+        if (!CreateCompiledVectorShapeResource(cachedShape.resource, image, shapeIndex))
+        {
+            m_cachedVectorShapeResources.PopBack();
+            return false;
+        }
+
+        if (shapeIndex >= shapeSet->shapeIndices.Size())
+        {
+            shapeSet->shapeIndices.Resize(shapeIndex + 1, int32_t(-1));
+        }
+        shapeSet->shapeIndices[shapeIndex] = static_cast<int32_t>(cacheIndex);
+        out = &cachedShape.resource;
         return true;
     }
 

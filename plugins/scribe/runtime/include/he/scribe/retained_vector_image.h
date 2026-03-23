@@ -1,0 +1,50 @@
+// Copyright Chad Engler
+
+#pragma once
+
+#include "he/scribe/runtime_blob.h"
+
+#include "he/core/vector.h"
+#include "he/math/types.h"
+
+namespace he::scribe
+{
+    struct RetainedVectorImageDraw
+    {
+        uint32_t shapeIndex{ 0 };
+        Vec4f color{ 1.0f, 1.0f, 1.0f, 1.0f };
+        Vec2f offset{ 0.0f, 0.0f };
+    };
+
+    struct RetainedVectorImageBuildDesc
+    {
+        const LoadedVectorImageBlob* image{ nullptr };
+    };
+
+    struct RetainedVectorImageInstanceDesc
+    {
+        Vec2f origin{ 0.0f, 0.0f };
+        float scale{ 1.0f };
+        Vec4f tint{ 1.0f, 1.0f, 1.0f, 1.0f };
+    };
+
+    class RetainedVectorImageModel
+    {
+    public:
+        bool Build(const RetainedVectorImageBuildDesc& desc);
+        void Clear();
+
+        bool IsEmpty() const { return m_draws.IsEmpty(); }
+        uint32_t GetDrawCount() const { return m_draws.Size(); }
+        uint32_t GetEstimatedVertexCount() const { return m_estimatedVertexCount; }
+        Span<const RetainedVectorImageDraw> GetDraws() const { return m_draws; }
+        const LoadedVectorImageBlob* GetImage() const;
+        Vec2f GetViewBoxSize() const { return m_viewBoxSize; }
+
+    private:
+        LoadedVectorImageBlob m_image{};
+        Vector<RetainedVectorImageDraw> m_draws{};
+        Vec2f m_viewBoxSize{ 0.0f, 0.0f };
+        uint32_t m_estimatedVertexCount{ 0 };
+    };
+}

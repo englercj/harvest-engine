@@ -13,7 +13,9 @@ namespace he::scribe
 {
     struct GlyphAtlas;
     class RetainedTextModel;
+    class RetainedVectorImageModel;
     struct RetainedTextInstanceDesc;
+    struct RetainedVectorImageInstanceDesc;
 
     struct PackedGlyphVertex
     {
@@ -107,9 +109,11 @@ namespace he::scribe
 
         bool BeginFrame(const FrameDesc& desc);
         bool PrepareRetainedText(const RetainedTextModel& text);
+        bool PrepareRetainedVectorImage(const RetainedVectorImageModel& image);
         void ReserveQueuedVertexCapacity(uint32_t vertexCount, uint32_t batchCount = 0);
         void QueueDraw(const DrawGlyphDesc& desc);
         void QueueRetainedText(const RetainedTextModel& text, const RetainedTextInstanceDesc& instance);
+        void QueueRetainedVectorImage(const RetainedVectorImageModel& image, const RetainedVectorImageInstanceDesc& instance);
         void EndFrame();
         uint32_t GetLastSubmittedDrawCount() const { return m_lastSubmittedDrawCount; }
 
@@ -138,6 +142,12 @@ namespace he::scribe
             Vector<int32_t> glyphIndices{};
         };
 
+        struct CachedCompiledVectorShapeSet
+        {
+            const schema::Word* imageData{ nullptr };
+            Vector<int32_t> shapeIndices{};
+        };
+
         bool CreateDedicatedAtlas(
             GlyphAtlas*& out,
             const TextureDataDesc& curveTexture,
@@ -155,6 +165,10 @@ namespace he::scribe
             const LoadedFontFaceBlob& fontFace,
             uint32_t glyphIndex,
             const GlyphResource*& out);
+        bool EnsureRetainedVectorShapeResource(
+            const LoadedVectorImageBlob& image,
+            uint32_t shapeIndex,
+            const GlyphResource*& out);
 
     private:
         rhi::Device* m_device{ nullptr };
@@ -168,6 +182,8 @@ namespace he::scribe
         Vector<GlyphAtlas*> m_cachedAtlases{};
         Vector<CachedCompiledFontGlyphSet> m_cachedFontGlyphSets{};
         Vector<CachedCompiledGlyphResource> m_cachedFontGlyphResources{};
+        Vector<CachedCompiledVectorShapeSet> m_cachedVectorShapeSets{};
+        Vector<CachedCompiledGlyphResource> m_cachedVectorShapeResources{};
         Vector<StreamBatch> m_batches{};
         Vector<PackedGlyphVertex> m_streamVertices{};
         uint32_t m_lastSubmittedDrawCount{ 0 };

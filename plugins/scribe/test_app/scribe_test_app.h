@@ -85,7 +85,25 @@ namespace he
 
         struct FontGlyphCacheState
         {
+            struct ColorGlyphRange
+            {
+                uint32_t firstLayer{ 0 };
+                uint32_t layerCount{ 0 };
+            };
+
+            struct CachedColorGlyphLayer
+            {
+                uint32_t glyphIndex{ 0 };
+                Vec4f color{ 1.0f, 1.0f, 1.0f, 1.0f };
+                Vec2f basisX{ 1.0f, 0.0f };
+                Vec2f basisY{ 0.0f, 1.0f };
+                Vec2f offset{ 0.0f, 0.0f };
+                bool useForegroundColor{ false };
+            };
+
             Vector<int32_t> glyphResourceIndices{};
+            Vector<ColorGlyphRange> colorGlyphRanges{};
+            Vector<CachedColorGlyphLayer> colorGlyphLayers{};
             uint32_t selectedPaletteIndex{ 0 };
             bool hasColorGlyphs{ false };
         };
@@ -174,7 +192,6 @@ namespace he
         Vector<CachedGlyph> m_cachedGlyphs{};
         Vector<FontGlyphCacheState> m_fontGlyphCache{};
         Vector<CachedImageShape> m_cachedImageShapes{};
-        Vector<scribe::CompiledColorGlyphLayer> m_colorLayerScratch{};
         String m_titleText{};
         String m_bodyText{};
         String m_sceneStatsText{};

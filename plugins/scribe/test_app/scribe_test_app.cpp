@@ -195,6 +195,16 @@ namespace he
             },
         };
 
+        Vec4f ToVec4f(scribe::FontFacePaletteColor::Reader color)
+        {
+            return {
+                color.GetRed(),
+                color.GetGreen(),
+                color.GetBlue(),
+                color.GetAlpha()
+            };
+        }
+
         float ComputeCapAlignedFontSize(const scribe::LoadedFontFaceBlob& font, float capHeightPixels)
         {
             if (!font.metadata.IsValid())
@@ -862,11 +872,13 @@ namespace he
         {
             FontGlyphCacheState& cacheState = m_fontGlyphCache[fontIndex];
             cacheState.glyphResourceIndices.Clear();
+            cacheState.colorGlyphRanges.Clear();
+            cacheState.colorGlyphLayers.Clear();
             cacheState.selectedPaletteIndex = 0;
             cacheState.hasColorGlyphs = false;
 
             const LoadedDemoFont& font = m_fonts[fontIndex];
-            if (!font.blob.metadata.IsValid())
+            if (!font.blob.metadata.IsValid() || !font.blob.paint.IsValid())
             {
                 continue;
             }
@@ -879,6 +891,43 @@ namespace he
             if (cacheState.hasColorGlyphs)
             {
                 cacheState.selectedPaletteIndex = scribe::SelectCompiledFontPalette(font.blob, true);
+
+                const auto colorGlyphs = font.blob.paint.GetColorGlyphs();
+                const auto palette = font.blob.paint.GetPalettes()[cacheState.selectedPaletteIndex];
+                const auto colors = palette.GetColors();
+                const auto layers = font.blob.paint.GetLayers();
+
+                cacheState.colorGlyphRanges.Resize(colorGlyphs.Size(), DefaultInit);
+                for (uint32_t glyphIndex = 0; glyphIndex < colorGlyphs.Size(); ++glyphIndex)
+                {
+                    const scribe::FontFaceColorGlyph::Reader colorGlyph = colorGlyphs[glyphIndex];
+                    const uint32_t layerCount = colorGlyph.GetLayerCount();
+                    FontGlyphCacheState::ColorGlyphRange& range = cacheState.colorGlyphRanges[glyphIndex];
+                    range.firstLayer = cacheState.colorGlyphLayers.Size();
+                    range.layerCount = layerCount;
+
+                    for (uint32_t layerIndex = 0; layerIndex < layerCount; ++layerIndex)
+                    {
+                        const scribe::FontFaceColorGlyphLayer::Reader layer = layers[colorGlyph.GetFirstLayer() + layerIndex];
+                        FontGlyphCacheState::CachedColorGlyphLayer& cachedLayer = cacheState.colorGlyphLayers.EmplaceBack();
+                        cachedLayer.glyphIndex = layer.GetGlyphIndex();
+                        cachedLayer.color = { 1.0f, 1.0f, 1.0f, Max(layer.GetAlphaScale(), 0.0f) };
+                        cachedLayer.basisX = { layer.GetTransform00(), layer.GetTransform10() };
+                        cachedLayer.basisY = { layer.GetTransform01(), layer.GetTransform11() };
+                        cachedLayer.offset = { layer.GetTransformTx(), layer.GetTransformTy() };
+                        cachedLayer.useForegroundColor = (layer.GetFlags() & scribe::CompiledFontColorLayerFlagUseForeground) != 0;
+
+                        if (!cachedLayer.useForegroundColor)
+                        {
+                            const uint32_t paletteEntryIndex = layer.GetPaletteEntryIndex();
+                            if (paletteEntryIndex < colors.Size())
+                            {
+                                cachedLayer.color = ToVec4f(colors[paletteEntryIndex]);
+                                cachedLayer.color.w *= Max(layer.GetAlphaScale(), 0.0f);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1548,20 +1597,15 @@ namespace he
                 continue;
             }
 
-            const LoadedDemoFont& font = m_fonts[glyph.fontFaceIndex];
             const FontGlyphCacheState& cacheState = m_fontGlyphCache[glyph.fontFaceIndex];
-            if (cacheState.hasColorGlyphs)
+            if (cacheState.hasColorGlyphs && (glyph.glyphIndex < cacheState.colorGlyphRanges.Size()))
             {
-                const bool hasResolvedLayers = scribe::GetCompiledColorGlyphLayers(
-                    m_colorLayerScratch,
-                    font.blob,
-                    glyph.glyphIndex,
-                    cacheState.selectedPaletteIndex,
-                    { 1.0f, 1.0f, 1.0f, 1.0f });
-                if (hasResolvedLayers && !m_colorLayerScratch.IsEmpty())
+                const FontGlyphCacheState::ColorGlyphRange range = cacheState.colorGlyphRanges[glyph.glyphIndex];
+                if (range.layerCount > 0)
                 {
-                    for (const scribe::CompiledColorGlyphLayer& layer : m_colorLayerScratch)
+                    for (uint32_t layerIndex = 0; layerIndex < range.layerCount; ++layerIndex)
                     {
+                        const FontGlyphCacheState::CachedColorGlyphLayer& layer = cacheState.colorGlyphLayers[range.firstLayer + layerIndex];
                         const scribe::GlyphResource* glyphResource = nullptr;
                         if (!EnsureGlyphResource(glyph.fontFaceIndex, layer.glyphIndex, glyphResource))
                         {
@@ -1797,7 +1841,6 @@ namespace he
         struct FontQueueState
         {
             float scale{ 0.0f };
-            uint32_t paletteIndex{ 0 };
             bool hasColorGlyphs{ false };
         };
 
@@ -1805,15 +1848,16 @@ namespace he
         fontQueueStates.Resize(m_fonts.Size(), DefaultInit);
         for (uint32_t fontIndex = 0; fontIndex < m_fonts.Size(); ++fontIndex)
         {
+            FontQueueState& fontQueueState = fontQueueStates[fontIndex];
+            if (fontIndex >= m_fontGlyphCache.Size())
+            {
+                continue;
+            }
+
             const LoadedDemoFont& font = m_fonts[fontIndex];
             const uint32_t unitsPerEm = Max(font.blob.metadata.GetMetrics().GetUnitsPerEm(), 1u);
-            FontQueueState& fontQueueState = fontQueueStates[fontIndex];
             fontQueueState.scale = (fontSize / static_cast<float>(unitsPerEm)) * layoutScale;
-            if (fontIndex < m_fontGlyphCache.Size())
-            {
-                fontQueueState.paletteIndex = m_fontGlyphCache[fontIndex].selectedPaletteIndex;
-                fontQueueState.hasColorGlyphs = m_fontGlyphCache[fontIndex].hasColorGlyphs;
-            }
+            fontQueueState.hasColorGlyphs = m_fontGlyphCache[fontIndex].hasColorGlyphs;
         }
 
         for (const scribe::ShapedGlyph& glyph : layout.glyphs)
@@ -1823,26 +1867,22 @@ namespace he
                 continue;
             }
 
-            const LoadedDemoFont& font = m_fonts[glyph.fontFaceIndex];
             const FontQueueState& fontQueueState = fontQueueStates[glyph.fontFaceIndex];
+            const FontGlyphCacheState& cacheState = m_fontGlyphCache[glyph.fontFaceIndex];
             const float scale = fontQueueState.scale;
             const Vec2f position{
                 origin.x + (glyph.position.x * layoutScale),
                 origin.y + (glyph.position.y * layoutScale)
             };
 
-            if (fontQueueState.hasColorGlyphs)
+            if (fontQueueState.hasColorGlyphs && (glyph.glyphIndex < cacheState.colorGlyphRanges.Size()))
             {
-                const bool hasResolvedLayers = scribe::GetCompiledColorGlyphLayers(
-                    m_colorLayerScratch,
-                    font.blob,
-                    glyph.glyphIndex,
-                    fontQueueState.paletteIndex,
-                    foregroundColor);
-                if (hasResolvedLayers && !m_colorLayerScratch.IsEmpty())
+                const FontGlyphCacheState::ColorGlyphRange range = cacheState.colorGlyphRanges[glyph.glyphIndex];
+                if (range.layerCount > 0)
                 {
-                    for (const scribe::CompiledColorGlyphLayer& layer : m_colorLayerScratch)
+                    for (uint32_t layerIndex = 0; layerIndex < range.layerCount; ++layerIndex)
                     {
+                        const FontGlyphCacheState::CachedColorGlyphLayer& layer = cacheState.colorGlyphLayers[range.firstLayer + layerIndex];
                         const scribe::GlyphResource* glyphResource = nullptr;
                         if (!EnsureGlyphResource(glyph.fontFaceIndex, layer.glyphIndex, glyphResource))
                         {
@@ -1853,7 +1893,8 @@ namespace he
                         desc.glyph = glyphResource;
                         desc.position = position;
                         desc.size = { scale, scale };
-                        desc.color = layer.color;
+                        desc.color = layer.useForegroundColor ? foregroundColor : layer.color;
+                        desc.color.w *= layer.useForegroundColor ? layer.color.w : 1.0f;
                         desc.basisX = layer.basisX;
                         desc.basisY = layer.basisY;
                         desc.offset = layer.offset;

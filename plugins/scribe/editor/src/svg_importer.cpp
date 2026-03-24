@@ -35,7 +35,7 @@ namespace he::scribe::editor
         }
 
         assets::Asset::Builder asset;
-        for (const auto existing : ctx.assetFile.GetAssets())
+        for (const assets::Asset::Reader existing : ctx.assetFile.GetAssets())
         {
             if (existing.GetType() != AssetTypeName)
             {

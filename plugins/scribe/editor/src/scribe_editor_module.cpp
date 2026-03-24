@@ -1,6 +1,5 @@
 // Copyright Chad Engler
 
-#include "he/scribe/editor/compiler_frontend.h"
 #include "he/scribe/editor/font_face_compiler.h"
 #include "he/scribe/editor/font_family_compiler.h"
 #include "he/scribe/editor/font_importer.h"

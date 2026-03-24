@@ -21,7 +21,7 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
     const AssetTypeName :String = "he.scribe.font_face";
     const ImportSourceResourceName :String = "he.scribe.font_face.import_source";
     const ImportMetadataResourceName :String = "he.scribe.font_face.import_metadata";
-    const RuntimeResourceName :String = "he.scribe.font_face.runtime_blob";
+    const RuntimeResourceName :String = "he.scribe.font_face.runtime_resource";
 
     enum SourceFormat
     {
@@ -155,7 +155,7 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
 
     struct RuntimeResource
     {
-        const ResourceName :String = "he.scribe.font_face.runtime_blob";
+        const ResourceName :String = "he.scribe.font_face.runtime_resource";
 
         shaping @0 :ShapingData;
         curveData @1 :Blob;
@@ -196,11 +196,11 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
 struct ScribeFontFamily $he.assets.AssetType $Display.Description("A collection of Scribe font face assets.")
 {
     const AssetTypeName :String = "he.scribe.font_family";
-    const RuntimeResourceName :String = "he.scribe.font_family.runtime_blob";
+    const RuntimeResourceName :String = "he.scribe.font_family.runtime_resource";
 
     struct RuntimeResource
     {
-        const ResourceName :String = "he.scribe.font_family.runtime_blob";
+        const ResourceName :String = "he.scribe.font_family.runtime_resource";
 
         faceAssets @0 :he.schema.Uuid[];
     }
@@ -213,7 +213,7 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
     const AssetTypeName :String = "he.scribe.image";
     const ImportSourceResourceName :String = "he.scribe.image.import_source";
     const ImportMetadataResourceName :String = "he.scribe.image.import_metadata";
-    const RuntimeResourceName :String = "he.scribe.vector_image.runtime_blob";
+    const RuntimeResourceName :String = "he.scribe.vector_image.runtime_resource";
 
     struct ImportMetadata
     {
@@ -278,7 +278,7 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
 
     struct RuntimeResource
     {
-        const ResourceName :String = "he.scribe.vector_image.runtime_blob";
+        const ResourceName :String = "he.scribe.vector_image.runtime_resource";
 
         curveData @0 :Blob;
         bandData @1 :Blob;

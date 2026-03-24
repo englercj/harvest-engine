@@ -2,18 +2,14 @@
 
 #include "he/scribe/compiled_font.h"
 
+#include "compiled_shape_utils.h"
+
 #include "he/core/math.h"
-#include "he/core/utils.h"
 
 namespace he::scribe
 {
     namespace
     {
-        float PackBits(uint32_t value)
-        {
-            return BitCast<float>(value);
-        }
-
         Vec4f GetVertexColor()
         {
             // Base glyph resources stay paint-neutral so the same compiled outline can be
@@ -31,26 +27,6 @@ namespace he::scribe
             };
         }
 
-        PackedGlyphVertex MakeVertex(
-            float x,
-            float y,
-            float nx,
-            float ny,
-            float u,
-            float v,
-            float glyphLocBits,
-            float bandInfoBits,
-            const Vec4f& jac,
-            const Vec4f& banding)
-        {
-            PackedGlyphVertex vertex{};
-            vertex.pos = { x, y, nx, ny };
-            vertex.tex = { u, v, glyphLocBits, bandInfoBits };
-            vertex.jac = jac;
-            vertex.bnd = banding;
-            vertex.col = GetVertexColor();
-            return vertex;
-        }
     }
 
     bool BuildCompiledGlyphResourceData(
@@ -66,7 +42,7 @@ namespace he::scribe
             return false;
         }
 
-        const auto glyphs = render.GetGlyphs();
+        const schema::List<FontFaceGlyphRenderData>::Reader glyphs = render.GetGlyphs();
         if (glyphIndex >= glyphs.Size())
         {
             return false;
@@ -92,15 +68,10 @@ namespace he::scribe
             maxY = minY + 1.0f;
         }
 
-        uint32_t bandInfo = glyph.GetBandMaxX() | (glyph.GetBandMaxY() << 16);
-        if (glyph.GetFillRule() == FillRule::EvenOdd)
-        {
-            bandInfo |= 0x10000000u;
-        }
-
+        const uint32_t bandInfo = BuildCompiledShapeBandInfo(glyph.GetFillRule(), glyph.GetBandMaxX(), glyph.GetBandMaxY());
         const uint32_t glyphLoc = glyph.GetGlyphBandLocX() | (glyph.GetGlyphBandLocY() << 16);
-        const float glyphLocBits = PackBits(glyphLoc);
-        const float bandInfoBits = PackBits(bandInfo);
+        const float glyphLocBits = PackCompiledShapeBits(glyphLoc);
+        const float bandInfoBits = PackCompiledShapeBits(bandInfo);
         const Vec4f jacobian{
             1.0f,
             0.0f,
@@ -116,31 +87,27 @@ namespace he::scribe
 
         const float objectMinY = -maxY;
         const float objectMaxY = -minY;
+        const Vec4f color = GetVertexColor();
 
-        out.vertices[0] = MakeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding);
-        out.vertices[1] = MakeVertex(maxX, objectMinY, 1.0f, -1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding);
-        out.vertices[2] = MakeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding);
-        out.vertices[3] = MakeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding);
-        out.vertices[4] = MakeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding);
-        out.vertices[5] = MakeVertex(minX, objectMaxY, -1.0f, 1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding);
+        out.vertices[0] = MakeCompiledShapeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[1] = MakeCompiledShapeVertex(maxX, objectMinY, 1.0f, -1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[2] = MakeCompiledShapeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[3] = MakeCompiledShapeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[4] = MakeCompiledShapeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[5] = MakeCompiledShapeVertex(minX, objectMaxY, -1.0f, 1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
 
-        const auto curveBytes = fontFace.GetCurveData();
-        const auto bandBytes = fontFace.GetBandData();
+        const schema::Blob::Reader curveBytes = fontFace.GetCurveData();
+        const schema::Blob::Reader bandBytes = fontFace.GetBandData();
 
-        out.createInfo.vertices = out.vertices;
-        out.createInfo.vertexCount = ScribeGlyphVertexCount;
-        out.createInfo.curveTexture.data = curveBytes.Data();
-        out.createInfo.curveTexture.size = {
+        FillCompiledShapeCreateInfo(
+            out.createInfo,
+            out.vertices,
+            curveBytes,
             render.GetCurveTextureWidth(),
-            render.GetCurveTextureHeight()
-        };
-        out.createInfo.curveTexture.rowPitch = render.GetCurveTextureWidth() * sizeof(PackedCurveTexel);
-        out.createInfo.bandTexture.data = bandBytes.Data();
-        out.createInfo.bandTexture.size = {
+            render.GetCurveTextureHeight(),
+            bandBytes,
             render.GetBandTextureWidth(),
-            render.GetBandTextureHeight()
-        };
-        out.createInfo.bandTexture.rowPitch = render.GetBandTextureWidth() * sizeof(PackedBandTexel);
+            render.GetBandTextureHeight());
         out.glyph = glyph;
         return true;
     }
@@ -153,7 +120,7 @@ namespace he::scribe
             return 0;
         }
 
-        const auto palettes = paint.GetPalettes();
+        const schema::List<FontFacePalette>::Reader palettes = paint.GetPalettes();
         if (palettes.IsEmpty())
         {
             return 0;
@@ -188,7 +155,7 @@ namespace he::scribe
             return false;
         }
 
-        const auto colorGlyphs = paint.GetColorGlyphs();
+        const schema::List<FontFaceColorGlyph>::Reader colorGlyphs = paint.GetColorGlyphs();
         if (glyphIndex >= colorGlyphs.Size())
         {
             return true;
@@ -201,8 +168,8 @@ namespace he::scribe
             return true;
         }
 
-        const auto palettes = paint.GetPalettes();
-        const auto layers = paint.GetLayers();
+        const schema::List<FontFacePalette>::Reader palettes = paint.GetPalettes();
+        const schema::List<FontFaceColorGlyphLayer>::Reader layers = paint.GetLayers();
         if (palettes.IsEmpty())
         {
             return false;
@@ -214,7 +181,7 @@ namespace he::scribe
         }
 
         const FontFacePalette::Reader palette = palettes[paletteIndex];
-        const auto colors = palette.GetColors();
+        const schema::List<FontFacePaletteColor>::Reader colors = palette.GetColors();
         const uint32_t firstLayer = colorGlyph.GetFirstLayer();
 
         out.Reserve(layerCount);

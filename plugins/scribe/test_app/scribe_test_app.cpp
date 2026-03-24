@@ -5,6 +5,7 @@
 #include "font_compile_geometry.h"
 #include "font_import_utils.h"
 #include "image_compile_geometry.h"
+#include "resource_build_utils.h"
 
 #include "he/scribe/compiled_font.h"
 #include "he/scribe/compiled_vector_image.h"
@@ -224,12 +225,18 @@ namespace he
 
                 const scribe::RetainedTextDraw& draw = draws[glyphLayoutIndex];
                 const scribe::FontFaceResourceReader* fontFace = text.GetFontFace(draw.fontFaceIndex);
-                if (!fontFace || !fontFace->render.IsValid())
+                if (!fontFace)
                 {
                     continue;
                 }
 
-                const auto glyphs = fontFace->render.GetGlyphs();
+                const scribe::FontFaceRenderData::Reader render = fontFace->GetRender();
+                if (!render.IsValid())
+                {
+                    continue;
+                }
+
+                const schema::List<scribe::FontFaceGlyphRenderData>::Reader glyphs = render.GetGlyphs();
                 if (draw.glyphIndex >= glyphs.Size())
                 {
                     continue;
@@ -277,7 +284,7 @@ namespace he
                 return capHeightPixels;
             }
 
-            const auto metrics = metadata.GetMetrics();
+            const scribe::FontFaceMetrics::Reader metrics = metadata.GetMetrics();
             const float unitsPerEm = static_cast<float>(Max(metrics.GetUnitsPerEm(), 1u));
             const float capHeightUnits = static_cast<float>(Max(Abs(metrics.GetCapHeight()), 1));
             return capHeightPixels * (unitsPerEm / capHeightUnits);
@@ -443,84 +450,8 @@ namespace he
             scribe::FontFaceImportMetadata::Builder metadata = root.InitMetadata();
             scribe::editor::FillFontFaceImportMetadata(metadata, faceInfo);
 
-            scribe::FontFaceRenderData::Builder render = root.InitRender();
-            render.SetCurveTextureWidth(renderData.curveTextureWidth);
-            render.SetCurveTextureHeight(renderData.curveTextureHeight);
-            render.SetBandTextureWidth(renderData.bandTextureWidth);
-            render.SetBandTextureHeight(renderData.bandTextureHeight);
-            render.SetBandOverlapEpsilon(renderData.bandOverlapEpsilon);
-
-            auto glyphs = render.InitGlyphs(renderData.glyphs.Size());
-            for (uint32_t glyphIndex = 0; glyphIndex < renderData.glyphs.Size(); ++glyphIndex)
-            {
-                const scribe::editor::CompiledGlyphRenderEntry& srcGlyph = renderData.glyphs[glyphIndex];
-                scribe::FontFaceGlyphRenderData::Builder dstGlyph = glyphs[glyphIndex];
-                dstGlyph.SetAdvanceX(srcGlyph.advanceX);
-                dstGlyph.SetAdvanceY(srcGlyph.advanceY);
-                dstGlyph.SetBoundsMinX(srcGlyph.boundsMinX);
-                dstGlyph.SetBoundsMinY(srcGlyph.boundsMinY);
-                dstGlyph.SetBoundsMaxX(srcGlyph.boundsMaxX);
-                dstGlyph.SetBoundsMaxY(srcGlyph.boundsMaxY);
-                dstGlyph.SetBandScaleX(srcGlyph.bandScaleX);
-                dstGlyph.SetBandScaleY(srcGlyph.bandScaleY);
-                dstGlyph.SetBandOffsetX(srcGlyph.bandOffsetX);
-                dstGlyph.SetBandOffsetY(srcGlyph.bandOffsetY);
-                dstGlyph.SetGlyphBandLocX(srcGlyph.glyphBandLocX);
-                dstGlyph.SetGlyphBandLocY(srcGlyph.glyphBandLocY);
-                dstGlyph.SetBandMaxX(srcGlyph.bandMaxX);
-                dstGlyph.SetBandMaxY(srcGlyph.bandMaxY);
-                dstGlyph.SetFillRule(srcGlyph.fillRule);
-                dstGlyph.SetHasGeometry(srcGlyph.hasGeometry);
-                dstGlyph.SetHasColorLayers(srcGlyph.hasColorLayers);
-            }
-
-            scribe::FontFacePaintData::Builder paint = root.InitPaint();
-            paint.SetDefaultPaletteIndex(renderData.paint.defaultPaletteIndex);
-
-            auto palettes = paint.InitPalettes(renderData.paint.palettes.Size());
-            for (uint32_t paletteIndex = 0; paletteIndex < renderData.paint.palettes.Size(); ++paletteIndex)
-            {
-                const scribe::editor::CompiledFontPalette& srcPalette = renderData.paint.palettes[paletteIndex];
-                scribe::FontFacePalette::Builder dstPalette = palettes[paletteIndex];
-                dstPalette.SetBackground(srcPalette.background);
-
-                auto colors = dstPalette.InitColors(srcPalette.colors.Size());
-                for (uint32_t colorIndex = 0; colorIndex < srcPalette.colors.Size(); ++colorIndex)
-                {
-                    const scribe::editor::CompiledFontPaletteColor& srcColor = srcPalette.colors[colorIndex];
-                    scribe::FontFacePaletteColor::Builder dstColor = colors[colorIndex];
-                    dstColor.SetRed(srcColor.red);
-                    dstColor.SetGreen(srcColor.green);
-                    dstColor.SetBlue(srcColor.blue);
-                    dstColor.SetAlpha(srcColor.alpha);
-                }
-            }
-
-            auto colorGlyphs = paint.InitColorGlyphs(renderData.paint.colorGlyphs.Size());
-            for (uint32_t glyphIndex = 0; glyphIndex < renderData.paint.colorGlyphs.Size(); ++glyphIndex)
-            {
-                const scribe::editor::CompiledColorGlyphEntry& srcColorGlyph = renderData.paint.colorGlyphs[glyphIndex];
-                scribe::FontFaceColorGlyph::Builder dstColorGlyph = colorGlyphs[glyphIndex];
-                dstColorGlyph.SetFirstLayer(srcColorGlyph.firstLayer);
-                dstColorGlyph.SetLayerCount(srcColorGlyph.layerCount);
-            }
-
-            auto layers = paint.InitLayers(renderData.paint.layers.Size());
-            for (uint32_t layerIndex = 0; layerIndex < renderData.paint.layers.Size(); ++layerIndex)
-            {
-                const scribe::editor::CompiledColorGlyphLayerEntry& srcLayer = renderData.paint.layers[layerIndex];
-                scribe::FontFaceColorGlyphLayer::Builder dstLayer = layers[layerIndex];
-                dstLayer.SetGlyphIndex(srcLayer.glyphIndex);
-                dstLayer.SetPaletteEntryIndex(srcLayer.paletteEntryIndex);
-                dstLayer.SetColorSource(srcLayer.colorSource);
-                dstLayer.SetAlphaScale(srcLayer.alphaScale);
-                dstLayer.SetTransform00(srcLayer.transform00);
-                dstLayer.SetTransform01(srcLayer.transform01);
-                dstLayer.SetTransform10(srcLayer.transform10);
-                dstLayer.SetTransform11(srcLayer.transform11);
-                dstLayer.SetTransformTx(srcLayer.transformTx);
-                dstLayer.SetTransformTy(srcLayer.transformTy);
-            }
+            scribe::editor::FillFontFaceResourceRenderData(root.InitRender(), renderData);
+            scribe::editor::FillFontFaceResourcePaintData(root.InitPaint(), renderData.paint);
             root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
             root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
             rootBuilder.SetRoot(root);
@@ -560,54 +491,9 @@ namespace he
 
             schema::Builder rootBuilder;
             scribe::VectorImageResource::Builder root = rootBuilder.AddStruct<scribe::VectorImageResource>();
-            scribe::VectorImageRuntimeMetadata::Builder metadata = root.InitMetadata();
-            metadata.SetSourceViewBoxMinX(imageData.viewBoxMinX);
-            metadata.SetSourceViewBoxMinY(imageData.viewBoxMinY);
-            metadata.SetSourceViewBoxWidth(imageData.viewBoxWidth);
-            metadata.SetSourceViewBoxHeight(imageData.viewBoxHeight);
-            metadata.SetSourceBoundsMinX(imageData.boundsMinX);
-            metadata.SetSourceBoundsMinY(imageData.boundsMinY);
-            metadata.SetSourceBoundsMaxX(imageData.boundsMaxX);
-            metadata.SetSourceBoundsMaxY(imageData.boundsMaxY);
-
-            scribe::VectorImageRenderData::Builder render = root.InitRender();
-            render.SetCurveTextureWidth(imageData.curveTextureWidth);
-            render.SetCurveTextureHeight(imageData.curveTextureHeight);
-            render.SetBandTextureWidth(imageData.bandTextureWidth);
-            render.SetBandTextureHeight(imageData.bandTextureHeight);
-            render.SetBandOverlapEpsilon(imageData.bandOverlapEpsilon);
-            auto shapes = render.InitShapes(imageData.shapes.Size());
-            for (uint32_t shapeIndex = 0; shapeIndex < imageData.shapes.Size(); ++shapeIndex)
-            {
-                const scribe::editor::CompiledVectorShapeRenderEntry& srcShape = imageData.shapes[shapeIndex];
-                scribe::VectorImageShapeRenderData::Builder dstShape = shapes[shapeIndex];
-                dstShape.SetBoundsMinX(srcShape.boundsMinX);
-                dstShape.SetBoundsMinY(srcShape.boundsMinY);
-                dstShape.SetBoundsMaxX(srcShape.boundsMaxX);
-                dstShape.SetBoundsMaxY(srcShape.boundsMaxY);
-                dstShape.SetBandScaleX(srcShape.bandScaleX);
-                dstShape.SetBandScaleY(srcShape.bandScaleY);
-                dstShape.SetBandOffsetX(srcShape.bandOffsetX);
-                dstShape.SetBandOffsetY(srcShape.bandOffsetY);
-                dstShape.SetGlyphBandLocX(srcShape.glyphBandLocX);
-                dstShape.SetGlyphBandLocY(srcShape.glyphBandLocY);
-                dstShape.SetBandMaxX(srcShape.bandMaxX);
-                dstShape.SetBandMaxY(srcShape.bandMaxY);
-                dstShape.SetFillRule(srcShape.fillRule);
-            }
-
-            scribe::VectorImagePaintData::Builder paint = root.InitPaint();
-            auto layers = paint.InitLayers(imageData.layers.Size());
-            for (uint32_t layerIndex = 0; layerIndex < imageData.layers.Size(); ++layerIndex)
-            {
-                const scribe::editor::CompiledVectorImageLayerEntry& srcLayer = imageData.layers[layerIndex];
-                scribe::VectorImageLayer::Builder dstLayer = layers[layerIndex];
-                dstLayer.SetShapeIndex(srcLayer.shapeIndex);
-                dstLayer.SetRed(srcLayer.red);
-                dstLayer.SetGreen(srcLayer.green);
-                dstLayer.SetBlue(srcLayer.blue);
-                dstLayer.SetAlpha(srcLayer.alpha);
-            }
+            scribe::editor::FillVectorImageResourceMetadata(root.InitMetadata(), imageData);
+            scribe::editor::FillVectorImageResourceRenderData(root.InitRender(), imageData);
+            scribe::editor::FillVectorImageResourcePaintData(root.InitPaint(), imageData);
             root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
             root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
             rootBuilder.SetRoot(root);
@@ -655,7 +541,7 @@ namespace he
 
             case window::EventKind::ViewResized:
             {
-                const auto& evt = static_cast<const window::ViewResizedEvent&>(ev);
+                const window::ViewResizedEvent& evt = static_cast<const window::ViewResizedEvent&>(ev);
                 if ((evt.size.x > 0) && (evt.size.y > 0) && m_render.swapChain && m_render.device)
                 {
                     rhi::SwapChainDesc desc{};
@@ -683,7 +569,7 @@ namespace he
 
             case window::EventKind::PointerMove:
             {
-                const auto& evt = static_cast<const window::PointerMoveEvent&>(ev);
+                const window::PointerMoveEvent& evt = static_cast<const window::PointerMoveEvent&>(ev);
                 if (m_isPanning)
                 {
                     if (evt.absolute)
@@ -713,7 +599,7 @@ namespace he
 
             case window::EventKind::PointerDown:
             {
-                const auto& evt = static_cast<const window::PointerDownEvent&>(ev);
+                const window::PointerDownEvent& evt = static_cast<const window::PointerDownEvent&>(ev);
                 if ((evt.button == window::PointerButton::Primary) && m_windowDevice && m_view)
                 {
                     m_lastPointerPos = m_windowDevice->GetCursorPos(m_view);
@@ -726,7 +612,7 @@ namespace he
 
             case window::EventKind::PointerUp:
             {
-                const auto& evt = static_cast<const window::PointerUpEvent&>(ev);
+                const window::PointerUpEvent& evt = static_cast<const window::PointerUpEvent&>(ev);
                 if (evt.button == window::PointerButton::Primary)
                 {
                     m_isPanning = false;
@@ -736,7 +622,7 @@ namespace he
 
             case window::EventKind::PointerWheel:
             {
-                const auto& evt = static_cast<const window::PointerWheelEvent&>(ev);
+                const window::PointerWheelEvent& evt = static_cast<const window::PointerWheelEvent&>(ev);
                 const float wheelDelta = evt.delta.y;
                 if (Abs(wheelDelta) > 0.0f)
                 {
@@ -767,7 +653,7 @@ namespace he
 
             case window::EventKind::KeyDown:
             {
-                const auto& evt = static_cast<const window::KeyDownEvent&>(ev);
+                const window::KeyDownEvent& evt = static_cast<const window::KeyDownEvent&>(ev);
                 switch (evt.key)
                 {
                     case window::Key::Escape:
@@ -2697,7 +2583,7 @@ namespace he
             return origin;
         }
 
-        const auto metrics = m_fonts[block.fontFaceIndex].blob.GetMetadata().GetMetrics();
+        const scribe::FontFaceMetrics::Reader metrics = m_fonts[block.fontFaceIndex].blob.GetMetadata().GetMetrics();
         const float unitsPerEm = static_cast<float>(Max(metrics.GetUnitsPerEm(), 1u));
         const float scale = block.fontSize / unitsPerEm;
         const float baselineY = origin.y + block.layout.lines[0].baselineY;

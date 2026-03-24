@@ -3,6 +3,7 @@
 #include "he/scribe/editor/image_compiler.h"
 
 #include "image_compile_geometry.h"
+#include "resource_build_utils.h"
 
 #include "he/scribe/schema_types.h"
 
@@ -43,7 +44,8 @@ namespace he::scribe::editor
             return false;
         }
 
-        const auto importSource = schema::ReadRoot<ScribeImage::ImportSourceResource>(importSourceBytes.Data());
+        const ScribeImage::ImportSourceResource::Reader importSource =
+            schema::ReadRoot<ScribeImage::ImportSourceResource>(importSourceBytes.Data());
         if (!importSource.IsValid())
         {
             HE_LOG_ERROR(he_scribe,
@@ -56,7 +58,7 @@ namespace he::scribe::editor
         CompiledVectorImageData imageData{};
         Stopwatch timer;
         {
-            const auto sourceBlob = importSource.GetSourceBytes();
+            const schema::Blob::Reader sourceBlob = importSource.GetSourceBytes();
             if (!BuildCompiledVectorImageData(imageData, { sourceBlob.Data(), sourceBlob.Size() }, asset.GetFlatteningTolerance()))
             {
                 HE_LOG_ERROR(he_scribe,
@@ -81,54 +83,9 @@ namespace he::scribe::editor
         schema::Builder blobBuilder;
         VectorImageResource::Builder blob = blobBuilder.AddStruct<VectorImageResource>();
 
-        VectorImageRuntimeMetadata::Builder metadata = blob.InitMetadata();
-        metadata.SetSourceViewBoxMinX(imageData.viewBoxMinX);
-        metadata.SetSourceViewBoxMinY(imageData.viewBoxMinY);
-        metadata.SetSourceViewBoxWidth(imageData.viewBoxWidth);
-        metadata.SetSourceViewBoxHeight(imageData.viewBoxHeight);
-        metadata.SetSourceBoundsMinX(imageData.boundsMinX);
-        metadata.SetSourceBoundsMinY(imageData.boundsMinY);
-        metadata.SetSourceBoundsMaxX(imageData.boundsMaxX);
-        metadata.SetSourceBoundsMaxY(imageData.boundsMaxY);
-
-        VectorImageRenderData::Builder render = blob.InitRender();
-        render.SetCurveTextureWidth(imageData.curveTextureWidth);
-        render.SetCurveTextureHeight(imageData.curveTextureHeight);
-        render.SetBandTextureWidth(imageData.bandTextureWidth);
-        render.SetBandTextureHeight(imageData.bandTextureHeight);
-        render.SetBandOverlapEpsilon(imageData.bandOverlapEpsilon);
-        auto shapes = render.InitShapes(imageData.shapes.Size());
-        for (uint32_t shapeIndex = 0; shapeIndex < imageData.shapes.Size(); ++shapeIndex)
-        {
-            const CompiledVectorShapeRenderEntry& srcShape = imageData.shapes[shapeIndex];
-            VectorImageShapeRenderData::Builder dstShape = shapes[shapeIndex];
-            dstShape.SetBoundsMinX(srcShape.boundsMinX);
-            dstShape.SetBoundsMinY(srcShape.boundsMinY);
-            dstShape.SetBoundsMaxX(srcShape.boundsMaxX);
-            dstShape.SetBoundsMaxY(srcShape.boundsMaxY);
-            dstShape.SetBandScaleX(srcShape.bandScaleX);
-            dstShape.SetBandScaleY(srcShape.bandScaleY);
-            dstShape.SetBandOffsetX(srcShape.bandOffsetX);
-            dstShape.SetBandOffsetY(srcShape.bandOffsetY);
-            dstShape.SetGlyphBandLocX(srcShape.glyphBandLocX);
-            dstShape.SetGlyphBandLocY(srcShape.glyphBandLocY);
-            dstShape.SetBandMaxX(srcShape.bandMaxX);
-            dstShape.SetBandMaxY(srcShape.bandMaxY);
-            dstShape.SetFillRule(srcShape.fillRule);
-        }
-
-        VectorImagePaintData::Builder paint = blob.InitPaint();
-        auto layers = paint.InitLayers(imageData.layers.Size());
-        for (uint32_t layerIndex = 0; layerIndex < imageData.layers.Size(); ++layerIndex)
-        {
-            const CompiledVectorImageLayerEntry& srcLayer = imageData.layers[layerIndex];
-            VectorImageLayer::Builder dstLayer = layers[layerIndex];
-            dstLayer.SetShapeIndex(srcLayer.shapeIndex);
-            dstLayer.SetRed(srcLayer.red);
-            dstLayer.SetGreen(srcLayer.green);
-            dstLayer.SetBlue(srcLayer.blue);
-            dstLayer.SetAlpha(srcLayer.alpha);
-        }
+        FillVectorImageResourceMetadata(blob.InitMetadata(), imageData);
+        FillVectorImageResourceRenderData(blob.InitRender(), imageData);
+        FillVectorImageResourcePaintData(blob.InitPaint(), imageData);
         blob.SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
         blob.SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
         blobBuilder.SetRoot(blob);

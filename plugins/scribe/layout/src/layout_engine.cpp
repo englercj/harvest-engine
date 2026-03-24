@@ -263,7 +263,7 @@ namespace he::scribe
                 FontContext& ctx = out[i];
                 const FontFaceShapingData::Reader shaping = faces[i].GetShaping();
                 const FontFaceImportMetadata::Reader metadata = faces[i].GetMetadata();
-                const auto sourceBytes = shaping.GetSourceBytes();
+                const schema::Blob::Reader sourceBytes = shaping.GetSourceBytes();
                 const uint32_t unitsPerEm = Max(metadata.GetMetrics().GetUnitsPerEm(), 1u);
 
                 ctx.fontSize = options.fontSize;

@@ -86,7 +86,7 @@ namespace he::scribe::editor
             assets::Asset::Builder asset;
             bool preserveSourceBytesForShaping = true;
 
-            for (const auto existing : ctx.assetFile.GetAssets())
+            for (const assets::Asset::Reader existing : ctx.assetFile.GetAssets())
             {
                 if (existing.GetType() != AssetTypeName)
                 {

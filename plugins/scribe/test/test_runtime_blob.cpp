@@ -51,7 +51,7 @@ namespace
         render.SetBandTextureHeight(1);
         render.SetBandOverlapEpsilon(1.0f);
 
-        auto glyphs = render.InitGlyphs(2);
+        schema::List<FontFaceGlyphRenderData>::Builder glyphs = render.InitGlyphs(2);
 
         {
             FontFaceGlyphRenderData::Builder glyph = glyphs[0];
@@ -100,12 +100,12 @@ namespace
     {
         paint.SetDefaultPaletteIndex(0);
 
-        auto palettes = paint.InitPalettes(1);
+        schema::List<FontFacePalette>::Builder palettes = paint.InitPalettes(1);
         {
             FontFacePalette::Builder palette = palettes[0];
             palette.SetBackground(FontFacePaletteBackground::Dark);
 
-            auto colors = palette.InitColors(2);
+            schema::List<FontFacePaletteColor>::Builder colors = palette.InitColors(2);
             colors[0].SetRed(1.0f);
             colors[0].SetGreen(0.0f);
             colors[0].SetBlue(0.0f);
@@ -117,13 +117,13 @@ namespace
             colors[1].SetAlpha(1.0f);
         }
 
-        auto colorGlyphs = paint.InitColorGlyphs(2);
+        schema::List<FontFaceColorGlyph>::Builder colorGlyphs = paint.InitColorGlyphs(2);
         colorGlyphs[0].SetFirstLayer(0);
         colorGlyphs[0].SetLayerCount(2);
         colorGlyphs[1].SetFirstLayer(2);
         colorGlyphs[1].SetLayerCount(0);
 
-        auto layers = paint.InitLayers(2);
+        schema::List<FontFaceColorGlyphLayer>::Builder layers = paint.InitLayers(2);
         layers[0].SetGlyphIndex(0);
         layers[0].SetPaletteEntryIndex(0);
         layers[0].SetColorSource(FontFaceColorSource::Palette);
@@ -185,7 +185,7 @@ namespace
     }
 }
 
-HE_TEST(scribe, runtime_blob, load_compiled_font_face_success)
+HE_TEST(scribe, runtime_resource, load_compiled_font_face_success)
 {
     schema::Builder rootBuilder;
     FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
@@ -221,7 +221,7 @@ HE_TEST(scribe, runtime_blob, load_compiled_font_face_success)
     HE_EXPECT_EQ(paint.GetColorGlyphs().Size(), 2u);
 }
 
-HE_TEST(scribe, runtime_blob, reject_font_face_with_mismatched_render_payload_size)
+HE_TEST(scribe, runtime_resource, reject_font_face_with_mismatched_render_payload_size)
 {
     schema::Builder rootBuilder;
     FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
@@ -238,7 +238,7 @@ HE_TEST(scribe, runtime_blob, reject_font_face_with_mismatched_render_payload_si
     HE_EXPECT(loaded.IsValid());
 }
 
-HE_TEST(scribe, runtime_blob, build_compiled_glyph_resource_data)
+HE_TEST(scribe, runtime_resource, build_compiled_glyph_resource_data)
 {
     schema::Builder rootBuilder;
     FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
@@ -266,7 +266,7 @@ HE_TEST(scribe, runtime_blob, build_compiled_glyph_resource_data)
     HE_EXPECT(!BuildCompiledGlyphResourceData(glyph, loaded, 1));
 }
 
-HE_TEST(scribe, runtime_blob, resolve_compiled_color_glyph_layers)
+HE_TEST(scribe, runtime_resource, resolve_compiled_color_glyph_layers)
 {
     schema::Builder rootBuilder;
     FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();

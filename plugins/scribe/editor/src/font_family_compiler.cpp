@@ -27,8 +27,8 @@ namespace he::scribe::editor
 
         schema::Builder blobBuilder;
         FontFamilyResource::Builder blob = blobBuilder.AddStruct<FontFamilyResource>();
-        const auto faces = asset.GetFaces();
-        auto faceAssets = blob.InitFaceAssets(faces.Size());
+        const schema::List<schema::Uuid>::Reader faces = asset.GetFaces();
+        schema::List<schema::Uuid>::Builder faceAssets = blob.InitFaceAssets(faces.Size());
         for (uint16_t i = 0; i < faces.Size(); ++i)
         {
             faceAssets.Set(i, faces[i]);
@@ -39,7 +39,7 @@ namespace he::scribe::editor
         if (!r)
         {
             HE_LOG_ERROR(he_scribe,
-                HE_MSG("Failed to write compiled scribe font family runtime blob."),
+                HE_MSG("Failed to write compiled scribe font family runtime resource."),
                 HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
                 HE_KV(asset_name, ctx.asset.GetName()),
                 HE_KV(resource_id, RuntimeResourceId),

@@ -2,18 +2,14 @@
 
 #include "he/scribe/compiled_vector_image.h"
 
+#include "compiled_shape_utils.h"
+
 #include "he/core/math.h"
-#include "he/core/utils.h"
 
 namespace he::scribe
 {
     namespace
     {
-        float PackBits(uint32_t value)
-        {
-            return BitCast<float>(value);
-        }
-
         Vec4f GetShapeVertexColor(const VectorImageResourceReader& image, uint32_t shapeIndex)
         {
             const VectorImagePaintData::Reader paint = image.GetPaint();
@@ -22,7 +18,7 @@ namespace he::scribe
                 return { 1.0f, 1.0f, 1.0f, 1.0f };
             }
 
-            const auto layers = paint.GetLayers();
+            const schema::List<VectorImageLayer>::Reader layers = paint.GetLayers();
             for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
             {
                 const VectorImageLayer::Reader layer = layers[layerIndex];
@@ -40,27 +36,6 @@ namespace he::scribe
             return { 1.0f, 1.0f, 1.0f, 1.0f };
         }
 
-        PackedGlyphVertex MakeVertex(
-            float x,
-            float y,
-            float nx,
-            float ny,
-            float u,
-            float v,
-            float glyphLocBits,
-            float bandInfoBits,
-            const Vec4f& jac,
-            const Vec4f& banding,
-            const Vec4f& color)
-        {
-            PackedGlyphVertex vertex{};
-            vertex.pos = { x, y, nx, ny };
-            vertex.tex = { u, v, glyphLocBits, bandInfoBits };
-            vertex.jac = jac;
-            vertex.bnd = banding;
-            vertex.col = color;
-            return vertex;
-        }
     }
 
     bool BuildCompiledVectorShapeResourceData(
@@ -76,7 +51,7 @@ namespace he::scribe
             return false;
         }
 
-        const auto shapes = render.GetShapes();
+        const schema::List<VectorImageShapeRenderData>::Reader shapes = render.GetShapes();
         if (shapeIndex >= shapes.Size())
         {
             return false;
@@ -102,15 +77,10 @@ namespace he::scribe
             maxY = minY + 1.0f;
         }
 
-        uint32_t bandInfo = shape.GetBandMaxX() | (shape.GetBandMaxY() << 16);
-        if (shape.GetFillRule() == FillRule::EvenOdd)
-        {
-            bandInfo |= 0x10000000u;
-        }
-
+        const uint32_t bandInfo = BuildCompiledShapeBandInfo(shape.GetFillRule(), shape.GetBandMaxX(), shape.GetBandMaxY());
         const uint32_t glyphLoc = shape.GetGlyphBandLocX() | (shape.GetGlyphBandLocY() << 16);
-        const float glyphLocBits = PackBits(glyphLoc);
-        const float bandInfoBits = PackBits(bandInfo);
+        const float glyphLocBits = PackCompiledShapeBits(glyphLoc);
+        const float bandInfoBits = PackCompiledShapeBits(bandInfo);
         const Vec4f jacobian{ 1.0f, 0.0f, 0.0f, 1.0f };
         const Vec4f banding{
             shape.GetBandScaleX(),
@@ -120,29 +90,24 @@ namespace he::scribe
         };
         const Vec4f color = GetShapeVertexColor(image, shapeIndex);
 
-        out.vertices[0] = MakeVertex(minX, minY, -1.0f, -1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
-        out.vertices[1] = MakeVertex(maxX, minY, 1.0f, -1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
-        out.vertices[2] = MakeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
-        out.vertices[3] = MakeVertex(minX, minY, -1.0f, -1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
-        out.vertices[4] = MakeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
-        out.vertices[5] = MakeVertex(minX, maxY, -1.0f, 1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[0] = MakeCompiledShapeVertex(minX, minY, -1.0f, -1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[1] = MakeCompiledShapeVertex(maxX, minY, 1.0f, -1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[2] = MakeCompiledShapeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[3] = MakeCompiledShapeVertex(minX, minY, -1.0f, -1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[4] = MakeCompiledShapeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[5] = MakeCompiledShapeVertex(minX, maxY, -1.0f, 1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
 
-        const auto curveBytes = image.GetCurveData();
-        const auto bandBytes = image.GetBandData();
-        out.createInfo.vertices = out.vertices;
-        out.createInfo.vertexCount = ScribeGlyphVertexCount;
-        out.createInfo.curveTexture.data = curveBytes.Data();
-        out.createInfo.curveTexture.size = {
+        const schema::Blob::Reader curveBytes = image.GetCurveData();
+        const schema::Blob::Reader bandBytes = image.GetBandData();
+        FillCompiledShapeCreateInfo(
+            out.createInfo,
+            out.vertices,
+            curveBytes,
             render.GetCurveTextureWidth(),
-            render.GetCurveTextureHeight()
-        };
-        out.createInfo.curveTexture.rowPitch = render.GetCurveTextureWidth() * sizeof(PackedCurveTexel);
-        out.createInfo.bandTexture.data = bandBytes.Data();
-        out.createInfo.bandTexture.size = {
+            render.GetCurveTextureHeight(),
+            bandBytes,
             render.GetBandTextureWidth(),
-            render.GetBandTextureHeight()
-        };
-        out.createInfo.bandTexture.rowPitch = render.GetBandTextureWidth() * sizeof(PackedBandTexel);
+            render.GetBandTextureHeight());
         out.shape = shape;
         return true;
     }
@@ -158,7 +123,7 @@ namespace he::scribe
             return false;
         }
 
-        const auto layers = paint.GetLayers();
+        const schema::List<VectorImageLayer>::Reader layers = paint.GetLayers();
         out.Reserve(layers.Size());
         for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
         {

@@ -243,16 +243,16 @@ namespace he::scribe
             if (fontState.hasColorGlyphs)
             {
                 const FontFacePaintData::Reader paint = fontFace.GetPaint();
-                const auto colorGlyphs = paint.GetColorGlyphs();
+                const schema::List<FontFaceColorGlyph>::Reader colorGlyphs = paint.GetColorGlyphs();
                 if (glyph.glyphIndex < colorGlyphs.Size())
                 {
                     const FontFaceColorGlyph::Reader colorGlyph = colorGlyphs[glyph.glyphIndex];
                     const uint32_t layerCount = colorGlyph.GetLayerCount();
                     if (layerCount > 0)
                     {
-                        const auto palette = paint.GetPalettes()[fontState.paletteIndex];
-                        const auto colors = palette.GetColors();
-                        const auto layers = paint.GetLayers();
+                        const FontFacePalette::Reader palette = paint.GetPalettes()[fontState.paletteIndex];
+                        const schema::List<FontFacePaletteColor>::Reader colors = palette.GetColors();
+                        const schema::List<FontFaceColorGlyphLayer>::Reader layers = paint.GetLayers();
 
                         m_draws.Reserve(m_draws.Size() + layerCount);
                         for (uint32_t layerIndex = 0; layerIndex < layerCount; ++layerIndex)

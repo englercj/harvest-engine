@@ -173,7 +173,7 @@ namespace he::scribe::editor
         out.hasHorizontalLayout = FT_HAS_HORIZONTAL(ftFace);
         out.hasVerticalLayout = FT_HAS_VERTICAL(ftFace);
 
-        const auto* os2 = static_cast<const TT_OS2*>(FT_Get_Sfnt_Table(ftFace, ft_sfnt_os2));
+        const TT_OS2* os2 = static_cast<const TT_OS2*>(FT_Get_Sfnt_Table(ftFace, ft_sfnt_os2));
         if (os2 != nullptr)
         {
             out.capHeight = static_cast<int32_t>(os2->sCapHeight);

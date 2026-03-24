@@ -2,6 +2,7 @@
 
 #include "font_compile_geometry.h"
 #include "font_import_utils.h"
+#include "resource_build_utils.h"
 
 #include "he/scribe/compiled_font.h"
 #include "he/scribe/layout_engine.h"
@@ -98,84 +99,8 @@ namespace
             metadata.InitFamilyName(displayName);
         }
 
-        FontFaceRenderData::Builder render = root.InitRender();
-        render.SetCurveTextureWidth(renderData.curveTextureWidth);
-        render.SetCurveTextureHeight(renderData.curveTextureHeight);
-        render.SetBandTextureWidth(renderData.bandTextureWidth);
-        render.SetBandTextureHeight(renderData.bandTextureHeight);
-        render.SetBandOverlapEpsilon(renderData.bandOverlapEpsilon);
-
-        auto glyphs = render.InitGlyphs(renderData.glyphs.Size());
-        for (uint32_t glyphIndex = 0; glyphIndex < renderData.glyphs.Size(); ++glyphIndex)
-        {
-            const CompiledGlyphRenderEntry& srcGlyph = renderData.glyphs[glyphIndex];
-            FontFaceGlyphRenderData::Builder dstGlyph = glyphs[glyphIndex];
-            dstGlyph.SetAdvanceX(srcGlyph.advanceX);
-            dstGlyph.SetAdvanceY(srcGlyph.advanceY);
-            dstGlyph.SetBoundsMinX(srcGlyph.boundsMinX);
-            dstGlyph.SetBoundsMinY(srcGlyph.boundsMinY);
-            dstGlyph.SetBoundsMaxX(srcGlyph.boundsMaxX);
-            dstGlyph.SetBoundsMaxY(srcGlyph.boundsMaxY);
-            dstGlyph.SetBandScaleX(srcGlyph.bandScaleX);
-            dstGlyph.SetBandScaleY(srcGlyph.bandScaleY);
-            dstGlyph.SetBandOffsetX(srcGlyph.bandOffsetX);
-            dstGlyph.SetBandOffsetY(srcGlyph.bandOffsetY);
-            dstGlyph.SetGlyphBandLocX(srcGlyph.glyphBandLocX);
-            dstGlyph.SetGlyphBandLocY(srcGlyph.glyphBandLocY);
-            dstGlyph.SetBandMaxX(srcGlyph.bandMaxX);
-            dstGlyph.SetBandMaxY(srcGlyph.bandMaxY);
-            dstGlyph.SetFillRule(srcGlyph.fillRule);
-            dstGlyph.SetHasGeometry(srcGlyph.hasGeometry);
-            dstGlyph.SetHasColorLayers(srcGlyph.hasColorLayers);
-        }
-
-        FontFacePaintData::Builder paint = root.InitPaint();
-        paint.SetDefaultPaletteIndex(renderData.paint.defaultPaletteIndex);
-
-        auto palettes = paint.InitPalettes(renderData.paint.palettes.Size());
-        for (uint32_t paletteIndex = 0; paletteIndex < renderData.paint.palettes.Size(); ++paletteIndex)
-        {
-            const CompiledFontPalette& srcPalette = renderData.paint.palettes[paletteIndex];
-            FontFacePalette::Builder dstPalette = palettes[paletteIndex];
-            dstPalette.SetBackground(srcPalette.background);
-
-            auto colors = dstPalette.InitColors(srcPalette.colors.Size());
-            for (uint32_t colorIndex = 0; colorIndex < srcPalette.colors.Size(); ++colorIndex)
-            {
-                const CompiledFontPaletteColor& srcColor = srcPalette.colors[colorIndex];
-                FontFacePaletteColor::Builder dstColor = colors[colorIndex];
-                dstColor.SetRed(srcColor.red);
-                dstColor.SetGreen(srcColor.green);
-                dstColor.SetBlue(srcColor.blue);
-                dstColor.SetAlpha(srcColor.alpha);
-            }
-        }
-
-        auto colorGlyphs = paint.InitColorGlyphs(renderData.paint.colorGlyphs.Size());
-        for (uint32_t glyphIndex = 0; glyphIndex < renderData.paint.colorGlyphs.Size(); ++glyphIndex)
-        {
-            const CompiledColorGlyphEntry& srcColorGlyph = renderData.paint.colorGlyphs[glyphIndex];
-            FontFaceColorGlyph::Builder dstColorGlyph = colorGlyphs[glyphIndex];
-            dstColorGlyph.SetFirstLayer(srcColorGlyph.firstLayer);
-            dstColorGlyph.SetLayerCount(srcColorGlyph.layerCount);
-        }
-
-        auto layers = paint.InitLayers(renderData.paint.layers.Size());
-        for (uint32_t layerIndex = 0; layerIndex < renderData.paint.layers.Size(); ++layerIndex)
-        {
-            const CompiledColorGlyphLayerEntry& srcLayer = renderData.paint.layers[layerIndex];
-            FontFaceColorGlyphLayer::Builder dstLayer = layers[layerIndex];
-            dstLayer.SetGlyphIndex(srcLayer.glyphIndex);
-            dstLayer.SetPaletteEntryIndex(srcLayer.paletteEntryIndex);
-            dstLayer.SetColorSource(srcLayer.colorSource);
-            dstLayer.SetAlphaScale(srcLayer.alphaScale);
-            dstLayer.SetTransform00(srcLayer.transform00);
-            dstLayer.SetTransform01(srcLayer.transform01);
-            dstLayer.SetTransform10(srcLayer.transform10);
-            dstLayer.SetTransform11(srcLayer.transform11);
-            dstLayer.SetTransformTx(srcLayer.transformTx);
-            dstLayer.SetTransformTy(srcLayer.transformTy);
-        }
+        FillFontFaceResourceRenderData(root.InitRender(), renderData);
+        FillFontFaceResourcePaintData(root.InitPaint(), renderData.paint);
         root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
         root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
         rootBuilder.SetRoot(root);
@@ -1045,7 +970,7 @@ HE_TEST(scribe, color_font_pipeline, segoeui_capital_t_mid_left_bounds_coverage_
         "segoeui_bounds_left");
 }
 
-HE_TEST(scribe, color_font_pipeline, resolves_compiled_layers_from_runtime_blob)
+HE_TEST(scribe, color_font_pipeline, resolves_compiled_layers_from_runtime_resource)
 {
     static constexpr const char* ColorFontPath = "C:/Windows/Fonts/seguiemj.ttf";
     if (!File::Exists(ColorFontPath))

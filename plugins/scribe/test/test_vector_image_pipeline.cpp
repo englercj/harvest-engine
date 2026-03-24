@@ -1,6 +1,7 @@
 // Copyright Chad Engler
 
 #include "image_compile_geometry.h"
+#include "resource_build_utils.h"
 
 #include "he/scribe/compiled_vector_image.h"
 #include "he/scribe/retained_vector_image.h"
@@ -52,54 +53,9 @@ namespace
         schema::Builder rootBuilder;
         VectorImageResource::Builder root = rootBuilder.AddStruct<VectorImageResource>();
 
-        VectorImageRuntimeMetadata::Builder metadata = root.InitMetadata();
-        metadata.SetSourceViewBoxMinX(imageData.viewBoxMinX);
-        metadata.SetSourceViewBoxMinY(imageData.viewBoxMinY);
-        metadata.SetSourceViewBoxWidth(imageData.viewBoxWidth);
-        metadata.SetSourceViewBoxHeight(imageData.viewBoxHeight);
-        metadata.SetSourceBoundsMinX(imageData.boundsMinX);
-        metadata.SetSourceBoundsMinY(imageData.boundsMinY);
-        metadata.SetSourceBoundsMaxX(imageData.boundsMaxX);
-        metadata.SetSourceBoundsMaxY(imageData.boundsMaxY);
-
-        VectorImageRenderData::Builder render = root.InitRender();
-        render.SetCurveTextureWidth(imageData.curveTextureWidth);
-        render.SetCurveTextureHeight(imageData.curveTextureHeight);
-        render.SetBandTextureWidth(imageData.bandTextureWidth);
-        render.SetBandTextureHeight(imageData.bandTextureHeight);
-        render.SetBandOverlapEpsilon(imageData.bandOverlapEpsilon);
-        auto shapes = render.InitShapes(imageData.shapes.Size());
-        for (uint32_t shapeIndex = 0; shapeIndex < imageData.shapes.Size(); ++shapeIndex)
-        {
-            const CompiledVectorShapeRenderEntry& srcShape = imageData.shapes[shapeIndex];
-            VectorImageShapeRenderData::Builder dstShape = shapes[shapeIndex];
-            dstShape.SetBoundsMinX(srcShape.boundsMinX);
-            dstShape.SetBoundsMinY(srcShape.boundsMinY);
-            dstShape.SetBoundsMaxX(srcShape.boundsMaxX);
-            dstShape.SetBoundsMaxY(srcShape.boundsMaxY);
-            dstShape.SetBandScaleX(srcShape.bandScaleX);
-            dstShape.SetBandScaleY(srcShape.bandScaleY);
-            dstShape.SetBandOffsetX(srcShape.bandOffsetX);
-            dstShape.SetBandOffsetY(srcShape.bandOffsetY);
-            dstShape.SetGlyphBandLocX(srcShape.glyphBandLocX);
-            dstShape.SetGlyphBandLocY(srcShape.glyphBandLocY);
-            dstShape.SetBandMaxX(srcShape.bandMaxX);
-            dstShape.SetBandMaxY(srcShape.bandMaxY);
-            dstShape.SetFillRule(srcShape.fillRule);
-        }
-
-        VectorImagePaintData::Builder paint = root.InitPaint();
-        auto layers = paint.InitLayers(imageData.layers.Size());
-        for (uint32_t layerIndex = 0; layerIndex < imageData.layers.Size(); ++layerIndex)
-        {
-            const CompiledVectorImageLayerEntry& srcLayer = imageData.layers[layerIndex];
-            VectorImageLayer::Builder dstLayer = layers[layerIndex];
-            dstLayer.SetShapeIndex(srcLayer.shapeIndex);
-            dstLayer.SetRed(srcLayer.red);
-            dstLayer.SetGreen(srcLayer.green);
-            dstLayer.SetBlue(srcLayer.blue);
-            dstLayer.SetAlpha(srcLayer.alpha);
-        }
+        FillVectorImageResourceMetadata(root.InitMetadata(), imageData);
+        FillVectorImageResourceRenderData(root.InitRender(), imageData);
+        FillVectorImageResourcePaintData(root.InitPaint(), imageData);
         root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
         root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
         rootBuilder.SetRoot(root);
@@ -310,7 +266,7 @@ HE_TEST(scribe, vector_image_pipeline, resolves_layers_and_shape_resources)
     HE_EXPECT_EQ(shape.vertices[0].col.w, layers[1].color.w);
 }
 
-HE_TEST(scribe, retained_vector_image, builds_layered_draws_from_runtime_blob)
+HE_TEST(scribe, retained_vector_image, builds_layered_draws_from_runtime_resource)
 {
     Vector<schema::Word> storage;
     VectorImageResourceReader image{};

@@ -4,6 +4,7 @@
 
 #include "font_compile_geometry.h"
 #include "font_import_utils.h"
+#include "resource_build_utils.h"
 
 #include "he/scribe/schema_types.h"
 
@@ -58,8 +59,10 @@ namespace he::scribe::editor
             return false;
         }
 
-        const auto importSource = schema::ReadRoot<ScribeFontFace::ImportSourceResource>(importSourceBytes.Data());
-        const auto importMetadata = schema::ReadRoot<ScribeFontFace::ImportMetadataResource>(importMetadataBytes.Data());
+        const ScribeFontFace::ImportSourceResource::Reader importSource =
+            schema::ReadRoot<ScribeFontFace::ImportSourceResource>(importSourceBytes.Data());
+        const ScribeFontFace::ImportMetadataResource::Reader importMetadata =
+            schema::ReadRoot<ScribeFontFace::ImportMetadataResource>(importMetadataBytes.Data());
         if (!importSource.IsValid() || !importMetadata.IsValid())
         {
             HE_LOG_ERROR(he_scribe,
@@ -72,7 +75,7 @@ namespace he::scribe::editor
         CompiledFontRenderData renderData{};
         Stopwatch timer;
         {
-            const auto sourceBlob = importSource.GetSourceBytes();
+            const schema::Blob::Reader sourceBlob = importSource.GetSourceBytes();
             if (!BuildCompiledFontRenderData(renderData, { sourceBlob.Data(), sourceBlob.Size() }, asset.GetFaceIndex()))
             {
                 HE_LOG_ERROR(he_scribe,
@@ -103,7 +106,7 @@ namespace he::scribe::editor
         shaping.SetSourceFormat(importSource.GetSourceFormat());
         if (asset.GetPreserveSourceBytesForShaping())
         {
-            const auto sourceBlob = importSource.GetSourceBytes();
+            const schema::Blob::Reader sourceBlob = importSource.GetSourceBytes();
             shaping.SetSourceBytes(blobBuilder.AddBlob({ sourceBlob.Data(), sourceBlob.Size() }));
         }
         else
@@ -134,84 +137,8 @@ namespace he::scribe::editor
             importMetadata.GetMetadata().GetHasVerticalLayout()
         });
 
-        FontFaceRenderData::Builder render = blob.InitRender();
-        render.SetCurveTextureWidth(renderData.curveTextureWidth);
-        render.SetCurveTextureHeight(renderData.curveTextureHeight);
-        render.SetBandTextureWidth(renderData.bandTextureWidth);
-        render.SetBandTextureHeight(renderData.bandTextureHeight);
-        render.SetBandOverlapEpsilon(renderData.bandOverlapEpsilon);
-
-        auto glyphs = render.InitGlyphs(renderData.glyphs.Size());
-        for (uint32_t glyphIndex = 0; glyphIndex < renderData.glyphs.Size(); ++glyphIndex)
-        {
-            const CompiledGlyphRenderEntry& srcGlyph = renderData.glyphs[glyphIndex];
-            FontFaceGlyphRenderData::Builder dstGlyph = glyphs[glyphIndex];
-            dstGlyph.SetAdvanceX(srcGlyph.advanceX);
-            dstGlyph.SetAdvanceY(srcGlyph.advanceY);
-            dstGlyph.SetBoundsMinX(srcGlyph.boundsMinX);
-            dstGlyph.SetBoundsMinY(srcGlyph.boundsMinY);
-            dstGlyph.SetBoundsMaxX(srcGlyph.boundsMaxX);
-            dstGlyph.SetBoundsMaxY(srcGlyph.boundsMaxY);
-            dstGlyph.SetBandScaleX(srcGlyph.bandScaleX);
-            dstGlyph.SetBandScaleY(srcGlyph.bandScaleY);
-            dstGlyph.SetBandOffsetX(srcGlyph.bandOffsetX);
-            dstGlyph.SetBandOffsetY(srcGlyph.bandOffsetY);
-            dstGlyph.SetGlyphBandLocX(srcGlyph.glyphBandLocX);
-            dstGlyph.SetGlyphBandLocY(srcGlyph.glyphBandLocY);
-            dstGlyph.SetBandMaxX(srcGlyph.bandMaxX);
-            dstGlyph.SetBandMaxY(srcGlyph.bandMaxY);
-            dstGlyph.SetFillRule(srcGlyph.fillRule);
-            dstGlyph.SetHasGeometry(srcGlyph.hasGeometry);
-            dstGlyph.SetHasColorLayers(srcGlyph.hasColorLayers);
-        }
-
-        FontFacePaintData::Builder paint = blob.InitPaint();
-        paint.SetDefaultPaletteIndex(renderData.paint.defaultPaletteIndex);
-
-        auto palettes = paint.InitPalettes(renderData.paint.palettes.Size());
-        for (uint32_t paletteIndex = 0; paletteIndex < renderData.paint.palettes.Size(); ++paletteIndex)
-        {
-            const CompiledFontPalette& srcPalette = renderData.paint.palettes[paletteIndex];
-            FontFacePalette::Builder dstPalette = palettes[paletteIndex];
-            dstPalette.SetBackground(srcPalette.background);
-
-            auto colors = dstPalette.InitColors(srcPalette.colors.Size());
-            for (uint32_t colorIndex = 0; colorIndex < srcPalette.colors.Size(); ++colorIndex)
-            {
-                const CompiledFontPaletteColor& srcColor = srcPalette.colors[colorIndex];
-                FontFacePaletteColor::Builder dstColor = colors[colorIndex];
-                dstColor.SetRed(srcColor.red);
-                dstColor.SetGreen(srcColor.green);
-                dstColor.SetBlue(srcColor.blue);
-                dstColor.SetAlpha(srcColor.alpha);
-            }
-        }
-
-        auto colorGlyphs = paint.InitColorGlyphs(renderData.paint.colorGlyphs.Size());
-        for (uint32_t glyphIndex = 0; glyphIndex < renderData.paint.colorGlyphs.Size(); ++glyphIndex)
-        {
-            const CompiledColorGlyphEntry& srcColorGlyph = renderData.paint.colorGlyphs[glyphIndex];
-            FontFaceColorGlyph::Builder dstColorGlyph = colorGlyphs[glyphIndex];
-            dstColorGlyph.SetFirstLayer(srcColorGlyph.firstLayer);
-            dstColorGlyph.SetLayerCount(srcColorGlyph.layerCount);
-        }
-
-        auto layers = paint.InitLayers(renderData.paint.layers.Size());
-        for (uint32_t layerIndex = 0; layerIndex < renderData.paint.layers.Size(); ++layerIndex)
-        {
-            const CompiledColorGlyphLayerEntry& srcLayer = renderData.paint.layers[layerIndex];
-            FontFaceColorGlyphLayer::Builder dstLayer = layers[layerIndex];
-            dstLayer.SetGlyphIndex(srcLayer.glyphIndex);
-            dstLayer.SetPaletteEntryIndex(srcLayer.paletteEntryIndex);
-            dstLayer.SetColorSource(srcLayer.colorSource);
-            dstLayer.SetAlphaScale(srcLayer.alphaScale);
-            dstLayer.SetTransform00(srcLayer.transform00);
-            dstLayer.SetTransform01(srcLayer.transform01);
-            dstLayer.SetTransform10(srcLayer.transform10);
-            dstLayer.SetTransform11(srcLayer.transform11);
-            dstLayer.SetTransformTx(srcLayer.transformTx);
-            dstLayer.SetTransformTy(srcLayer.transformTy);
-        }
+        FillFontFaceResourceRenderData(blob.InitRender(), renderData);
+        FillFontFaceResourcePaintData(blob.InitPaint(), renderData.paint);
         blob.SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
         blob.SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
         blobBuilder.SetRoot(blob);

@@ -770,7 +770,7 @@ namespace he
                 {
                     const float zoomFactor = Pow(1.1f, wheelDelta);
                     const float oldZoom = m_sceneZoom;
-                    const float newZoom = Clamp(oldZoom * zoomFactor, 0.1f, 50.0f);
+                    const float newZoom = Clamp(oldZoom * zoomFactor, 0.1f, 500.0f);
                     if (Abs(newZoom - oldZoom) > 0.0001f)
                     {
                         Vec2f pivot = m_hasPointerPos

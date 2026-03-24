@@ -9,6 +9,54 @@
 
 using namespace he;
 
+namespace
+{
+    constexpr bool TestConstexprRangeSort()
+    {
+        int values[] = { 5, 1, 4, 2, 3 };
+        RangeSort(values, HE_LENGTH_OF(values));
+        return values[0] == 1
+            && values[1] == 2
+            && values[2] == 3
+            && values[3] == 4
+            && values[4] == 5;
+    }
+
+    constexpr bool TestConstexprRangeStableSort()
+    {
+        struct Item
+        {
+            int key;
+            int order;
+        };
+
+        Item values[] =
+        {
+            { 2, 0 },
+            { 1, 0 },
+            { 2, 1 },
+            { 1, 1 },
+            { 2, 2 },
+            { 1, 2 },
+        };
+
+        RangeStableSort(values, HE_LENGTH_OF(values), [](const Item& a, const Item& b)
+        {
+            return a.key < b.key;
+        });
+
+        return values[0].key == 1 && values[0].order == 0
+            && values[1].key == 1 && values[1].order == 1
+            && values[2].key == 1 && values[2].order == 2
+            && values[3].key == 2 && values[3].order == 0
+            && values[4].key == 2 && values[4].order == 1
+            && values[5].key == 2 && values[5].order == 2;
+    }
+
+    static_assert(TestConstexprRangeSort());
+    static_assert(TestConstexprRangeStableSort());
+}
+
 // ------------------------------------------------------------------------------------------------
 HE_TEST(core, range_ops, RangeCopy)
 {
@@ -291,6 +339,128 @@ HE_TEST(core, range_ops, RangeFindIf)
         HE_EXPECT_EQ_PTR(RangeFindIf(sa, pred1), a + 1);
         HE_EXPECT_EQ_PTR(RangeFindIf(sa, pred2), a + 3);
         HE_EXPECT(!RangeFindIf(sa, pred3));
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, range_ops, RangeSort)
+{
+    // trivial range of scalars, should sort ascending with the default predicate
+    {
+        int values[] = { 8, 1, 5, 2, 9, 4, 7, 3, 6, 0 };
+        int expected[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+
+        RangeSort(values, HE_LENGTH_OF(values));
+        HE_EXPECT_EQ_MEM(values, expected, sizeof(values));
+    }
+
+    // range overload with a custom predicate should preserve the requested ordering
+    {
+        struct Item
+        {
+            int key;
+            int order;
+        };
+
+        Item values[] =
+        {
+            { 4, 0 },
+            { 1, 0 },
+            { 3, 0 },
+            { 2, 0 },
+            { 5, 0 },
+        };
+
+        Item expected[] =
+        {
+            { 5, 0 },
+            { 4, 0 },
+            { 3, 0 },
+            { 2, 0 },
+            { 1, 0 },
+        };
+
+        Span span(values);
+        RangeSort(span, [](const Item& a, const Item& b)
+        {
+            return a.key > b.key;
+        });
+
+        for (uint32_t i = 0; i < HE_LENGTH_OF(values); ++i)
+        {
+            HE_EXPECT_EQ(values[i].key, expected[i].key);
+            HE_EXPECT_EQ(values[i].order, expected[i].order);
+        }
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+HE_TEST(core, range_ops, RangeStableSort)
+{
+    struct Item
+    {
+        int key;
+        int order;
+    };
+
+    // stable sort should preserve original order among equivalent keys
+    {
+        Item values[] =
+        {
+            { 2, 0 },
+            { 1, 0 },
+            { 2, 1 },
+            { 1, 1 },
+            { 2, 2 },
+            { 1, 2 },
+        };
+
+        RangeStableSort(values, HE_LENGTH_OF(values), [](const Item& a, const Item& b)
+        {
+            return a.key < b.key;
+        });
+
+        const int expectedKeys[] = { 1, 1, 1, 2, 2, 2 };
+        const int expectedOrders[] = { 0, 1, 2, 0, 1, 2 };
+
+        for (uint32_t i = 0; i < HE_LENGTH_OF(values); ++i)
+        {
+            HE_EXPECT_EQ(values[i].key, expectedKeys[i]);
+            HE_EXPECT_EQ(values[i].order, expectedOrders[i]);
+        }
+    }
+
+    // default predicate should sort objects that define operator<
+    {
+        struct OrderedItem
+        {
+            int key;
+            int order;
+
+            bool operator<(const OrderedItem& x) const { return key < x.key; }
+        };
+
+        OrderedItem values[] =
+        {
+            { 3, 0 },
+            { 1, 0 },
+            { 4, 0 },
+            { 1, 1 },
+            { 5, 0 },
+            { 9, 0 },
+            { 2, 0 },
+        };
+
+        RangeStableSort(values, HE_LENGTH_OF(values));
+
+        const int expectedKeys[] = { 1, 1, 2, 3, 4, 5, 9 };
+        const int expectedOrders[] = { 0, 1, 0, 0, 0, 0, 0 };
+
+        for (uint32_t i = 0; i < HE_LENGTH_OF(values); ++i)
+        {
+            HE_EXPECT_EQ(values[i].key, expectedKeys[i]);
+            HE_EXPECT_EQ(values[i].order, expectedOrders[i]);
+        }
     }
 }
 

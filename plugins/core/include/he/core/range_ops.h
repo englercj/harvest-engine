@@ -64,6 +64,74 @@ namespace he
     template <ContiguousRange R, ConvertibleTo<typename R::ElementType> V>
     constexpr void RangeFill(R& dst, const V& value) { RangeFill(dst.Data(), dst.Size(), value); }
 
+    /// Sorts `count` elements in ascending order using `operator<`.
+    ///
+    /// \tparam T The type of the elements in the range, usually deduced.
+    /// \param[in] begin Pointer to the start of the range to sort.
+    /// \param[in] count Number of elements in the range to sort.
+    template <typename T> requires(IsConstructible<T, T&&> && IsAssignable<T&, T&&>)
+    constexpr void RangeSort(T* begin, uint32_t count);
+
+    /// Sorts `count` elements using the provided comparison predicate.
+    ///
+    /// \tparam T The type of the elements in the range, usually deduced.
+    /// \tparam F The type of the comparison predicate, usually deduced.
+    /// \param[in] begin Pointer to the start of the range to sort.
+    /// \param[in] count Number of elements in the range to sort.
+    /// \param[in] predicate Comparison predicate matching strict-weak-order semantics.
+    template <typename T, typename F> requires(IsConstructible<T, T&&> && IsAssignable<T&, T&&>)
+    constexpr void RangeSort(T* begin, uint32_t count, F&& predicate);
+
+    /// Sorts the elements in ascending order using `operator<`.
+    ///
+    /// \tparam R The type of the range, usually deduced.
+    /// \param[in] range The range to sort.
+    template <ContiguousRange R>
+    constexpr void RangeSort(R& range) { RangeSort(range.Data(), range.Size()); }
+
+    /// Sorts the elements using the provided comparison predicate.
+    ///
+    /// \tparam R The type of the range, usually deduced.
+    /// \tparam F The type of the comparison predicate, usually deduced.
+    /// \param[in] range The range to sort.
+    /// \param[in] predicate Comparison predicate matching strict-weak-order semantics.
+    template <ContiguousRange R, typename F>
+    constexpr void RangeSort(R& range, F&& predicate) { RangeSort(range.Data(), range.Size(), Forward<F>(predicate)); }
+
+    /// Stably sorts `count` elements in ascending order using `operator<`.
+    ///
+    /// \tparam T The type of the elements in the range, usually deduced.
+    /// \param[in] begin Pointer to the start of the range to sort.
+    /// \param[in] count Number of elements in the range to sort.
+    template <typename T> requires(IsConstructible<T, T&&> && IsAssignable<T&, T&&>)
+    constexpr void RangeStableSort(T* begin, uint32_t count);
+
+    /// Stably sorts `count` elements using the provided comparison predicate.
+    ///
+    /// \tparam T The type of the elements in the range, usually deduced.
+    /// \tparam F The type of the comparison predicate, usually deduced.
+    /// \param[in] begin Pointer to the start of the range to sort.
+    /// \param[in] count Number of elements in the range to sort.
+    /// \param[in] predicate Comparison predicate matching strict-weak-order semantics.
+    template <typename T, typename F> requires(IsConstructible<T, T&&> && IsAssignable<T&, T&&>)
+    constexpr void RangeStableSort(T* begin, uint32_t count, F&& predicate);
+
+    /// Stably sorts the elements in ascending order using `operator<`.
+    ///
+    /// \tparam R The type of the range, usually deduced.
+    /// \param[in] range The range to sort.
+    template <ContiguousRange R>
+    constexpr void RangeStableSort(R& range) { RangeStableSort(range.Data(), range.Size()); }
+
+    /// Stably sorts the elements using the provided comparison predicate.
+    ///
+    /// \tparam R The type of the range, usually deduced.
+    /// \tparam F The type of the comparison predicate, usually deduced.
+    /// \param[in] range The range to sort.
+    /// \param[in] predicate Comparison predicate matching strict-weak-order semantics.
+    template <ContiguousRange R, typename F>
+    constexpr void RangeStableSort(R& range, F&& predicate) { RangeStableSort(range.Data(), range.Size(), Forward<F>(predicate)); }
+
     /// Finds a pointer to the first element in the range that is equal to `value`.
     /// Equality is tested using `operator==`.
     ///

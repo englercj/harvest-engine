@@ -9,11 +9,10 @@
 #include "he/core/enum_ops.h"
 #include "he/core/macros.h"
 #include "he/core/memory_ops.h"
+#include "he/core/range_ops.h"
 #include "he/core/string.h"
 #include "he/core/string_ops.h"
 #include "he/core/utils.h"
-
-#include <algorithm>
 
 namespace he
 {
@@ -109,7 +108,7 @@ namespace he
         for (const ArgDesc& d : descs)
             sortedDescs.PushBack(&d);
 
-        std::sort(sortedDescs.begin(), sortedDescs.end(), [](const ArgDesc* a, const ArgDesc* b)
+        RangeSort(sortedDescs, [](const ArgDesc* a, const ArgDesc* b)
         {
             const bool aRequired = a->IsSignedValue();
             const bool bRequired = b->IsSignedValue();

@@ -7,10 +7,10 @@
 #include "he/core/fmt.h"
 #include "he/core/clock.h"
 #include "he/core/error.h"
+#include "he/core/range_ops.h"
 #include "he/core/string.h"
 #include "he/core/string_ops.h"
 
-#include <algorithm>
 #include <cstdlib>
 
 namespace he
@@ -76,7 +76,7 @@ namespace internal
     {
         Vector<TestFixture*>& tests = GetAllTests();
 
-        std::sort(tests.begin(), tests.end(), [](const TestFixture* a, const TestFixture* b)
+        RangeSort(tests, [](const TestFixture* a, const TestFixture* b)
         {
             const TestInfo& infoA = a->GetTestInfo();
             const TestInfo& infoB = b->GetTestInfo();

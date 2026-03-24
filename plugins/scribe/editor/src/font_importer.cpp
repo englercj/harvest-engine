@@ -55,8 +55,8 @@ namespace he::scribe::editor
     assets::ImportError FontImporter::Import(const assets::ImportContext& ctx, assets::ImportResult& result)
     {
         constexpr assets::ResourceId ImportSourceId{ ScribeFontFace::ImportSourceResourceName };
-        constexpr assets::ResourceId ImportMetadataId{ ScribeFontFace::ImportMetadataResourceName };
         constexpr StringView AssetTypeName = ScribeFontFace::AssetTypeName;
+        const assets::AssetUuid sourceAssetUuid(ctx.assetFile.GetUuid());
 
         Vector<uint8_t> sourceBytes;
         if (!ReadFontSourceBytes(sourceBytes, ctx.file))
@@ -66,23 +66,33 @@ namespace he::scribe::editor
 
         const FontSourceFormat sourceFormat = DeduceFontSourceFormat(ctx.file);
 
-        FontFaceInfo firstFace{};
-        if (!InspectFontFace(sourceBytes, 0, sourceFormat, firstFace))
+        Vector<FontFaceInfo> faces{};
+        if (!InspectFontFaces(faces, sourceBytes, sourceFormat) || faces.IsEmpty())
         {
             return assets::ImportError::Failure;
         }
 
-        const uint32_t faceCount = firstFace.faceCount > 0 ? firstFace.faceCount : 1;
-        const StringView sourceFileName = GetBaseName(ctx.file);
-        schema::Uuid::Reader sourceOwnerAssetUuid{};
+        const uint32_t faceCount = faces.Size();
+
+        schema::Builder sourceBuilder;
+        ScribeFontFace::ImportSourceResource::Builder sourceResource = sourceBuilder.AddStruct<ScribeFontFace::ImportSourceResource>();
+        sourceResource.SetSourceBytes(sourceBuilder.AddBlob(Span<const uint8_t>(sourceBytes)));
+        sourceBuilder.SetRoot(sourceResource);
+
+        Result r = ctx.db.AddResource(sourceAssetUuid, ImportSourceId, Span<const schema::Word>(sourceBuilder).AsBytes());
+        if (!r)
+        {
+            HE_LOG_ERROR(he_scribe,
+                HE_MSG("Failed to write shared scribe font import source resource."),
+                HE_KV(asset_file_uuid, assets::AssetFileUuid(ctx.assetFile.GetUuid())),
+                HE_KV(result, r),
+                HE_KV(path, ctx.file));
+            return assets::ImportError::Failure;
+        }
 
         for (uint32_t faceIndex = 0; faceIndex < faceCount; ++faceIndex)
         {
-            FontFaceInfo faceInfo{};
-            if (!InspectFontFace(sourceBytes, faceIndex, sourceFormat, faceInfo))
-            {
-                return assets::ImportError::Failure;
-            }
+            const FontFaceInfo& faceInfo = faces[faceIndex];
 
             assets::Asset::Builder asset;
 
@@ -116,56 +126,6 @@ namespace he::scribe::editor
             ScribeFontFace::Builder assetData = assetBuilder->AddStruct<ScribeFontFace>();
             FillFontFaceAssetData(assetData, faceInfo);
             asset.GetData().Set(assetData.AsReader());
-
-            if (faceIndex == 0)
-            {
-                sourceOwnerAssetUuid = asset.GetUuid();
-            }
-
-            schema::Builder sourceBuilder;
-            ScribeFontFace::ImportSourceResource::Builder sourceResource = sourceBuilder.AddStruct<ScribeFontFace::ImportSourceResource>();
-            sourceResource.SetSourceFormat(sourceFormat);
-            sourceResource.SetSourceOwnerAsset(sourceOwnerAssetUuid);
-            if (faceIndex == 0)
-            {
-                sourceResource.SetSourceBytes(sourceBuilder.AddBlob(Span<const uint8_t>(sourceBytes)));
-            }
-            else
-            {
-                sourceResource.SetSourceBytes(sourceBuilder.AddBlob({}));
-            }
-            sourceResource.InitSourceFileName(sourceFileName);
-            sourceResource.SetFaceCount(faceCount);
-            sourceBuilder.SetRoot(sourceResource);
-
-            Result r = ctx.db.AddResource(asset.GetUuid(), ImportSourceId, Span<const schema::Word>(sourceBuilder).AsBytes());
-            if (!r)
-            {
-                HE_LOG_ERROR(he_scribe,
-                    HE_MSG("Failed to write scribe font import source resource."),
-                    HE_KV(asset_uuid, assets::AssetUuid(asset.GetUuid())),
-                    HE_KV(asset_name, asset.GetName()),
-                    HE_KV(result, r),
-                    HE_KV(path, ctx.file));
-                return assets::ImportError::Failure;
-            }
-
-            schema::Builder metadataBuilder;
-            ScribeFontFace::ImportMetadataResource::Builder metadataResource = metadataBuilder.AddStruct<ScribeFontFace::ImportMetadataResource>();
-            FillFontFaceImportMetadata(metadataResource.InitMetadata(), faceInfo);
-            metadataBuilder.SetRoot(metadataResource);
-
-            r = ctx.db.AddResource(asset.GetUuid(), ImportMetadataId, Span<const schema::Word>(metadataBuilder).AsBytes());
-            if (!r)
-            {
-                HE_LOG_ERROR(he_scribe,
-                    HE_MSG("Failed to write scribe font import metadata resource."),
-                    HE_KV(asset_uuid, assets::AssetUuid(asset.GetUuid())),
-                    HE_KV(asset_name, asset.GetName()),
-                    HE_KV(result, r),
-                    HE_KV(path, ctx.file));
-                return assets::ImportError::Failure;
-            }
         }
 
         return assets::ImportError::Success;

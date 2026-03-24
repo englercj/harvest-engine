@@ -19,7 +19,7 @@ namespace he::scribe::editor
     bool ImageCompiler::Compile(const assets::CompileContext& ctx, [[maybe_unused]] assets::CompileResult& result)
     {
         constexpr assets::ResourceId ImportSourceId{ ScribeImage::ImportSourceResourceName };
-        constexpr assets::ResourceId RuntimeBlobId{ ScribeImage::RuntimeResourceName };
+        constexpr assets::ResourceId RuntimeResourceId{ ScribeImage::RuntimeResourceName };
 
         Vector<schema::Word> importSourceBytes;
         Result r = ctx.db.GetResource(importSourceBytes, ctx.asset.GetUuid(), ImportSourceId);
@@ -83,21 +83,21 @@ namespace he::scribe::editor
         schema::Builder blobBuilder;
         VectorImageResource::Builder blob = blobBuilder.AddStruct<VectorImageResource>();
 
-        FillVectorImageResourceMetadata(blob.InitMetadata(), imageData);
-        FillVectorImageResourceRenderData(blob.InitRender(), imageData);
-        FillVectorImageResourcePaintData(blob.InitPaint(), imageData);
+        FillVectorImageResourceMetadata(blob.GetMetadata(), imageData);
+        FillVectorImageResourceRenderData(blob.GetRender(), imageData);
+        FillVectorImageResourcePaintData(blob.GetPaint(), imageData);
         blob.SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
         blob.SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
         blobBuilder.SetRoot(blob);
 
-        r = ctx.db.AddResource(ctx.asset.GetUuid(), RuntimeBlobId, Span<const schema::Word>(blobBuilder).AsBytes());
+        r = ctx.db.AddResource(ctx.asset.GetUuid(), RuntimeResourceId, Span<const schema::Word>(blobBuilder).AsBytes());
         if (!r)
         {
             HE_LOG_ERROR(he_scribe,
                 HE_MSG("Failed to write compiled scribe image runtime blob."),
                 HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
                 HE_KV(asset_name, ctx.asset.GetName()),
-                HE_KV(resource_id, RuntimeBlobId),
+                HE_KV(resource_id, RuntimeResourceId),
                 HE_KV(result, r));
             return false;
         }

@@ -67,34 +67,21 @@ namespace
 
         schema::Builder rootBuilder;
         FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
-        FontFaceShapingData::Builder shaping = root.InitShaping();
+        FontFaceShapingData::Builder shaping = root.GetShaping();
         shaping.SetFaceIndex(0);
         shaping.SetSourceFormat(FontSourceFormat::TrueType);
         shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(fontBytes)));
 
-        FontFaceImportMetadata::Builder metadata = root.InitMetadata();
-        metadata.SetFaceIndex(0);
-        metadata.SetSourceFormat(FontSourceFormat::TrueType);
-        metadata.InitFamilyName(fileName);
-        metadata.InitStyleName("Regular");
-        metadata.InitPostscriptName(fileName);
+        FontFaceRuntimeMetadata::Builder metadata = root.GetMetadata();
         metadata.SetGlyphCount(0);
-        metadata.SetIsScalable(true);
+        metadata.SetUnitsPerEm(1000);
+        metadata.SetAscender(800);
+        metadata.SetDescender(-200);
+        metadata.SetLineHeight(1200);
+        metadata.SetCapHeight(700);
         metadata.SetHasColorGlyphs(hasColorGlyphs);
-        metadata.SetHasKerning(true);
-        metadata.SetHasHorizontalLayout(true);
-        metadata.SetHasVerticalLayout(false);
 
-        FontFaceMetrics::Builder metrics = metadata.InitMetrics();
-        metrics.SetUnitsPerEm(1000);
-        metrics.SetAscender(800);
-        metrics.SetDescender(-200);
-        metrics.SetLineHeight(1200);
-        metrics.SetMaxAdvanceWidth(1200);
-        metrics.SetMaxAdvanceHeight(1200);
-        metrics.SetCapHeight(700);
-
-        FontFaceRenderData::Builder render = root.InitRender();
+        FontFaceRenderData::Builder render = root.GetRender();
         render.SetCurveTextureWidth(1);
         render.SetCurveTextureHeight(1);
         render.SetBandTextureWidth(ScribeBandTextureWidth);
@@ -102,7 +89,7 @@ namespace
         render.SetBandOverlapEpsilon(1.0f);
         render.InitGlyphs(0);
 
-        FontFacePaintData::Builder paint = root.InitPaint();
+        FontFacePaintData::Builder paint = root.GetPaint();
         paint.SetDefaultPaletteIndex(0);
         paint.InitPalettes(0);
         paint.InitColorGlyphs(0);

@@ -59,7 +59,6 @@ namespace he::scribe::editor
         schema::Builder sourceBuilder;
         ScribeImage::ImportSourceResource::Builder source = sourceBuilder.AddStruct<ScribeImage::ImportSourceResource>();
         source.SetSourceBytes(sourceBuilder.AddBlob(Span<const uint8_t>(sourceBytes)));
-        source.InitSourceFileName(GetBaseName(ctx.file));
         sourceBuilder.SetRoot(source);
 
         Result r = ctx.db.AddResource(asset.GetUuid(), ImportSourceId, Span<const schema::Word>(sourceBuilder).AsBytes());

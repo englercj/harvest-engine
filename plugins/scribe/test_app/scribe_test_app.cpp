@@ -278,15 +278,14 @@ namespace he
 
         float ComputeCapAlignedFontSize(const scribe::FontFaceResourceReader& font, float capHeightPixels)
         {
-            const scribe::FontFaceImportMetadata::Reader metadata = font.GetMetadata();
+            const scribe::FontFaceRuntimeMetadata::Reader metadata = font.GetMetadata();
             if (!metadata.IsValid())
             {
                 return capHeightPixels;
             }
 
-            const scribe::FontFaceMetrics::Reader metrics = metadata.GetMetrics();
-            const float unitsPerEm = static_cast<float>(Max(metrics.GetUnitsPerEm(), 1u));
-            const float capHeightUnits = static_cast<float>(Max(Abs(metrics.GetCapHeight()), 1));
+            const float unitsPerEm = static_cast<float>(Max(metadata.GetUnitsPerEm(), 1u));
+            const float capHeightUnits = static_cast<float>(Max(Abs(metadata.GetCapHeight()), 1));
             return capHeightPixels * (unitsPerEm / capHeightUnits);
         }
 
@@ -442,16 +441,22 @@ namespace he
 
             schema::Builder rootBuilder;
             scribe::FontFaceResource::Builder root = rootBuilder.AddStruct<scribe::FontFaceResource>();
-            scribe::FontFaceShapingData::Builder shaping = root.InitShaping();
+            scribe::FontFaceShapingData::Builder shaping = root.GetShaping();
             shaping.SetFaceIndex(faceInfo.faceIndex);
             shaping.SetSourceFormat(faceInfo.sourceFormat);
             shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(fontBytes)));
 
-            scribe::FontFaceImportMetadata::Builder metadata = root.InitMetadata();
-            scribe::editor::FillFontFaceImportMetadata(metadata, faceInfo);
+            scribe::FontFaceRuntimeMetadata::Builder metadata = root.GetMetadata();
+            metadata.SetGlyphCount(faceInfo.glyphCount);
+            metadata.SetUnitsPerEm(faceInfo.unitsPerEm);
+            metadata.SetAscender(faceInfo.ascender);
+            metadata.SetDescender(faceInfo.descender);
+            metadata.SetLineHeight(faceInfo.lineHeight);
+            metadata.SetCapHeight(faceInfo.capHeight);
+            metadata.SetHasColorGlyphs(faceInfo.hasColorGlyphs);
 
-            scribe::editor::FillFontFaceResourceRenderData(root.InitRender(), renderData);
-            scribe::editor::FillFontFaceResourcePaintData(root.InitPaint(), renderData.paint);
+            scribe::editor::FillFontFaceResourceRenderData(root.GetRender(), renderData);
+            scribe::editor::FillFontFaceResourcePaintData(root.GetPaint(), renderData.paint);
             root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
             root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
             rootBuilder.SetRoot(root);
@@ -491,9 +496,9 @@ namespace he
 
             schema::Builder rootBuilder;
             scribe::VectorImageResource::Builder root = rootBuilder.AddStruct<scribe::VectorImageResource>();
-            scribe::editor::FillVectorImageResourceMetadata(root.InitMetadata(), imageData);
-            scribe::editor::FillVectorImageResourceRenderData(root.InitRender(), imageData);
-            scribe::editor::FillVectorImageResourcePaintData(root.InitPaint(), imageData);
+            scribe::editor::FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
+            scribe::editor::FillVectorImageResourceRenderData(root.GetRender(), imageData);
+            scribe::editor::FillVectorImageResourcePaintData(root.GetPaint(), imageData);
             root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
             root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
             rootBuilder.SetRoot(root);
@@ -2583,8 +2588,8 @@ namespace he
             return origin;
         }
 
-        const scribe::FontFaceMetrics::Reader metrics = m_fonts[block.fontFaceIndex].blob.GetMetadata().GetMetrics();
-        const float unitsPerEm = static_cast<float>(Max(metrics.GetUnitsPerEm(), 1u));
+        const scribe::FontFaceRuntimeMetadata::Reader metadata = m_fonts[block.fontFaceIndex].blob.GetMetadata();
+        const float unitsPerEm = static_cast<float>(Max(metadata.GetUnitsPerEm(), 1u));
         const float scale = block.fontSize / unitsPerEm;
         const float baselineY = origin.y + block.layout.lines[0].baselineY;
 
@@ -2597,7 +2602,7 @@ namespace he
         if (block.pixelAlignCapHeight)
         {
             const float alignedBaselineY = baselineY + deltaY;
-            const float capHeight = static_cast<float>(Max(Abs(metrics.GetCapHeight()), 1)) * scale;
+            const float capHeight = static_cast<float>(Max(Abs(metadata.GetCapHeight()), 1)) * scale;
             const float capTopY = alignedBaselineY - capHeight;
             deltaY += Round(capTopY) - capTopY;
         }

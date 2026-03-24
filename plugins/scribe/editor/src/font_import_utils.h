@@ -35,8 +35,9 @@ namespace he::scribe::editor
     FontSourceFormat DeduceFontSourceFormat(const char* file);
     bool ReadFontSourceBytes(Vector<uint8_t>& out, const char* file);
     bool InspectFontFace(const Vector<uint8_t>& sourceBytes, uint32_t faceIndex, FontSourceFormat sourceFormat, FontFaceInfo& out);
+    bool InspectFontFaces(Vector<FontFaceInfo>& out, const Vector<uint8_t>& sourceBytes, FontSourceFormat sourceFormat);
+    bool ExtractFontFaceSourceBytes(Vector<uint8_t>& out, const Vector<uint8_t>& sourceBytes, uint32_t faceIndex, FontSourceFormat sourceFormat);
 
     void FillFontFaceMetrics(FontFaceMetrics::Builder metrics, const FontFaceInfo& info);
-    void FillFontFaceImportMetadata(FontFaceImportMetadata::Builder metadata, const FontFaceInfo& info);
     void FillFontFaceAssetData(ScribeFontFace::Builder assetData, const FontFaceInfo& info);
 }

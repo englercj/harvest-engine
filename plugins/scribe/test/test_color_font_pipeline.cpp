@@ -70,7 +70,7 @@ namespace
         Vector<schema::Word>& storage,
         FontFaceResourceReader& out,
         const Vector<uint8_t>& fontBytes,
-        const char* displayName)
+        [[maybe_unused]] const char* displayName)
     {
         FontFaceInfo faceInfo{};
         if (!InspectFontFace(fontBytes, 0, FontSourceFormat::TrueType, faceInfo))
@@ -87,20 +87,22 @@ namespace
         schema::Builder rootBuilder;
         FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
 
-        FontFaceShapingData::Builder shaping = root.InitShaping();
+        FontFaceShapingData::Builder shaping = root.GetShaping();
         shaping.SetFaceIndex(faceInfo.faceIndex);
         shaping.SetSourceFormat(faceInfo.sourceFormat);
         shaping.SetSourceBytes(rootBuilder.AddBlob(fontBytes));
 
-        FontFaceImportMetadata::Builder metadata = root.InitMetadata();
-        FillFontFaceImportMetadata(metadata, faceInfo);
-        if (metadata.GetFamilyName().Size() == 0)
-        {
-            metadata.InitFamilyName(displayName);
-        }
+        FontFaceRuntimeMetadata::Builder metadata = root.GetMetadata();
+        metadata.SetGlyphCount(faceInfo.glyphCount);
+        metadata.SetUnitsPerEm(faceInfo.unitsPerEm);
+        metadata.SetAscender(faceInfo.ascender);
+        metadata.SetDescender(faceInfo.descender);
+        metadata.SetLineHeight(faceInfo.lineHeight);
+        metadata.SetCapHeight(faceInfo.capHeight);
+        metadata.SetHasColorGlyphs(faceInfo.hasColorGlyphs);
 
-        FillFontFaceResourceRenderData(root.InitRender(), renderData);
-        FillFontFaceResourcePaintData(root.InitPaint(), renderData.paint);
+        FillFontFaceResourceRenderData(root.GetRender(), renderData);
+        FillFontFaceResourcePaintData(root.GetPaint(), renderData.paint);
         root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
         root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
         rootBuilder.SetRoot(root);
@@ -647,6 +649,38 @@ namespace
     }
 }
 
+HE_TEST(scribe, color_font_pipeline, extracts_standalone_face_source_bytes)
+{
+    String fontPath{};
+    HE_ASSERT(ResolveRepoFontPath(fontPath, "NotoSans-Regular.ttf"));
+
+    Vector<uint8_t> fontBytes{};
+    HE_ASSERT(ReadFontFile(fontBytes, fontPath.Data()));
+
+    FontFaceInfo originalFace{};
+    HE_ASSERT(InspectFontFace(fontBytes, 0, FontSourceFormat::TrueType, originalFace));
+
+    Vector<uint8_t> extractedBytes{};
+    HE_ASSERT(ExtractFontFaceSourceBytes(extractedBytes, fontBytes, 0, FontSourceFormat::TrueType));
+    HE_EXPECT(!extractedBytes.IsEmpty());
+
+    FontFaceInfo extractedFace{};
+    HE_ASSERT(InspectFontFace(extractedBytes, 0, FontSourceFormat::TrueType, extractedFace));
+
+    HE_EXPECT_EQ(extractedFace.faceIndex, 0u);
+    HE_EXPECT_EQ(extractedFace.sourceFormat, FontSourceFormat::TrueType);
+    HE_EXPECT_EQ_STR(extractedFace.familyName.Data(), originalFace.familyName.Data());
+    HE_EXPECT_EQ_STR(extractedFace.styleName.Data(), originalFace.styleName.Data());
+    HE_EXPECT_EQ(extractedFace.glyphCount, originalFace.glyphCount);
+    HE_EXPECT_EQ(extractedFace.unitsPerEm, originalFace.unitsPerEm);
+    HE_EXPECT_EQ(extractedFace.maxAdvanceWidth, originalFace.maxAdvanceWidth);
+    HE_EXPECT_EQ(extractedFace.maxAdvanceHeight, originalFace.maxAdvanceHeight);
+    HE_EXPECT_EQ(extractedFace.ascender, originalFace.ascender);
+    HE_EXPECT_EQ(extractedFace.descender, originalFace.descender);
+    HE_EXPECT_EQ(extractedFace.lineHeight, originalFace.lineHeight);
+    HE_EXPECT_EQ(extractedFace.capHeight, originalFace.capHeight);
+}
+
 HE_TEST(scribe, color_font_pipeline, compiles_layered_color_glyphs)
 {
     static constexpr const char* ColorFontPath = "C:/Windows/Fonts/seguiemj.ttf";
@@ -784,7 +818,7 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_has_no_detached_left_edg
     HE_ASSERT(layout.glyphs.Size() == 1);
 
     const uint32_t glyphIndex = layout.glyphs[0].glyphIndex;
-    const float pixelsPerUnitValue = options.fontSize / static_cast<float>(Max(font.GetMetadata().GetMetrics().GetUnitsPerEm(), 1u));
+    const float pixelsPerUnitValue = options.fontSize / static_cast<float>(Max(font.GetMetadata().GetUnitsPerEm(), 1u));
     const Vec2f pixelsPerUnit = { pixelsPerUnitValue, pixelsPerUnitValue };
     CompiledFontRenderData renderData{};
     HE_ASSERT(BuildCompiledFontRenderData(renderData, fontBytes, 0));
@@ -936,7 +970,7 @@ HE_TEST(scribe, color_font_pipeline, segoeui_capital_t_mid_left_bounds_coverage_
     HE_ASSERT(layout.glyphs.Size() == 1);
 
     const uint32_t glyphIndex = layout.glyphs[0].glyphIndex;
-    const float pixelsPerUnitValue = options.fontSize / static_cast<float>(Max(font.GetMetadata().GetMetrics().GetUnitsPerEm(), 1u));
+    const float pixelsPerUnitValue = options.fontSize / static_cast<float>(Max(font.GetMetadata().GetUnitsPerEm(), 1u));
     const Vec2f pixelsPerUnit = { pixelsPerUnitValue, pixelsPerUnitValue };
 
     CompiledFontRenderData renderData{};

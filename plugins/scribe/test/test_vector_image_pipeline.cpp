@@ -53,9 +53,9 @@ namespace
         schema::Builder rootBuilder;
         VectorImageResource::Builder root = rootBuilder.AddStruct<VectorImageResource>();
 
-        FillVectorImageResourceMetadata(root.InitMetadata(), imageData);
-        FillVectorImageResourceRenderData(root.InitRender(), imageData);
-        FillVectorImageResourcePaintData(root.InitPaint(), imageData);
+        FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
+        FillVectorImageResourceRenderData(root.GetRender(), imageData);
+        FillVectorImageResourcePaintData(root.GetPaint(), imageData);
         root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
         root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
         rootBuilder.SetRoot(root);

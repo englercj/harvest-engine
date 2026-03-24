@@ -20,7 +20,6 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
 {
     const AssetTypeName :String = "he.scribe.font_face";
     const ImportSourceResourceName :String = "he.scribe.font_face.import_source";
-    const ImportMetadataResourceName :String = "he.scribe.font_face.import_metadata";
     const RuntimeResourceName :String = "he.scribe.font_face.runtime_resource";
 
     enum SourceFormat
@@ -55,29 +54,6 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
         maxAdvanceWidth @4 :uint32;
         maxAdvanceHeight @5 :uint32;
         capHeight @6 :int32;
-    }
-
-    struct ImportMetadata
-    {
-        faceIndex @0 :uint32;
-        sourceFormat @1 :SourceFormat;
-        familyName @2 :String;
-        styleName @3 :String;
-        postscriptName @4 :String;
-        glyphCount @5 :uint32;
-        metrics @6 :Metrics;
-        isScalable @7 :bool;
-        hasColorGlyphs @8 :bool;
-        hasKerning @9 :bool;
-        hasHorizontalLayout @10 :bool;
-        hasVerticalLayout @11 :bool;
-    }
-
-    struct ShapingData
-    {
-        faceIndex @0 :uint32;
-        sourceFormat @1 :SourceFormat;
-        sourceBytes @2 :Blob;
     }
 
     struct GlyphRenderData
@@ -135,48 +111,53 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
         layerCount @1 :uint32;
     }
 
-    struct RenderData
-    {
-        curveTextureWidth @0 :uint32;
-        curveTextureHeight @1 :uint32;
-        bandTextureWidth @2 :uint32;
-        bandTextureHeight @3 :uint32;
-        bandOverlapEpsilon @4 :float32;
-        glyphs @5 :GlyphRenderData[];
-    }
-
-    struct PaintData
-    {
-        defaultPaletteIndex @0 :uint32;
-        palettes @1 :Palette[];
-        colorGlyphs @2 :ColorGlyph[];
-        layers @3 :ColorGlyphLayer[];
-    }
-
     struct RuntimeResource
     {
         const ResourceName :String = "he.scribe.font_face.runtime_resource";
 
-        shaping @0 :ShapingData;
-        curveData @1 :Blob;
-        bandData @2 :Blob;
-        paint @3 :PaintData;
-        metadata @4 :ImportMetadata;
-        render @5 :RenderData;
+        shaping :group
+        {
+            faceIndex @0 :uint32;
+            sourceFormat @1 :SourceFormat;
+            sourceBytes @2 :Blob;
+        }
+
+        curveData @3 :Blob;
+        bandData @4 :Blob;
+
+        paint :group
+        {
+            defaultPaletteIndex @5 :uint32;
+            palettes @6 :Palette[];
+            colorGlyphs @7 :ColorGlyph[];
+            layers @8 :ColorGlyphLayer[];
+        }
+
+        metadata :group
+        {
+            glyphCount @9 :uint32;
+            unitsPerEm @10 :uint32;
+            ascender @11 :int32;
+            descender @12 :int32;
+            lineHeight @13 :int32;
+            capHeight @14 :int32;
+            hasColorGlyphs @15 :bool;
+        }
+
+        render :group
+        {
+            curveTextureWidth @16 :uint32;
+            curveTextureHeight @17 :uint32;
+            bandTextureWidth @18 :uint32;
+            bandTextureHeight @19 :uint32;
+            bandOverlapEpsilon @20 :float32;
+            glyphs @21 :GlyphRenderData[];
+        }
     }
 
     struct ImportSourceResource
     {
-        sourceFormat @0 :SourceFormat;
-        sourceBytes @1 :Blob;
-        sourceOwnerAsset @2 :he.schema.Uuid $he.assets.AssetRef(ScribeFontFace.AssetTypeName);
-        sourceFileName @3 :String;
-        faceCount @4 :uint32;
-    }
-
-    struct ImportMetadataResource
-    {
-        metadata @0 :ImportMetadata;
+        sourceBytes @0 :Blob;
     }
 
     faceIndex @0 :uint32 = 0;
@@ -212,28 +193,7 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
 {
     const AssetTypeName :String = "he.scribe.image";
     const ImportSourceResourceName :String = "he.scribe.image.import_source";
-    const ImportMetadataResourceName :String = "he.scribe.image.import_metadata";
     const RuntimeResourceName :String = "he.scribe.vector_image.runtime_resource";
-
-    struct ImportMetadata
-    {
-        sourceViewBoxMinX @0 :float32;
-        sourceViewBoxMinY @1 :float32;
-        sourceViewBoxWidth @2 :float32;
-        sourceViewBoxHeight @3 :float32;
-    }
-
-    struct Metadata
-    {
-        sourceViewBoxMinX @0 :float32;
-        sourceViewBoxMinY @1 :float32;
-        sourceViewBoxWidth @2 :float32;
-        sourceViewBoxHeight @3 :float32;
-        sourceBoundsMinX @4 :float32;
-        sourceBoundsMinY @5 :float32;
-        sourceBoundsMaxX @6 :float32;
-        sourceBoundsMaxY @7 :float32;
-    }
 
     struct ShapeRenderData
     {
@@ -252,16 +212,6 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
         fillRule @12 :FillRule;
     }
 
-    struct RenderData
-    {
-        curveTextureWidth @0 :uint32;
-        curveTextureHeight @1 :uint32;
-        bandTextureWidth @2 :uint32;
-        bandTextureHeight @3 :uint32;
-        bandOverlapEpsilon @4 :float32;
-        shapes @5 :ShapeRenderData[];
-    }
-
     struct Layer
     {
         shapeIndex @0 :uint32;
@@ -271,31 +221,44 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
         alpha @4 :float32;
     }
 
-    struct PaintData
-    {
-        layers @0 :Layer[];
-    }
-
     struct RuntimeResource
     {
         const ResourceName :String = "he.scribe.vector_image.runtime_resource";
 
         curveData @0 :Blob;
         bandData @1 :Blob;
-        paint @2 :PaintData;
-        metadata @3 :Metadata;
-        render @4 :RenderData;
+
+        paint :group
+        {
+            layers @2 :Layer[];
+        }
+
+        metadata :group
+        {
+            sourceViewBoxMinX @3 :float32;
+            sourceViewBoxMinY @4 :float32;
+            sourceViewBoxWidth @5 :float32;
+            sourceViewBoxHeight @6 :float32;
+            sourceBoundsMinX @7 :float32;
+            sourceBoundsMinY @8 :float32;
+            sourceBoundsMaxX @9 :float32;
+            sourceBoundsMaxY @10 :float32;
+        }
+
+        render :group
+        {
+            curveTextureWidth @11 :uint32;
+            curveTextureHeight @12 :uint32;
+            bandTextureWidth @13 :uint32;
+            bandTextureHeight @14 :uint32;
+            bandOverlapEpsilon @15 :float32;
+            shapes @16 :ShapeRenderData[];
+        }
     }
 
     struct ImportSourceResource
     {
         sourceBytes @0 :Blob;
-        sourceFileName @1 :String;
-    }
-
-    struct ImportMetadataResource
-    {
-        metadata @0 :ImportMetadata;
     }
 
     flatteningTolerance @0 :float32 = 0.25;

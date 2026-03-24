@@ -9,12 +9,246 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_FONT_FORMATS_H
 #include FT_TRUETYPE_TABLES_H
+
+#include <algorithm>
+#include <cstring>
 
 namespace he::scribe::editor
 {
     namespace
     {
+        struct FontTableRecord
+        {
+            uint32_t tag{ 0 };
+            Vector<uint8_t> data{};
+            uint32_t checksum{ 0 };
+            uint32_t offset{ 0 };
+        };
+
+        void WriteU16BE(Vector<uint8_t>& out, uint16_t value)
+        {
+            out.PushBack(static_cast<uint8_t>((value >> 8) & 0xFFu));
+            out.PushBack(static_cast<uint8_t>(value & 0xFFu));
+        }
+
+        void WriteU32BE(Vector<uint8_t>& out, uint32_t value)
+        {
+            out.PushBack(static_cast<uint8_t>((value >> 24) & 0xFFu));
+            out.PushBack(static_cast<uint8_t>((value >> 16) & 0xFFu));
+            out.PushBack(static_cast<uint8_t>((value >> 8) & 0xFFu));
+            out.PushBack(static_cast<uint8_t>(value & 0xFFu));
+        }
+
+        void SetU32BE(Span<uint8_t> out, uint32_t value)
+        {
+            HE_ASSERT(out.Size() >= 4);
+            out[0] = static_cast<uint8_t>((value >> 24) & 0xFFu);
+            out[1] = static_cast<uint8_t>((value >> 16) & 0xFFu);
+            out[2] = static_cast<uint8_t>((value >> 8) & 0xFFu);
+            out[3] = static_cast<uint8_t>(value & 0xFFu);
+        }
+
+        uint32_t ComputeSfntChecksum(Span<const uint8_t> data)
+        {
+            uint32_t sum = 0;
+            const uint32_t paddedSize = (data.Size() + 3u) & ~3u;
+            for (uint32_t offset = 0; offset < paddedSize; offset += 4u)
+            {
+                uint32_t word = 0;
+                for (uint32_t i = 0; i < 4u; ++i)
+                {
+                    word <<= 8u;
+                    if ((offset + i) < data.Size())
+                    {
+                        word |= data[offset + i];
+                    }
+                }
+                sum += word;
+            }
+
+            return sum;
+        }
+
+        uint16_t HighestPowerOfTwoLE(uint16_t value)
+        {
+            uint16_t result = 1;
+            while ((result << 1u) <= value)
+            {
+                result <<= 1u;
+            }
+
+            return result;
+        }
+
+        FontSourceFormat ResolveFaceSourceFormat(FT_Face face, FontSourceFormat fallback)
+        {
+            const char* fontFormat = FT_Get_Font_Format(face);
+            if (fontFormat == nullptr)
+            {
+                return fallback;
+            }
+
+            if (std::strcmp(fontFormat, "CFF") == 0)
+            {
+                return FontSourceFormat::OpenTypeCff;
+            }
+
+            if (std::strcmp(fontFormat, "TrueType") == 0)
+            {
+                return FontSourceFormat::TrueType;
+            }
+
+            return fallback;
+        }
+
+        bool ExtractFontFaceSourceBytes(Vector<uint8_t>& out, FT_Face ftFace, FontSourceFormat sourceFormat)
+        {
+            out.Clear();
+
+            FT_ULong tableCount = 0;
+            if (FT_Sfnt_Table_Info(ftFace, 0, nullptr, &tableCount) != 0 || tableCount == 0)
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Failed to enumerate SFNT tables for face extraction."));
+                return false;
+            }
+
+            Vector<FontTableRecord> tables{};
+            tables.Reserve(static_cast<uint32_t>(tableCount));
+
+            for (FT_ULong tableIndex = 0; tableIndex < tableCount; ++tableIndex)
+            {
+                FT_ULong tag = 0;
+                FT_ULong length = 0;
+                if (FT_Sfnt_Table_Info(ftFace, static_cast<FT_UInt>(tableIndex), &tag, &length) != 0 || length == 0)
+                {
+                    continue;
+                }
+
+                FontTableRecord& table = tables.EmplaceBack();
+                table.tag = static_cast<uint32_t>(tag);
+                table.data.Resize(static_cast<uint32_t>(length), DefaultInit);
+                FT_ULong loadLength = length;
+                if (FT_Load_Sfnt_Table(ftFace, tag, 0, table.data.Data(), &loadLength) != 0 || loadLength != length)
+                {
+                    return false;
+                }
+
+                if (table.tag == FT_MAKE_TAG('h', 'e', 'a', 'd') && table.data.Size() >= 12u)
+                {
+                    table.data[8] = 0;
+                    table.data[9] = 0;
+                    table.data[10] = 0;
+                    table.data[11] = 0;
+                }
+
+                table.checksum = ComputeSfntChecksum(table.data);
+            }
+
+            std::sort(tables.Data(), tables.Data() + tables.Size(), [](const FontTableRecord& a, const FontTableRecord& b)
+            {
+                return a.tag < b.tag;
+            });
+
+            const FontSourceFormat faceFormat = ResolveFaceSourceFormat(ftFace, sourceFormat);
+            const uint32_t sfntVersion = faceFormat == FontSourceFormat::OpenTypeCff
+                ? FT_MAKE_TAG('O', 'T', 'T', 'O')
+                : 0x00010000u;
+
+            const uint16_t numTables = static_cast<uint16_t>(tables.Size());
+            const uint16_t maxPowerOfTwo = HighestPowerOfTwoLE(numTables);
+            const uint16_t searchRange = static_cast<uint16_t>(maxPowerOfTwo * 16u);
+            uint16_t entrySelector = 0;
+            for (uint16_t value = maxPowerOfTwo; value > 1u; value >>= 1u)
+            {
+                ++entrySelector;
+            }
+            const uint16_t rangeShift = static_cast<uint16_t>((numTables * 16u) - searchRange);
+
+            const uint32_t directorySize = 12u + (static_cast<uint32_t>(numTables) * 16u);
+            uint32_t currentOffset = directorySize;
+            for (FontTableRecord& table : tables)
+            {
+                table.offset = currentOffset;
+                currentOffset += (table.data.Size() + 3u) & ~3u;
+            }
+
+            out.Reserve(currentOffset);
+            WriteU32BE(out, sfntVersion);
+            WriteU16BE(out, numTables);
+            WriteU16BE(out, searchRange);
+            WriteU16BE(out, entrySelector);
+            WriteU16BE(out, rangeShift);
+
+            uint32_t headTableOffset = 0;
+            for (const FontTableRecord& table : tables)
+            {
+                WriteU32BE(out, table.tag);
+                WriteU32BE(out, table.checksum);
+                WriteU32BE(out, table.offset);
+                WriteU32BE(out, table.data.Size());
+                if (table.tag == FT_MAKE_TAG('h', 'e', 'a', 'd'))
+                {
+                    headTableOffset = table.offset;
+                }
+            }
+
+            for (const FontTableRecord& table : tables)
+            {
+                for (uint32_t byteIndex = 0; byteIndex < table.data.Size(); ++byteIndex)
+                {
+                    out.PushBack(table.data[byteIndex]);
+                }
+                while ((out.Size() & 3u) != 0u)
+                {
+                    out.PushBack(0);
+                }
+            }
+
+            if (headTableOffset != 0 && (headTableOffset + 12u) <= out.Size())
+            {
+                SetU32BE(Span<uint8_t>(out.Data() + headTableOffset + 8u, 4u), 0);
+                const uint32_t checksumAdjustment = 0xB1B0AFBAu - ComputeSfntChecksum(out);
+                SetU32BE(Span<uint8_t>(out.Data() + headTableOffset + 8u, 4u), checksumAdjustment);
+            }
+
+            return true;
+        }
+
+        bool PopulateFontFaceInfo(FontFaceInfo& out, FT_Face ftFace, uint32_t faceIndex, FontSourceFormat sourceFormat)
+        {
+            out = {};
+            out.faceIndex = faceIndex;
+            out.faceCount = ftFace->num_faces > 0 ? static_cast<uint32_t>(ftFace->num_faces) : 1;
+            out.sourceFormat = ResolveFaceSourceFormat(ftFace, sourceFormat);
+            out.familyName = ftFace->family_name != nullptr ? String(ftFace->family_name) : String{};
+            out.styleName = ftFace->style_name != nullptr ? String(ftFace->style_name) : String{};
+            const char* postscriptName = FT_Get_Postscript_Name(ftFace);
+            out.postscriptName = postscriptName != nullptr ? String(postscriptName) : String{};
+            out.glyphCount = ftFace->num_glyphs > 0 ? static_cast<uint32_t>(ftFace->num_glyphs) : 0;
+            out.unitsPerEm = ftFace->units_per_EM > 0 ? static_cast<uint32_t>(ftFace->units_per_EM) : 0;
+            out.maxAdvanceWidth = ftFace->max_advance_width > 0 ? static_cast<uint32_t>(ftFace->max_advance_width) : 0;
+            out.maxAdvanceHeight = ftFace->max_advance_height > 0 ? static_cast<uint32_t>(ftFace->max_advance_height) : 0;
+            out.ascender = static_cast<int32_t>(ftFace->ascender);
+            out.descender = static_cast<int32_t>(ftFace->descender);
+            out.lineHeight = static_cast<int32_t>(ftFace->height);
+            out.isScalable = FT_IS_SCALABLE(ftFace);
+            out.hasColorGlyphs = FT_HAS_COLOR(ftFace);
+            out.hasKerning = FT_HAS_KERNING(ftFace);
+            out.hasHorizontalLayout = FT_HAS_HORIZONTAL(ftFace);
+            out.hasVerticalLayout = FT_HAS_VERTICAL(ftFace);
+
+            const TT_OS2* os2 = static_cast<const TT_OS2*>(FT_Get_Sfnt_Table(ftFace, ft_sfnt_os2));
+            if (os2 != nullptr)
+            {
+                out.capHeight = static_cast<int32_t>(os2->sCapHeight);
+            }
+
+            return true;
+        }
+
         class FreeTypeLibrary final
         {
         public:
@@ -89,11 +323,6 @@ namespace he::scribe::editor
         private:
             FT_Face m_face{ nullptr };
         };
-
-        String CopyFtString(const char* str)
-        {
-            return str != nullptr ? String(str) : String{};
-        }
     }
 
     FontSourceFormat DeduceFontSourceFormat(const char* file)
@@ -139,8 +368,6 @@ namespace he::scribe::editor
 
     bool InspectFontFace(const Vector<uint8_t>& sourceBytes, uint32_t faceIndex, FontSourceFormat sourceFormat, FontFaceInfo& out)
     {
-        out = {};
-
         FreeTypeLibrary library;
         if (!library.Initialize())
         {
@@ -153,33 +380,64 @@ namespace he::scribe::editor
             return false;
         }
 
-        FT_Face ftFace = face.Get();
-        out.faceIndex = faceIndex;
-        out.faceCount = ftFace->num_faces > 0 ? static_cast<uint32_t>(ftFace->num_faces) : 1;
-        out.sourceFormat = sourceFormat;
-        out.familyName = CopyFtString(ftFace->family_name);
-        out.styleName = CopyFtString(ftFace->style_name);
-        out.postscriptName = CopyFtString(FT_Get_Postscript_Name(ftFace));
-        out.glyphCount = ftFace->num_glyphs > 0 ? static_cast<uint32_t>(ftFace->num_glyphs) : 0;
-        out.unitsPerEm = ftFace->units_per_EM > 0 ? static_cast<uint32_t>(ftFace->units_per_EM) : 0;
-        out.maxAdvanceWidth = ftFace->max_advance_width > 0 ? static_cast<uint32_t>(ftFace->max_advance_width) : 0;
-        out.maxAdvanceHeight = ftFace->max_advance_height > 0 ? static_cast<uint32_t>(ftFace->max_advance_height) : 0;
-        out.ascender = static_cast<int32_t>(ftFace->ascender);
-        out.descender = static_cast<int32_t>(ftFace->descender);
-        out.lineHeight = static_cast<int32_t>(ftFace->height);
-        out.isScalable = FT_IS_SCALABLE(ftFace);
-        out.hasColorGlyphs = FT_HAS_COLOR(ftFace);
-        out.hasKerning = FT_HAS_KERNING(ftFace);
-        out.hasHorizontalLayout = FT_HAS_HORIZONTAL(ftFace);
-        out.hasVerticalLayout = FT_HAS_VERTICAL(ftFace);
+        return PopulateFontFaceInfo(out, face.Get(), faceIndex, sourceFormat);
+    }
 
-        const TT_OS2* os2 = static_cast<const TT_OS2*>(FT_Get_Sfnt_Table(ftFace, ft_sfnt_os2));
-        if (os2 != nullptr)
+    bool InspectFontFaces(Vector<FontFaceInfo>& out, const Vector<uint8_t>& sourceBytes, FontSourceFormat sourceFormat)
+    {
+        out.Clear();
+
+        FreeTypeLibrary library;
+        if (!library.Initialize())
         {
-            out.capHeight = static_cast<int32_t>(os2->sCapHeight);
+            return false;
+        }
+
+        FreeTypeFace firstFace;
+        if (!firstFace.Load(library.Get(), sourceBytes, 0))
+        {
+            return false;
+        }
+
+        const FT_Face ftFirstFace = firstFace.Get();
+        const uint32_t faceCount = ftFirstFace->num_faces > 0 ? static_cast<uint32_t>(ftFirstFace->num_faces) : 1;
+        out.Reserve(faceCount);
+
+        FontFaceInfo firstFaceInfo{};
+        PopulateFontFaceInfo(firstFaceInfo, ftFirstFace, 0, sourceFormat);
+        out.PushBack(Move(firstFaceInfo));
+
+        for (uint32_t faceIndex = 1; faceIndex < faceCount; ++faceIndex)
+        {
+            FreeTypeFace face;
+            if (!face.Load(library.Get(), sourceBytes, faceIndex))
+            {
+                out.Clear();
+                return false;
+            }
+
+            FontFaceInfo& info = out.EmplaceBack();
+            PopulateFontFaceInfo(info, face.Get(), faceIndex, sourceFormat);
         }
 
         return true;
+    }
+
+    bool ExtractFontFaceSourceBytes(Vector<uint8_t>& out, const Vector<uint8_t>& sourceBytes, uint32_t faceIndex, FontSourceFormat sourceFormat)
+    {
+        FreeTypeLibrary library;
+        if (!library.Initialize())
+        {
+            return false;
+        }
+
+        FreeTypeFace face;
+        if (!face.Load(library.Get(), sourceBytes, faceIndex))
+        {
+            return false;
+        }
+
+        return ExtractFontFaceSourceBytes(out, face.Get(), sourceFormat);
     }
 
     void FillFontFaceMetrics(FontFaceMetrics::Builder metrics, const FontFaceInfo& info)
@@ -191,22 +449,6 @@ namespace he::scribe::editor
         metrics.SetMaxAdvanceWidth(info.maxAdvanceWidth);
         metrics.SetMaxAdvanceHeight(info.maxAdvanceHeight);
         metrics.SetCapHeight(info.capHeight);
-    }
-
-    void FillFontFaceImportMetadata(FontFaceImportMetadata::Builder metadata, const FontFaceInfo& info)
-    {
-        metadata.SetFaceIndex(info.faceIndex);
-        metadata.SetSourceFormat(info.sourceFormat);
-        metadata.InitFamilyName(info.familyName);
-        metadata.InitStyleName(info.styleName);
-        metadata.InitPostscriptName(info.postscriptName);
-        metadata.SetGlyphCount(info.glyphCount);
-        FillFontFaceMetrics(metadata.InitMetrics(), info);
-        metadata.SetIsScalable(info.isScalable);
-        metadata.SetHasColorGlyphs(info.hasColorGlyphs);
-        metadata.SetHasKerning(info.hasKerning);
-        metadata.SetHasHorizontalLayout(info.hasHorizontalLayout);
-        metadata.SetHasVerticalLayout(info.hasVerticalLayout);
     }
 
     void FillFontFaceAssetData(ScribeFontFace::Builder assetData, const FontFaceInfo& info)

@@ -213,9 +213,9 @@ namespace he::scribe
             const FontFaceResourceReader& fontFace = desc.fontFaces[fontIndex];
             m_fontFaces[fontIndex] = fontFace;
 
-            const FontFaceImportMetadata::Reader metadata = fontFace.GetMetadata();
+            const FontFaceRuntimeMetadata::Reader metadata = fontFace.GetMetadata();
             const FontFacePaintData::Reader paint = fontFace.GetPaint();
-            const uint32_t unitsPerEm = Max(metadata.GetMetrics().GetUnitsPerEm(), 1u);
+            const uint32_t unitsPerEm = Max(metadata.GetUnitsPerEm(), 1u);
             FontBuildState& fontState = fontStates[fontIndex];
             fontState.scale = desc.fontSize / static_cast<float>(unitsPerEm);
             fontState.hasColorGlyphs =

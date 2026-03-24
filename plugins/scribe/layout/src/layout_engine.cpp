@@ -300,8 +300,8 @@ namespace he::scribe
             cached.face = hb_face_create(cached.blob, shaping.GetFaceIndex());
             cached.font = hb_font_create(cached.face);
             hb_ot_font_set_funcs(cached.font);
-            const FontFaceImportMetadata::Reader metadata = face.GetMetadata();
-            const uint32_t unitsPerEm = Max(metadata.GetMetrics().GetUnitsPerEm(), 1u);
+            const FontFaceRuntimeMetadata::Reader metadata = face.GetMetadata();
+            const uint32_t unitsPerEm = Max(metadata.GetUnitsPerEm(), 1u);
             hb_font_set_scale(cached.font, static_cast<int32_t>(unitsPerEm), static_cast<int32_t>(unitsPerEm));
             cached.hasSourceBytes = true;
             out = &cached;
@@ -317,14 +317,14 @@ namespace he::scribe
             {
                 FontContext& ctx = out[i];
                 const FontFaceShapingData::Reader shaping = faces[i].GetShaping();
-                const FontFaceImportMetadata::Reader metadata = faces[i].GetMetadata();
-                const uint32_t unitsPerEm = Max(metadata.GetMetrics().GetUnitsPerEm(), 1u);
+                const FontFaceRuntimeMetadata::Reader metadata = faces[i].GetMetadata();
+                const uint32_t unitsPerEm = Max(metadata.GetUnitsPerEm(), 1u);
 
                 ctx.fontSize = options.fontSize;
                 ctx.unitScale = options.fontSize / static_cast<float>(unitsPerEm);
-                ctx.ascent = static_cast<float>(metadata.GetMetrics().GetAscender()) * ctx.unitScale;
-                ctx.descent = static_cast<float>(Abs(metadata.GetMetrics().GetDescender())) * ctx.unitScale;
-                ctx.lineHeight = static_cast<float>(metadata.GetMetrics().GetLineHeight()) * ctx.unitScale;
+                ctx.ascent = static_cast<float>(metadata.GetAscender()) * ctx.unitScale;
+                ctx.descent = static_cast<float>(Abs(metadata.GetDescender())) * ctx.unitScale;
+                ctx.lineHeight = static_cast<float>(metadata.GetLineHeight()) * ctx.unitScale;
                 ctx.hasColorGlyphs = metadata.IsValid() && metadata.GetHasColorGlyphs();
                 if (ctx.lineHeight <= 0.0f)
                 {

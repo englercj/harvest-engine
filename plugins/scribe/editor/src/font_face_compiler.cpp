@@ -17,73 +17,21 @@
 
 namespace he::scribe::editor
 {
-    namespace
-    {
-        bool ResolveImportSource(
-            Vector<schema::Word>& sourceStorage,
-            schema::Blob::Reader& outSourceBlob,
-            const assets::CompileContext& ctx,
-            assets::ResourceId importSourceId,
-            ScribeFontFace::ImportSourceResource::Reader importSource)
-        {
-            outSourceBlob = importSource.GetSourceBytes();
-            if (!outSourceBlob.IsEmpty())
-            {
-                return true;
-            }
-
-            const assets::AssetUuid ownerAssetUuid(importSource.GetSourceOwnerAsset());
-            if (ownerAssetUuid == ctx.asset.GetUuid())
-            {
-                return false;
-            }
-
-            Result ownerResult = ctx.db.GetResource(sourceStorage, ownerAssetUuid, importSourceId);
-            if (!ownerResult)
-            {
-                return false;
-            }
-
-            const ScribeFontFace::ImportSourceResource::Reader ownerImportSource =
-                schema::ReadRoot<ScribeFontFace::ImportSourceResource>(sourceStorage.Data());
-            if (!ownerImportSource.IsValid())
-            {
-                return false;
-            }
-
-            outSourceBlob = ownerImportSource.GetSourceBytes();
-            return !outSourceBlob.IsEmpty();
-        }
-    }
-
     bool FontFaceCompiler::Compile(const assets::CompileContext& ctx, [[maybe_unused]] assets::CompileResult& result)
     {
         constexpr assets::ResourceId ImportSourceId{ ScribeFontFace::ImportSourceResourceName };
-        constexpr assets::ResourceId ImportMetadataId{ ScribeFontFace::ImportMetadataResourceName };
-        constexpr assets::ResourceId RuntimeBlobId{ ScribeFontFace::RuntimeResourceName };
+        constexpr assets::ResourceId RuntimeResourceId{ ScribeFontFace::RuntimeResourceName };
 
         Vector<schema::Word> importSourceBytes;
-        Result r = ctx.db.GetResource(importSourceBytes, ctx.asset.GetUuid(), ImportSourceId);
+        Result r = ctx.db.GetResource(importSourceBytes, assets::AssetUuid(ctx.assetFile.GetUuid()), ImportSourceId);
         if (!r)
         {
             HE_LOG_ERROR(he_scribe,
                 HE_MSG("Failed to load scribe font import source resource."),
                 HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
+                HE_KV(asset_file_uuid, assets::AssetFileUuid(ctx.assetFile.GetUuid())),
                 HE_KV(asset_name, ctx.asset.GetName()),
                 HE_KV(resource_id, ImportSourceId),
-                HE_KV(result, r));
-            return false;
-        }
-
-        Vector<schema::Word> importMetadataBytes;
-        r = ctx.db.GetResource(importMetadataBytes, ctx.asset.GetUuid(), ImportMetadataId);
-        if (!r)
-        {
-            HE_LOG_ERROR(he_scribe,
-                HE_MSG("Failed to load scribe font import metadata resource."),
-                HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
-                HE_KV(asset_name, ctx.asset.GetName()),
-                HE_KV(resource_id, ImportMetadataId),
                 HE_KV(result, r));
             return false;
         }
@@ -100,26 +48,22 @@ namespace he::scribe::editor
 
         const ScribeFontFace::ImportSourceResource::Reader importSource =
             schema::ReadRoot<ScribeFontFace::ImportSourceResource>(importSourceBytes.Data());
-        const ScribeFontFace::ImportMetadataResource::Reader importMetadata =
-            schema::ReadRoot<ScribeFontFace::ImportMetadataResource>(importMetadataBytes.Data());
-        if (!importSource.IsValid() || !importMetadata.IsValid())
+        if (!importSource.IsValid())
         {
             HE_LOG_ERROR(he_scribe,
-                HE_MSG("Scribe font import resources are not valid schema payloads."),
+                HE_MSG("Scribe font import source resource is not a valid schema payload."),
                 HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
                 HE_KV(asset_name, ctx.asset.GetName()));
             return false;
         }
 
-        Vector<schema::Word> sharedImportSourceBytes{};
-        schema::Blob::Reader sourceBlob{};
-        if (!ResolveImportSource(sharedImportSourceBytes, sourceBlob, ctx, ImportSourceId, importSource))
+        const schema::Blob::Reader sourceBlob = importSource.GetSourceBytes();
+        if (sourceBlob.IsEmpty())
         {
             HE_LOG_ERROR(he_scribe,
                 HE_MSG("Failed to resolve scribe font source bytes for compile/shaping."),
                 HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
-                HE_KV(asset_name, ctx.asset.GetName()),
-                HE_KV(source_owner_asset_uuid, assets::AssetUuid(importSource.GetSourceOwnerAsset())));
+                HE_KV(asset_name, ctx.asset.GetName()));
             return false;
         }
 
@@ -151,48 +95,34 @@ namespace he::scribe::editor
         schema::Builder blobBuilder;
         FontFaceResource::Builder blob = blobBuilder.AddStruct<FontFaceResource>();
 
-        FontFaceShapingData::Builder shaping = blob.InitShaping();
+        FontFaceShapingData::Builder shaping = blob.GetShaping();
         shaping.SetFaceIndex(asset.GetFaceIndex());
-        shaping.SetSourceFormat(importSource.GetSourceFormat());
+        shaping.SetSourceFormat(asset.GetSourceFormat());
         shaping.SetSourceBytes(blobBuilder.AddBlob({ sourceBlob.Data(), sourceBlob.Size() }));
 
-        FontFaceImportMetadata::Builder metadata = blob.InitMetadata();
-        FillFontFaceImportMetadata(metadata, {
-            asset.GetFaceIndex(),
-            importSource.GetFaceCount(),
-            importSource.GetSourceFormat(),
-            String(importMetadata.GetMetadata().GetFamilyName()),
-            String(importMetadata.GetMetadata().GetStyleName()),
-            String(importMetadata.GetMetadata().GetPostscriptName()),
-            importMetadata.GetMetadata().GetGlyphCount(),
-            importMetadata.GetMetadata().GetMetrics().GetUnitsPerEm(),
-            importMetadata.GetMetadata().GetMetrics().GetMaxAdvanceWidth(),
-            importMetadata.GetMetadata().GetMetrics().GetMaxAdvanceHeight(),
-            importMetadata.GetMetadata().GetMetrics().GetAscender(),
-            importMetadata.GetMetadata().GetMetrics().GetDescender(),
-            importMetadata.GetMetadata().GetMetrics().GetLineHeight(),
-            importMetadata.GetMetadata().GetMetrics().GetCapHeight(),
-            importMetadata.GetMetadata().GetIsScalable(),
-            importMetadata.GetMetadata().GetHasColorGlyphs(),
-            importMetadata.GetMetadata().GetHasKerning(),
-            importMetadata.GetMetadata().GetHasHorizontalLayout(),
-            importMetadata.GetMetadata().GetHasVerticalLayout()
-        });
+        FontFaceRuntimeMetadata::Builder metadata = blob.GetMetadata();
+        metadata.SetGlyphCount(asset.GetGlyphCount());
+        metadata.SetUnitsPerEm(asset.GetMetrics().GetUnitsPerEm());
+        metadata.SetAscender(asset.GetMetrics().GetAscender());
+        metadata.SetDescender(asset.GetMetrics().GetDescender());
+        metadata.SetLineHeight(asset.GetMetrics().GetLineHeight());
+        metadata.SetCapHeight(asset.GetMetrics().GetCapHeight());
+        metadata.SetHasColorGlyphs(asset.GetHasColorGlyphs());
 
-        FillFontFaceResourceRenderData(blob.InitRender(), renderData);
-        FillFontFaceResourcePaintData(blob.InitPaint(), renderData.paint);
+        FillFontFaceResourceRenderData(blob.GetRender(), renderData);
+        FillFontFaceResourcePaintData(blob.GetPaint(), renderData.paint);
         blob.SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
         blob.SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
         blobBuilder.SetRoot(blob);
 
-        r = ctx.db.AddResource(ctx.asset.GetUuid(), RuntimeBlobId, Span<const schema::Word>(blobBuilder).AsBytes());
+        r = ctx.db.AddResource(ctx.asset.GetUuid(), RuntimeResourceId, Span<const schema::Word>(blobBuilder).AsBytes());
         if (!r)
         {
             HE_LOG_ERROR(he_scribe,
                 HE_MSG("Failed to write compiled scribe font runtime blob."),
                 HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
                 HE_KV(asset_name, ctx.asset.GetName()),
-                HE_KV(resource_id, RuntimeBlobId),
+                HE_KV(resource_id, RuntimeResourceId),
                 HE_KV(result, r));
             return false;
         }

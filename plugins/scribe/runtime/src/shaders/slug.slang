@@ -182,7 +182,7 @@ public float SlugRender(Texture2D curveData, Texture2D<uint2> bandData, float2 r
     // of curves intersecting the band is in the x component, and the offset
     // to the list of locations for those curves is in the y component.
 
-    uint2 hbandData = bandData.Load(int3(glyphLoc.x + bandIndex.y, glyphLoc.y, 0));//.xy;
+    uint2 hbandData = bandData.Load(int3(glyphLoc.x + bandIndex.y, glyphLoc.y, 0));
     int2 hbandLoc = CalcBandLoc(glyphLoc, hbandData.y);
 
     // Loop over all curves in the horizontal band.
@@ -191,7 +191,8 @@ public float SlugRender(Texture2D curveData, Texture2D<uint2> bandData, float2 r
     {
         // Fetch the location of the current curve from the index texture.
 
-        int2 curveLoc = int2(bandData.Load(int3(hbandLoc.x + curveIndex, hbandLoc.y, 0)).xy);
+        int2 curveBandLoc = CalcBandLoc(hbandLoc, uint(curveIndex));
+        int2 curveLoc = int2(bandData.Load(int3(curveBandLoc.x, curveBandLoc.y, 0)));
 
         // Fetch the three 2D control points for the current curve from the curve texture.
         // The first texel contains both p1 and p2 in the (x,y) and (z,w) components, respectively,
@@ -244,14 +245,15 @@ public float SlugRender(Texture2D curveData, Texture2D<uint2> bandData, float2 r
     // Fetch data for the vertical band from the index texture. This follows
     // the data for all horizontal bands, so we have to add bandMax.y + 1.
 
-    uint2 vbandData = bandData.Load(int3(glyphLoc.x + bandMax.y + 1 + bandIndex.x, glyphLoc.y, 0)).xy;
+    uint2 vbandData = bandData.Load(int3(glyphLoc.x + bandMax.y + 1 + bandIndex.x, glyphLoc.y, 0));
     int2 vbandLoc = CalcBandLoc(glyphLoc, vbandData.y);
 
     // Loop over all curves in the vertical band.
 
     for (curveIndex = 0; curveIndex < int(vbandData.x); curveIndex++)
     {
-        int2 curveLoc = int2(bandData.Load(int3(vbandLoc.x + curveIndex, vbandLoc.y, 0)).xy);
+        int2 curveBandLoc = CalcBandLoc(vbandLoc, uint(curveIndex));
+        int2 curveLoc = int2(bandData.Load(int3(curveBandLoc.x, curveBandLoc.y, 0)));
         float4 p12 = curveData.Load(int3(curveLoc, 0)) - float4(renderCoord, renderCoord);
         float2 p3 = curveData.Load(int3(curveLoc.x + 1, curveLoc.y, 0)).xy - renderCoord;
 

@@ -22,12 +22,13 @@ namespace he::scribe::editor
         constexpr assets::ResourceId RuntimeResourceId{ ScribeImage::RuntimeResourceName };
 
         Vector<schema::Word> importSourceBytes;
-        Result r = ctx.db.GetResource(importSourceBytes, ctx.asset.GetUuid(), ImportSourceId);
+        Result r = ctx.db.GetResource(importSourceBytes, assets::AssetUuid(ctx.assetFile.GetUuid()), ImportSourceId);
         if (!r)
         {
             HE_LOG_ERROR(he_scribe,
                 HE_MSG("Failed to load scribe SVG import source resource."),
                 HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
+                HE_KV(asset_file_uuid, assets::AssetFileUuid(ctx.assetFile.GetUuid())),
                 HE_KV(asset_name, ctx.asset.GetName()),
                 HE_KV(resource_id, ImportSourceId),
                 HE_KV(result, r));

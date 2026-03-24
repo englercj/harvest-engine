@@ -25,6 +25,25 @@ namespace he::scribe::editor
         dstShape.SetFillRule(srcShape.fillRule);
     }
 
+    inline void FillFontFaceRuntimeMetadata(
+        FontFaceRuntimeMetadata::Builder metadata,
+        uint32_t glyphCount,
+        uint32_t unitsPerEm,
+        int32_t ascender,
+        int32_t descender,
+        int32_t lineHeight,
+        int32_t capHeight,
+        bool hasColorGlyphs)
+    {
+        metadata.SetGlyphCount(glyphCount);
+        metadata.SetUnitsPerEm(unitsPerEm);
+        metadata.SetAscender(ascender);
+        metadata.SetDescender(descender);
+        metadata.SetLineHeight(lineHeight);
+        metadata.SetCapHeight(capHeight);
+        metadata.SetHasColorGlyphs(hasColorGlyphs);
+    }
+
     inline void FillFontFaceResourceRenderData(FontFaceRenderData::Builder render, const CompiledFontRenderData& renderData)
     {
         render.SetCurveTextureWidth(renderData.curveTextureWidth);

@@ -103,7 +103,7 @@ namespace he::scribe::editor
             return fallback;
         }
 
-        bool ExtractFontFaceSourceBytes(Vector<uint8_t>& out, FT_Face ftFace, FontSourceFormat sourceFormat)
+        bool ExtractFontFaceSourceBytes(Vector<uint8_t>& out, FT_Face ftFace)
         {
             out.Clear();
 
@@ -152,7 +152,7 @@ namespace he::scribe::editor
                 return a.tag < b.tag;
             });
 
-            const FontSourceFormat faceFormat = ResolveFaceSourceFormat(ftFace, sourceFormat);
+            const FontSourceFormat faceFormat = ResolveFaceSourceFormat(ftFace, FontSourceFormat::Unknown);
             const uint32_t sfntVersion = faceFormat == FontSourceFormat::OpenTypeCff
                 ? FT_MAKE_TAG('O', 'T', 'T', 'O')
                 : 0x00010000u;
@@ -217,16 +217,13 @@ namespace he::scribe::editor
             return true;
         }
 
-        bool PopulateFontFaceInfo(FontFaceInfo& out, FT_Face ftFace, uint32_t faceIndex, FontSourceFormat sourceFormat)
+        bool PopulateFontFaceInfo(FontFaceInfo& out, FT_Face ftFace, uint32_t faceIndex)
         {
             out = {};
             out.faceIndex = faceIndex;
             out.faceCount = ftFace->num_faces > 0 ? static_cast<uint32_t>(ftFace->num_faces) : 1;
-            out.sourceFormat = ResolveFaceSourceFormat(ftFace, sourceFormat);
             out.familyName = ftFace->family_name != nullptr ? String(ftFace->family_name) : String{};
             out.styleName = ftFace->style_name != nullptr ? String(ftFace->style_name) : String{};
-            const char* postscriptName = FT_Get_Postscript_Name(ftFace);
-            out.postscriptName = postscriptName != nullptr ? String(postscriptName) : String{};
             out.glyphCount = ftFace->num_glyphs > 0 ? static_cast<uint32_t>(ftFace->num_glyphs) : 0;
             out.unitsPerEm = ftFace->units_per_EM > 0 ? static_cast<uint32_t>(ftFace->units_per_EM) : 0;
             out.maxAdvanceWidth = ftFace->max_advance_width > 0 ? static_cast<uint32_t>(ftFace->max_advance_width) : 0;
@@ -234,11 +231,7 @@ namespace he::scribe::editor
             out.ascender = static_cast<int32_t>(ftFace->ascender);
             out.descender = static_cast<int32_t>(ftFace->descender);
             out.lineHeight = static_cast<int32_t>(ftFace->height);
-            out.isScalable = FT_IS_SCALABLE(ftFace);
             out.hasColorGlyphs = FT_HAS_COLOR(ftFace);
-            out.hasKerning = FT_HAS_KERNING(ftFace);
-            out.hasHorizontalLayout = FT_HAS_HORIZONTAL(ftFace);
-            out.hasVerticalLayout = FT_HAS_VERTICAL(ftFace);
 
             const TT_OS2* os2 = static_cast<const TT_OS2*>(FT_Get_Sfnt_Table(ftFace, ft_sfnt_os2));
             if (os2 != nullptr)
@@ -366,7 +359,7 @@ namespace he::scribe::editor
         return !out.IsEmpty();
     }
 
-    bool InspectFontFace(const Vector<uint8_t>& sourceBytes, uint32_t faceIndex, FontSourceFormat sourceFormat, FontFaceInfo& out)
+    bool InspectFontFace(const Vector<uint8_t>& sourceBytes, uint32_t faceIndex, FontFaceInfo& out)
     {
         FreeTypeLibrary library;
         if (!library.Initialize())
@@ -380,10 +373,10 @@ namespace he::scribe::editor
             return false;
         }
 
-        return PopulateFontFaceInfo(out, face.Get(), faceIndex, sourceFormat);
+        return PopulateFontFaceInfo(out, face.Get(), faceIndex);
     }
 
-    bool InspectFontFaces(Vector<FontFaceInfo>& out, const Vector<uint8_t>& sourceBytes, FontSourceFormat sourceFormat)
+    bool InspectFontFaces(Vector<FontFaceInfo>& out, const Vector<uint8_t>& sourceBytes)
     {
         out.Clear();
 
@@ -404,7 +397,7 @@ namespace he::scribe::editor
         out.Reserve(faceCount);
 
         FontFaceInfo firstFaceInfo{};
-        PopulateFontFaceInfo(firstFaceInfo, ftFirstFace, 0, sourceFormat);
+        PopulateFontFaceInfo(firstFaceInfo, ftFirstFace, 0);
         out.PushBack(Move(firstFaceInfo));
 
         for (uint32_t faceIndex = 1; faceIndex < faceCount; ++faceIndex)
@@ -417,13 +410,13 @@ namespace he::scribe::editor
             }
 
             FontFaceInfo& info = out.EmplaceBack();
-            PopulateFontFaceInfo(info, face.Get(), faceIndex, sourceFormat);
+            PopulateFontFaceInfo(info, face.Get(), faceIndex);
         }
 
         return true;
     }
 
-    bool ExtractFontFaceSourceBytes(Vector<uint8_t>& out, const Vector<uint8_t>& sourceBytes, uint32_t faceIndex, FontSourceFormat sourceFormat)
+    bool ExtractFontFaceSourceBytes(Vector<uint8_t>& out, const Vector<uint8_t>& sourceBytes, uint32_t faceIndex)
     {
         FreeTypeLibrary library;
         if (!library.Initialize())
@@ -437,7 +430,7 @@ namespace he::scribe::editor
             return false;
         }
 
-        return ExtractFontFaceSourceBytes(out, face.Get(), sourceFormat);
+        return ExtractFontFaceSourceBytes(out, face.Get());
     }
 
     void FillFontFaceMetrics(FontFaceMetrics::Builder metrics, const FontFaceInfo& info)
@@ -446,24 +439,13 @@ namespace he::scribe::editor
         metrics.SetAscender(info.ascender);
         metrics.SetDescender(info.descender);
         metrics.SetLineHeight(info.lineHeight);
-        metrics.SetMaxAdvanceWidth(info.maxAdvanceWidth);
-        metrics.SetMaxAdvanceHeight(info.maxAdvanceHeight);
         metrics.SetCapHeight(info.capHeight);
     }
 
     void FillFontFaceAssetData(ScribeFontFace::Builder assetData, const FontFaceInfo& info)
     {
         assetData.SetFaceIndex(info.faceIndex);
-        assetData.InitFamilyName(info.familyName);
-        assetData.InitStyleName(info.styleName);
-        assetData.InitPostscriptName(info.postscriptName);
-        assetData.SetSourceFormat(info.sourceFormat);
-        assetData.SetGlyphCount(info.glyphCount);
         FillFontFaceMetrics(assetData.InitMetrics(), info);
-        assetData.SetIsScalable(info.isScalable);
         assetData.SetHasColorGlyphs(info.hasColorGlyphs);
-        assetData.SetHasKerning(info.hasKerning);
-        assetData.SetHasHorizontalLayout(info.hasHorizontalLayout);
-        assetData.SetHasVerticalLayout(info.hasVerticalLayout);
     }
 }

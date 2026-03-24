@@ -64,10 +64,8 @@ namespace he::scribe::editor
             return assets::ImportError::Failure;
         }
 
-        const FontSourceFormat sourceFormat = DeduceFontSourceFormat(ctx.file);
-
         Vector<FontFaceInfo> faces{};
-        if (!InspectFontFaces(faces, sourceBytes, sourceFormat) || faces.IsEmpty())
+        if (!InspectFontFaces(faces, sourceBytes) || faces.IsEmpty())
         {
             return assets::ImportError::Failure;
         }

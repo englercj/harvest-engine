@@ -97,17 +97,18 @@ namespace he::scribe::editor
 
         FontFaceShapingData::Builder shaping = blob.GetShaping();
         shaping.SetFaceIndex(asset.GetFaceIndex());
-        shaping.SetSourceFormat(asset.GetSourceFormat());
         shaping.SetSourceBytes(blobBuilder.AddBlob({ sourceBlob.Data(), sourceBlob.Size() }));
 
-        FontFaceRuntimeMetadata::Builder metadata = blob.GetMetadata();
-        metadata.SetGlyphCount(asset.GetGlyphCount());
-        metadata.SetUnitsPerEm(asset.GetMetrics().GetUnitsPerEm());
-        metadata.SetAscender(asset.GetMetrics().GetAscender());
-        metadata.SetDescender(asset.GetMetrics().GetDescender());
-        metadata.SetLineHeight(asset.GetMetrics().GetLineHeight());
-        metadata.SetCapHeight(asset.GetMetrics().GetCapHeight());
-        metadata.SetHasColorGlyphs(asset.GetHasColorGlyphs());
+        const ScribeFontFace::Metrics::Reader assetMetrics = asset.GetMetrics();
+        FillFontFaceRuntimeMetadata(
+            blob.GetMetadata(),
+            renderData.glyphs.Size(),
+            assetMetrics.GetUnitsPerEm(),
+            assetMetrics.GetAscender(),
+            assetMetrics.GetDescender(),
+            assetMetrics.GetLineHeight(),
+            assetMetrics.GetCapHeight(),
+            asset.GetHasColorGlyphs());
 
         FillFontFaceResourceRenderData(blob.GetRender(), renderData);
         FillFontFaceResourcePaintData(blob.GetPaint(), renderData.paint);

@@ -428,7 +428,7 @@ namespace he
             }
 
             scribe::editor::FontFaceInfo faceInfo{};
-            if (!scribe::editor::InspectFontFace(fontBytes, 0, sourceFormat, faceInfo))
+            if (!scribe::editor::InspectFontFace(fontBytes, 0, faceInfo))
             {
                 return false;
             }
@@ -443,17 +443,17 @@ namespace he
             scribe::FontFaceResource::Builder root = rootBuilder.AddStruct<scribe::FontFaceResource>();
             scribe::FontFaceShapingData::Builder shaping = root.GetShaping();
             shaping.SetFaceIndex(faceInfo.faceIndex);
-            shaping.SetSourceFormat(faceInfo.sourceFormat);
             shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(fontBytes)));
 
-            scribe::FontFaceRuntimeMetadata::Builder metadata = root.GetMetadata();
-            metadata.SetGlyphCount(faceInfo.glyphCount);
-            metadata.SetUnitsPerEm(faceInfo.unitsPerEm);
-            metadata.SetAscender(faceInfo.ascender);
-            metadata.SetDescender(faceInfo.descender);
-            metadata.SetLineHeight(faceInfo.lineHeight);
-            metadata.SetCapHeight(faceInfo.capHeight);
-            metadata.SetHasColorGlyphs(faceInfo.hasColorGlyphs);
+            scribe::editor::FillFontFaceRuntimeMetadata(
+                root.GetMetadata(),
+                faceInfo.glyphCount,
+                faceInfo.unitsPerEm,
+                faceInfo.ascender,
+                faceInfo.descender,
+                faceInfo.lineHeight,
+                faceInfo.capHeight,
+                faceInfo.hasColorGlyphs);
 
             scribe::editor::FillFontFaceResourceRenderData(root.GetRender(), renderData);
             scribe::editor::FillFontFaceResourcePaintData(root.GetPaint(), renderData.paint);

@@ -14,7 +14,6 @@ namespace
     void FillFontFaceShapingData(FontFaceShapingData::Builder shaping, schema::Builder& builder)
     {
         shaping.SetFaceIndex(2);
-        shaping.SetSourceFormat(FontSourceFormat::TrueType);
         shaping.SetSourceBytes(builder.AddBlob({ reinterpret_cast<const uint8_t*>("abc"), 3 }));
     }
 

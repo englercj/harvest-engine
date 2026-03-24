@@ -51,9 +51,7 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
         ascender @1 :int32;
         descender @2 :int32;
         lineHeight @3 :int32;
-        maxAdvanceWidth @4 :uint32;
-        maxAdvanceHeight @5 :uint32;
-        capHeight @6 :int32;
+        capHeight @4 :int32;
     }
 
     struct GlyphRenderData
@@ -118,40 +116,39 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
         shaping :group
         {
             faceIndex @0 :uint32;
-            sourceFormat @1 :SourceFormat;
-            sourceBytes @2 :Blob;
+            sourceBytes @1 :Blob;
         }
 
-        curveData @3 :Blob;
-        bandData @4 :Blob;
+        curveData @2 :Blob;
+        bandData @3 :Blob;
 
         paint :group
         {
-            defaultPaletteIndex @5 :uint32;
-            palettes @6 :Palette[];
-            colorGlyphs @7 :ColorGlyph[];
-            layers @8 :ColorGlyphLayer[];
+            defaultPaletteIndex @4 :uint32;
+            palettes @5 :Palette[];
+            colorGlyphs @6 :ColorGlyph[];
+            layers @7 :ColorGlyphLayer[];
         }
 
         metadata :group
         {
-            glyphCount @9 :uint32;
-            unitsPerEm @10 :uint32;
-            ascender @11 :int32;
-            descender @12 :int32;
-            lineHeight @13 :int32;
-            capHeight @14 :int32;
-            hasColorGlyphs @15 :bool;
+            glyphCount @8 :uint32;
+            unitsPerEm @9 :uint32;
+            ascender @10 :int32;
+            descender @11 :int32;
+            lineHeight @12 :int32;
+            capHeight @13 :int32;
+            hasColorGlyphs @14 :bool;
         }
 
         render :group
         {
-            curveTextureWidth @16 :uint32;
-            curveTextureHeight @17 :uint32;
-            bandTextureWidth @18 :uint32;
-            bandTextureHeight @19 :uint32;
-            bandOverlapEpsilon @20 :float32;
-            glyphs @21 :GlyphRenderData[];
+            curveTextureWidth @15 :uint32;
+            curveTextureHeight @16 :uint32;
+            bandTextureWidth @17 :uint32;
+            bandTextureHeight @18 :uint32;
+            bandOverlapEpsilon @19 :float32;
+            glyphs @20 :GlyphRenderData[];
         }
     }
 
@@ -161,17 +158,8 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
     }
 
     faceIndex @0 :uint32 = 0;
-    familyName @1 :String;
-    styleName @2 :String;
-    postscriptName @3 :String;
-    sourceFormat @4 :SourceFormat = SourceFormat.Unknown;
-    glyphCount @5 :uint32 = 0;
-    metrics @6 :Metrics;
-    isScalable @7 :bool = true;
-    hasColorGlyphs @8 :bool = false;
-    hasKerning @9 :bool = false;
-    hasHorizontalLayout @10 :bool = true;
-    hasVerticalLayout @11 :bool = false;
+    metrics @1 :Metrics;
+    hasColorGlyphs @2 :bool = false;
 }
 
 struct ScribeFontFamily $he.assets.AssetType $Display.Description("A collection of Scribe font face assets.")

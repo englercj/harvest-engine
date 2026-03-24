@@ -69,7 +69,6 @@ namespace
         FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
         FontFaceShapingData::Builder shaping = root.GetShaping();
         shaping.SetFaceIndex(0);
-        shaping.SetSourceFormat(FontSourceFormat::TrueType);
         shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(fontBytes)));
 
         FontFaceRuntimeMetadata::Builder metadata = root.GetMetadata();

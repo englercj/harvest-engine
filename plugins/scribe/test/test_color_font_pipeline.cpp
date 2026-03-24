@@ -73,7 +73,7 @@ namespace
         [[maybe_unused]] const char* displayName)
     {
         FontFaceInfo faceInfo{};
-        if (!InspectFontFace(fontBytes, 0, FontSourceFormat::TrueType, faceInfo))
+        if (!InspectFontFace(fontBytes, 0, faceInfo))
         {
             return false;
         }
@@ -89,17 +89,17 @@ namespace
 
         FontFaceShapingData::Builder shaping = root.GetShaping();
         shaping.SetFaceIndex(faceInfo.faceIndex);
-        shaping.SetSourceFormat(faceInfo.sourceFormat);
         shaping.SetSourceBytes(rootBuilder.AddBlob(fontBytes));
 
-        FontFaceRuntimeMetadata::Builder metadata = root.GetMetadata();
-        metadata.SetGlyphCount(faceInfo.glyphCount);
-        metadata.SetUnitsPerEm(faceInfo.unitsPerEm);
-        metadata.SetAscender(faceInfo.ascender);
-        metadata.SetDescender(faceInfo.descender);
-        metadata.SetLineHeight(faceInfo.lineHeight);
-        metadata.SetCapHeight(faceInfo.capHeight);
-        metadata.SetHasColorGlyphs(faceInfo.hasColorGlyphs);
+        FillFontFaceRuntimeMetadata(
+            root.GetMetadata(),
+            faceInfo.glyphCount,
+            faceInfo.unitsPerEm,
+            faceInfo.ascender,
+            faceInfo.descender,
+            faceInfo.lineHeight,
+            faceInfo.capHeight,
+            faceInfo.hasColorGlyphs);
 
         FillFontFaceResourceRenderData(root.GetRender(), renderData);
         FillFontFaceResourcePaintData(root.GetPaint(), renderData.paint);
@@ -658,17 +658,16 @@ HE_TEST(scribe, color_font_pipeline, extracts_standalone_face_source_bytes)
     HE_ASSERT(ReadFontFile(fontBytes, fontPath.Data()));
 
     FontFaceInfo originalFace{};
-    HE_ASSERT(InspectFontFace(fontBytes, 0, FontSourceFormat::TrueType, originalFace));
+    HE_ASSERT(InspectFontFace(fontBytes, 0, originalFace));
 
     Vector<uint8_t> extractedBytes{};
-    HE_ASSERT(ExtractFontFaceSourceBytes(extractedBytes, fontBytes, 0, FontSourceFormat::TrueType));
+    HE_ASSERT(ExtractFontFaceSourceBytes(extractedBytes, fontBytes, 0));
     HE_EXPECT(!extractedBytes.IsEmpty());
 
     FontFaceInfo extractedFace{};
-    HE_ASSERT(InspectFontFace(extractedBytes, 0, FontSourceFormat::TrueType, extractedFace));
+    HE_ASSERT(InspectFontFace(extractedBytes, 0, extractedFace));
 
     HE_EXPECT_EQ(extractedFace.faceIndex, 0u);
-    HE_EXPECT_EQ(extractedFace.sourceFormat, FontSourceFormat::TrueType);
     HE_EXPECT_EQ_STR(extractedFace.familyName.Data(), originalFace.familyName.Data());
     HE_EXPECT_EQ_STR(extractedFace.styleName.Data(), originalFace.styleName.Data());
     HE_EXPECT_EQ(extractedFace.glyphCount, originalFace.glyphCount);

@@ -93,7 +93,7 @@ namespace
 
         FillFontFaceRuntimeMetadata(
             root.GetMetadata(),
-            faceInfo.glyphCount,
+            renderData.glyphs.Size(),
             faceInfo.unitsPerEm,
             faceInfo.ascender,
             faceInfo.descender,
@@ -670,10 +670,7 @@ HE_TEST(scribe, color_font_pipeline, extracts_standalone_face_source_bytes)
     HE_EXPECT_EQ(extractedFace.faceIndex, 0u);
     HE_EXPECT_EQ_STR(extractedFace.familyName.Data(), originalFace.familyName.Data());
     HE_EXPECT_EQ_STR(extractedFace.styleName.Data(), originalFace.styleName.Data());
-    HE_EXPECT_EQ(extractedFace.glyphCount, originalFace.glyphCount);
     HE_EXPECT_EQ(extractedFace.unitsPerEm, originalFace.unitsPerEm);
-    HE_EXPECT_EQ(extractedFace.maxAdvanceWidth, originalFace.maxAdvanceWidth);
-    HE_EXPECT_EQ(extractedFace.maxAdvanceHeight, originalFace.maxAdvanceHeight);
     HE_EXPECT_EQ(extractedFace.ascender, originalFace.ascender);
     HE_EXPECT_EQ(extractedFace.descender, originalFace.descender);
     HE_EXPECT_EQ(extractedFace.lineHeight, originalFace.lineHeight);

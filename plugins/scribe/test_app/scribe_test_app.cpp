@@ -447,7 +447,7 @@ namespace he
 
             scribe::editor::FillFontFaceRuntimeMetadata(
                 root.GetMetadata(),
-                faceInfo.glyphCount,
+                renderData.glyphs.Size(),
                 faceInfo.unitsPerEm,
                 faceInfo.ascender,
                 faceInfo.descender,

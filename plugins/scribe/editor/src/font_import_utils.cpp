@@ -224,10 +224,7 @@ namespace he::scribe::editor
             out.faceCount = ftFace->num_faces > 0 ? static_cast<uint32_t>(ftFace->num_faces) : 1;
             out.familyName = ftFace->family_name != nullptr ? String(ftFace->family_name) : String{};
             out.styleName = ftFace->style_name != nullptr ? String(ftFace->style_name) : String{};
-            out.glyphCount = ftFace->num_glyphs > 0 ? static_cast<uint32_t>(ftFace->num_glyphs) : 0;
             out.unitsPerEm = ftFace->units_per_EM > 0 ? static_cast<uint32_t>(ftFace->units_per_EM) : 0;
-            out.maxAdvanceWidth = ftFace->max_advance_width > 0 ? static_cast<uint32_t>(ftFace->max_advance_width) : 0;
-            out.maxAdvanceHeight = ftFace->max_advance_height > 0 ? static_cast<uint32_t>(ftFace->max_advance_height) : 0;
             out.ascender = static_cast<int32_t>(ftFace->ascender);
             out.descender = static_cast<int32_t>(ftFace->descender);
             out.lineHeight = static_cast<int32_t>(ftFace->height);

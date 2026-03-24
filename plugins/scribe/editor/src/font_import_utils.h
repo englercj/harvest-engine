@@ -15,10 +15,7 @@ namespace he::scribe::editor
         uint32_t faceCount{ 0 };
         String familyName{};
         String styleName{};
-        uint32_t glyphCount{ 0 };
         uint32_t unitsPerEm{ 0 };
-        uint32_t maxAdvanceWidth{ 0 };
-        uint32_t maxAdvanceHeight{ 0 };
         int32_t ascender{ 0 };
         int32_t descender{ 0 };
         int32_t lineHeight{ 0 };

@@ -126,6 +126,8 @@ namespace he::scribe
         bool BeginFrame(const FrameDesc& desc);
         bool PrepareRetainedText(const RetainedTextModel& text);
         bool PrepareRetainedVectorImage(const RetainedVectorImageModel& image);
+        void SetGlyphBatchingEnabled(bool enabled) { m_glyphBatchingEnabled = enabled; }
+        bool IsGlyphBatchingEnabled() const { return m_glyphBatchingEnabled; }
         void ReserveQueuedVertexCapacity(uint32_t vertexCount, uint32_t batchCount = 0);
         void QueueDraw(const DrawGlyphDesc& desc);
         void QueueQuad(const DrawQuadDesc& desc);
@@ -208,6 +210,7 @@ namespace he::scribe
         Vector<StreamBatch> m_batches{};
         Vector<PackedGlyphVertex> m_streamVertices{};
         Vector<PackedQuadVertex> m_quadVertices{};
+        bool m_glyphBatchingEnabled{ true };
         uint32_t m_lastSubmittedDrawCount{ 0 };
     };
 }

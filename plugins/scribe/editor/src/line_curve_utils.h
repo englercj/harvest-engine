@@ -28,6 +28,23 @@ namespace he::scribe::editor
         outMaxY = Max(from.y, to.y);
     }
 
+    inline float ComputeMinimalHalfFloatOffset(float value) noexcept
+    {
+        const uint16_t packedValue = PackFloat16(value);
+        float offset = 1.0f / 65536.0f;
+        while (offset < 1.0f)
+        {
+            if (PackFloat16(value + offset) != packedValue)
+            {
+                return offset;
+            }
+
+            offset *= 2.0f;
+        }
+
+        return 1.0f;
+    }
+
     inline bool TryComputeStableLineQuadraticControlPoint(
         LineCurvePoint& outControl,
         const LineCurvePoint& from,
@@ -49,11 +66,25 @@ namespace he::scribe::editor
         const float tangentOffset = Min(0.5f, len * 0.25f);
         const float tx = dx * invLen;
         const float ty = dy * invLen;
+        constexpr float AxisEpsilon = 1.0e-6f;
 
         // Keep the control point on the segment so the quadratic remains geometrically exact
         // while avoiding the exact midpoint case that produces unstable line rendering.
         outControl.x = midX + (tx * tangentOffset);
         outControl.y = midY + (ty * tangentOffset);
+
+        // Exact axis-aligned line quadratics can still hit a degenerate root-solver path after
+        // half-float packing when a pixel center lands directly on the line. Add the smallest
+        // orthogonal offset that survives packing so the runtime stays stable without reintroducing
+        // a visible bow.
+        if (Abs(dx) <= AxisEpsilon)
+        {
+            outControl.x += ComputeMinimalHalfFloatOffset(midX);
+        }
+        else if (Abs(dy) <= AxisEpsilon)
+        {
+            outControl.y += ComputeMinimalHalfFloatOffset(midY);
+        }
         return true;
     }
 }

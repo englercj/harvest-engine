@@ -981,9 +981,82 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_has_no_detached_left_edg
         pixelsPerUnit,
         0.125f,
         "stem_right_mid");
+    DumpNamedGlyphCoverageSliceCpu(
+        renderData,
+        glyph,
+        4.0f,
+        16.0f,
+        320.0f,
+        pixelsPerUnit,
+        0.125f,
+        "bounds_left_mid");
+    DumpGlyphBandCoverageCpu(
+        renderData,
+        glyph,
+        9.75f,
+        320.0f,
+        pixelsPerUnit);
 
     HE_EXPECT_LE(maxCoverageOutsideLeft, 1.0e-3f);
     HE_EXPECT_LE(maxCoverageInsideLeftMargin, 1.0e-3f);
+}
+
+HE_TEST(scribe, color_font_pipeline, segoeui_capital_t_mid_left_bounds_coverage_diagnostic)
+{
+    static constexpr const char* SegoeUiPath = "C:/Windows/Fonts/segoeui.ttf";
+    if (!File::Exists(SegoeUiPath))
+    {
+        return;
+    }
+
+    Vector<uint8_t> fontBytes;
+    HE_ASSERT(ReadFontFile(fontBytes, SegoeUiPath));
+
+    Vector<schema::Word> storage;
+    LoadedFontFaceBlob font{};
+    HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Segoe UI"));
+
+    LayoutEngine engine;
+    LayoutResult layout;
+    LayoutOptions options{};
+    options.fontSize = 96.0f;
+    options.wrap = false;
+    HE_ASSERT(engine.LayoutText(layout, Span<const LoadedFontFaceBlob>(&font, 1), "T", options));
+    HE_ASSERT(layout.glyphs.Size() == 1);
+
+    const uint32_t glyphIndex = layout.glyphs[0].glyphIndex;
+    const float pixelsPerUnitValue = options.fontSize / static_cast<float>(Max(font.metadata.GetMetrics().GetUnitsPerEm(), 1u));
+    const Vec2f pixelsPerUnit = { pixelsPerUnitValue, pixelsPerUnitValue };
+
+    CompiledFontRenderData renderData{};
+    HE_ASSERT(BuildCompiledFontRenderData(renderData, fontBytes, 0));
+    HE_ASSERT(glyphIndex < renderData.glyphs.Size());
+
+    const CompiledGlyphRenderEntry& glyph = renderData.glyphs[glyphIndex];
+    const float sampleY = Lerp(glyph.boundsMinY, glyph.boundsMaxY, 0.45f);
+    float maxCoverage = 0.0f;
+    for (float sampleX = glyph.boundsMinX - 2.0f; sampleX <= glyph.boundsMinX + 6.0f; sampleX += 0.125f)
+    {
+        maxCoverage = Max(maxCoverage, EvaluateGlyphCoverageCpu(renderData, glyph, sampleX, sampleY, pixelsPerUnit));
+    }
+
+    HE_LOG_INFO(he_scribe,
+        HE_MSG("Segoe UI T mid-left bounds coverage diagnostic."),
+        HE_KV(bounds_min_x, glyph.boundsMinX),
+        HE_KV(bounds_min_y, glyph.boundsMinY),
+        HE_KV(bounds_max_x, glyph.boundsMaxX),
+        HE_KV(bounds_max_y, glyph.boundsMaxY),
+        HE_KV(sample_y, sampleY),
+        HE_KV(max_coverage, maxCoverage));
+    DumpNamedGlyphCoverageSliceCpu(
+        renderData,
+        glyph,
+        glyph.boundsMinX - 2.0f,
+        glyph.boundsMinX + 6.0f,
+        sampleY,
+        pixelsPerUnit,
+        0.125f,
+        "segoeui_bounds_left");
 }
 
 HE_TEST(scribe, color_font_pipeline, resolves_compiled_layers_from_runtime_blob)

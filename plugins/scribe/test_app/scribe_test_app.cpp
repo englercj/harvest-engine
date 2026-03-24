@@ -34,6 +34,8 @@ namespace he
 {
     namespace
     {
+        constexpr uint32_t GpuGraphTickCount = 5;
+        constexpr float GpuGraphMaxMs = 2.0f;
         constexpr const char* TestIconAccount = "\xf3\xb0\x80\x84";
         constexpr const char* RtlSample = "\xd9\x85\xd8\xb1\xd8\xad\xd8\xa8\xd8\xa7 \xd8\xa8\xd8\xa7\xd9\x84\xd8\xb9\xd8\xa7\xd9\x84\xd9\x85";
 
@@ -196,6 +198,76 @@ namespace he
                 "See SVG scene",
             },
         };
+
+        bool TryGetRenderedLineMinX(
+            float& outMinX,
+            const scribe::RetainedTextModel& text,
+            const scribe::LayoutResult& layout,
+            uint32_t lineIndex)
+        {
+            outMinX = Limits<float>::Max;
+
+            const Span<const scribe::RetainedTextDraw> draws = text.GetDraws();
+            if (draws.IsEmpty() || layout.glyphs.IsEmpty())
+            {
+                return false;
+            }
+
+            const uint32_t count = Min(draws.Size(), layout.glyphs.Size());
+            for (uint32_t glyphLayoutIndex = 0; glyphLayoutIndex < count; ++glyphLayoutIndex)
+            {
+                const scribe::ShapedGlyph& glyph = layout.glyphs[glyphLayoutIndex];
+                if (glyph.lineIndex != lineIndex)
+                {
+                    continue;
+                }
+
+                const scribe::RetainedTextDraw& draw = draws[glyphLayoutIndex];
+                const scribe::LoadedFontFaceBlob* fontFace = text.GetFontFace(draw.fontFaceIndex);
+                if (!fontFace || !fontFace->render.IsValid())
+                {
+                    continue;
+                }
+
+                const auto glyphs = fontFace->render.GetGlyphs();
+                if (draw.glyphIndex >= glyphs.Size())
+                {
+                    continue;
+                }
+
+                const scribe::FontFaceGlyphRenderData::Reader compiledGlyph = glyphs[draw.glyphIndex];
+                if (!compiledGlyph.IsValid() || ((compiledGlyph.GetFlags() & scribe::CompiledFontGlyphFlagHasGeometry) == 0))
+                {
+                    outMinX = Min(outMinX, draw.position.x);
+                    continue;
+                }
+
+                const float minX = compiledGlyph.GetBoundsMinX();
+                const float maxX = Max(compiledGlyph.GetBoundsMaxX(), minX + 1.0f);
+                const float minY = compiledGlyph.GetBoundsMinY();
+                const float maxY = Max(compiledGlyph.GetBoundsMaxY(), minY + 1.0f);
+                const float objectMinY = -maxY;
+                const float objectMaxY = -minY;
+
+                const float a00 = draw.size.x * draw.basisX.x;
+                const float a01 = draw.size.x * draw.basisY.x;
+                const float offsetX = draw.position.x + (draw.size.x * draw.offset.x);
+
+                auto transformedX = [&](float x, float y)
+                {
+                    return offsetX + (a00 * x) + (a01 * y);
+                };
+
+                outMinX = Min(
+                    outMinX,
+                    transformedX(minX, objectMinY),
+                    transformedX(maxX, objectMinY),
+                    transformedX(maxX, objectMaxY),
+                    transformedX(minX, objectMaxY));
+            }
+
+            return outMinX != Limits<float>::Max;
+        }
 
         float ComputeCapAlignedFontSize(const scribe::LoadedFontFaceBlob& font, float capHeightPixels)
         {
@@ -742,6 +814,11 @@ namespace he
                         ResetSceneView();
                         break;
 
+                    case window::Key::B:
+                        m_glyphBatchingEnabled = !m_glyphBatchingEnabled;
+                        m_renderer.SetGlyphBatchingEnabled(m_glyphBatchingEnabled);
+                        break;
+
                     default:
                         break;
                 }
@@ -800,17 +877,25 @@ namespace he
         };
         Vec2f transformedTitleOrigin = ApplySceneTransform(m_titleOrigin);
         Vec2f transformedBodyOrigin = ApplySceneTransform(m_bodyOrigin);
-        auto AlignTextOriginLeftEdgeX = [this](Vec2f& origin, const scribe::LayoutResult& layout)
+        auto AlignTextOriginLeftEdgeX = [this](Vec2f& origin, const scribe::RetainedTextModel& text, const scribe::LayoutResult& layout)
         {
             float leftEdgeX = Limits<float>::Max;
-            for (const scribe::TextCluster& cluster : layout.clusters)
+            float renderedMinX = 0.0f;
+            if (TryGetRenderedLineMinX(renderedMinX, text, layout, 0))
             {
-                if (cluster.isWhitespace || (cluster.lineIndex != 0))
+                leftEdgeX = origin.x + (renderedMinX * m_sceneZoom);
+            }
+            else
+            {
+                for (const scribe::TextCluster& cluster : layout.clusters)
                 {
-                    continue;
-                }
+                    if (cluster.isWhitespace || (cluster.lineIndex != 0))
+                    {
+                        continue;
+                    }
 
-                leftEdgeX = Min(leftEdgeX, origin.x + (cluster.x0 * m_sceneZoom));
+                    leftEdgeX = Min(leftEdgeX, origin.x + (cluster.x0 * m_sceneZoom));
+                }
             }
 
             if (leftEdgeX != Limits<float>::Max)
@@ -822,8 +907,8 @@ namespace he
                 origin.x = Round(origin.x);
             }
         };
-        AlignTextOriginLeftEdgeX(transformedTitleOrigin, m_titleLayout);
-        AlignTextOriginLeftEdgeX(transformedBodyOrigin, m_bodyLayout);
+        AlignTextOriginLeftEdgeX(transformedTitleOrigin, m_retainedTitleText, m_titleLayout);
+        AlignTextOriginLeftEdgeX(transformedBodyOrigin, m_retainedBodyText, m_bodyLayout);
 
         scribe::FrameDesc frameDesc{};
         frameDesc.cmdList = m_render.cmdList;
@@ -917,6 +1002,105 @@ namespace he
             instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
             m_renderer.QueueRetainedText(m_retainedInputHintsText, instance);
         }
+
+        for (uint32_t i = 0; i < GpuGraphTickCount; ++i)
+        {
+            if (!m_retainedGpuGraphLabels[i].IsEmpty())
+            {
+                scribe::RetainedTextInstanceDesc instance{};
+                instance.origin = m_gpuGraphLabelOrigins[i];
+                instance.foregroundColor = { 0.35f, 0.35f, 0.35f, 1.0f };
+                m_renderer.QueueRetainedText(m_retainedGpuGraphLabels[i], instance);
+            }
+        }
+
+        if ((m_gpuGraphSize.x > 0.0f) && (m_gpuGraphSize.y > 0.0f) && !m_gpuFrameHistory.IsEmpty())
+        {
+            auto queueOverlayQuad = [this](float x, float y, float width, float height, const Vec4f& color)
+            {
+                scribe::DrawQuadDesc desc{};
+                desc.position = { x, y };
+                desc.size = { width, height };
+                desc.color = color;
+                m_renderer.QueueQuad(desc);
+            };
+
+            const float graphX = m_gpuGraphOrigin.x;
+            const float graphY = m_gpuGraphOrigin.y;
+            const float graphW = m_gpuGraphSize.x;
+            const float graphH = m_gpuGraphSize.y;
+            const float border = 1.0f;
+
+            queueOverlayQuad(graphX, graphY, graphW, graphH, { 0.97f, 0.97f, 0.97f, 1.0f });
+            queueOverlayQuad(graphX, graphY, graphW, border, { 0.78f, 0.78f, 0.78f, 1.0f });
+            queueOverlayQuad(graphX, graphY + graphH - border, graphW, border, { 0.78f, 0.78f, 0.78f, 1.0f });
+            queueOverlayQuad(graphX, graphY, border, graphH, { 0.78f, 0.78f, 0.78f, 1.0f });
+            queueOverlayQuad(graphX + graphW - border, graphY, border, graphH, { 0.78f, 0.78f, 0.78f, 1.0f });
+
+            for (uint32_t i = 1; i < GpuGraphTickCount - 1; ++i)
+            {
+                const float t = static_cast<float>(i) / static_cast<float>(GpuGraphTickCount - 1);
+                const float y = graphY + (graphH * t);
+                queueOverlayQuad(graphX + border, y, graphW - (border * 2.0f), 1.0f, { 0.88f, 0.88f, 0.88f, 1.0f });
+            }
+
+            const uint32_t sampleCount = m_gpuFrameHistoryFilled ? m_gpuFrameHistory.Size() : m_gpuFrameHistoryHead;
+
+            if (sampleCount >= 2)
+            {
+                const float innerX = graphX + border + 1.0f;
+                const float innerY = graphY + border + 1.0f;
+                const float innerW = Max(graphW - ((border + 1.0f) * 2.0f), 1.0f);
+                const float innerH = Max(graphH - ((border + 1.0f) * 2.0f), 1.0f);
+                const uint32_t historySize = m_gpuFrameHistory.Size();
+                const uint32_t startIndex = m_gpuFrameHistoryFilled ? m_gpuFrameHistoryHead : 0u;
+                const float thickness = 2.0f;
+
+                auto getSample = [&](uint32_t sampleIndex)
+                {
+                    return m_gpuFrameHistory[(startIndex + sampleIndex) % historySize];
+                };
+
+                auto sampleY = [&](float sampleMs)
+                {
+                    return innerY + innerH - (innerH * Clamp(sampleMs / GpuGraphMaxMs, 0.0f, 1.0f));
+                };
+
+                for (uint32_t sampleIndex = 0; sampleIndex < sampleCount; ++sampleIndex)
+                {
+                    const float x = innerX + (innerW * (static_cast<float>(sampleIndex) / static_cast<float>(sampleCount - 1)));
+                    const float y = sampleY(getSample(sampleIndex));
+                    queueOverlayQuad(x - 1.0f, y - 1.0f, 2.0f, 2.0f, { 0.10f, 0.45f, 0.90f, 1.0f });
+                }
+
+                for (uint32_t sampleIndex = 1; sampleIndex < sampleCount; ++sampleIndex)
+                {
+                    const float x0 = innerX + (innerW * (static_cast<float>(sampleIndex - 1) / static_cast<float>(sampleCount - 1)));
+                    const float x1 = innerX + (innerW * (static_cast<float>(sampleIndex) / static_cast<float>(sampleCount - 1)));
+                    const float y0 = sampleY(getSample(sampleIndex - 1));
+                    const float y1 = sampleY(getSample(sampleIndex));
+                    const float dx = x1 - x0;
+                    const float dy = y1 - y0;
+                    const float len = Sqrt((dx * dx) + (dy * dy));
+                    if (len <= 1.0e-4f)
+                    {
+                        continue;
+                    }
+
+                    const float invLen = 1.0f / len;
+                    const float nx = -dy * invLen;
+                    const float ny = dx * invLen;
+
+                    scribe::DrawQuadDesc desc{};
+                    desc.position = { x0 - (nx * (thickness * 0.5f)), y0 - (ny * (thickness * 0.5f)) };
+                    desc.size = { len, thickness };
+                    desc.color = { 0.10f, 0.45f, 0.90f, 1.0f };
+                    desc.basisX = { dx * invLen, dy * invLen };
+                    desc.basisY = { nx, ny };
+                    m_renderer.QueueQuad(desc);
+                }
+            }
+        }
         QueueCaret();
 
         m_renderer.EndFrame();
@@ -934,6 +1118,12 @@ namespace he
         {
             return false;
         }
+
+        m_renderer.SetGlyphBatchingEnabled(m_glyphBatchingEnabled);
+        m_gpuFrameHistory.Resize(120, 0.0f);
+        m_gpuFrameHistoryHead = 0;
+        m_gpuFrameHistoryFilled = false;
+        m_smoothedGpuFrameMs = 0.0f;
 
         UpdateSceneTitle();
         m_lastFrameTime = MonotonicClock::Now();
@@ -978,10 +1168,19 @@ namespace he
         m_sceneStatsLayout.Clear();
         m_renderStatsLayout.Clear();
         m_inputHintsLayout.Clear();
+        for (uint32_t i = 0; i < GpuGraphTickCount; ++i)
+        {
+            m_gpuGraphLabelLayouts[i].Clear();
+            m_retainedGpuGraphLabels[i].Clear();
+        }
         m_retainedSceneStatsText.Clear();
         m_retainedRenderStatsText.Clear();
         m_retainedInputHintsText.Clear();
         m_svgLoadErrors.Clear();
+        m_gpuFrameHistory.Clear();
+        m_gpuFrameHistoryHead = 0;
+        m_gpuFrameHistoryFilled = false;
+        m_smoothedGpuFrameMs = 0.0f;
         m_initialized = false;
     }
 
@@ -2317,6 +2516,7 @@ namespace he
         const float dpiScale = Max(m_view->GetDpiScale(), 1.0f);
         const float margin = 40.0f * dpiScale;
         const float overlayFontSize = 16.0f * dpiScale;
+        const float graphLabelFontSize = 11.0f * dpiScale;
         const float overlayWidth = Max(static_cast<float>(viewSize.x) - (margin * 2.0f), 128.0f);
         const float columnGap = 48.0f * dpiScale;
         const float columnWidth = Max((overlayWidth - (columnGap * 2.0f)) / 3.0f, 128.0f);
@@ -2337,11 +2537,13 @@ namespace he
         FormatTo(
             m_renderStatsText,
             "FPS: {:.1f}\n"
-            "GPU text: {:.2f} ms\n"
+            "GPU: {:.2f} ms\n"
+            "Batching: {}\n"
             "Draws: {}\n"
             "Resolution: {} x {}",
             fps,
-            m_lastGpuFrameMs,
+            m_smoothedGpuFrameMs,
+            m_glyphBatchingEnabled ? "on" : "off",
             m_lastDrawCount,
             viewSize.x,
             viewSize.y);
@@ -2349,6 +2551,7 @@ namespace he
         m_inputHintsText =
             "Left drag: pan\n"
             "Mouse wheel: zoom\n"
+            "B: toggle batching\n"
             "R: reset view\n"
             "Left/Right: switch demos\n"
             "Esc: quit";
@@ -2368,21 +2571,21 @@ namespace he
             return false;
         }
 
-        auto buildRetainedText = [&](scribe::RetainedTextModel& out, const scribe::LayoutResult& layout) -> bool
+        auto buildRetainedText = [&](scribe::RetainedTextModel& out, const scribe::LayoutResult& layout, float fontSize) -> bool
         {
             out.Clear();
 
             scribe::RetainedTextBuildDesc retainedDesc{};
             retainedDesc.fontFaces = faceSpan;
             retainedDesc.layout = &layout;
-            retainedDesc.fontSize = overlayFontSize;
+            retainedDesc.fontSize = fontSize;
             retainedDesc.darkBackgroundPreferred = true;
             return out.Build(retainedDesc) && m_renderer.PrepareRetainedText(out);
         };
 
-        if (!buildRetainedText(m_retainedSceneStatsText, m_sceneStatsLayout)
-            || !buildRetainedText(m_retainedRenderStatsText, m_renderStatsLayout)
-            || !buildRetainedText(m_retainedInputHintsText, m_inputHintsLayout))
+        if (!buildRetainedText(m_retainedSceneStatsText, m_sceneStatsLayout, overlayFontSize)
+            || !buildRetainedText(m_retainedRenderStatsText, m_renderStatsLayout, overlayFontSize)
+            || !buildRetainedText(m_retainedInputHintsText, m_inputHintsLayout, overlayFontSize))
         {
             return false;
         }
@@ -2403,9 +2606,58 @@ namespace he
 
         m_renderStatsOrigin = { renderX, margin };
         m_inputHintsOrigin = { inputX, margin };
+        const float graphGap = 16.0f * dpiScale;
+        const float graphLabelWidth = 48.0f * dpiScale;
+        const float graphX = m_renderStatsOrigin.x + m_renderStatsLayout.width + graphGap + graphLabelWidth;
+        const float graphRight = inputX - graphGap;
+        const float graphWidth = Max(graphRight - graphX, 0.0f);
+        if (graphWidth >= (120.0f * dpiScale))
+        {
+            m_gpuGraphOrigin = { graphX, margin + (2.0f * dpiScale) };
+            m_gpuGraphSize = { Min(graphWidth, 220.0f * dpiScale), 92.0f * dpiScale };
+
+            scribe::LayoutOptions labelOptions{};
+            labelOptions.fontSize = graphLabelFontSize;
+            labelOptions.wrap = false;
+            labelOptions.maxWidth = graphLabelWidth;
+            labelOptions.direction = scribe::TextDirection::LeftToRight;
+
+            for (uint32_t i = 0; i < GpuGraphTickCount; ++i)
+            {
+                const float valueMs = GpuGraphMaxMs * (1.0f - (static_cast<float>(i) / static_cast<float>(GpuGraphTickCount - 1)));
+                String labelText{};
+                FormatTo(labelText, "{:.1f}ms", valueMs);
+                if (!m_layoutEngine.LayoutText(m_gpuGraphLabelLayouts[i], faceSpan, labelText, labelOptions)
+                    || !buildRetainedText(m_retainedGpuGraphLabels[i], m_gpuGraphLabelLayouts[i], graphLabelFontSize))
+                {
+                    return false;
+                }
+
+                const float tickY = m_gpuGraphOrigin.y + (m_gpuGraphSize.y * (static_cast<float>(i) / static_cast<float>(GpuGraphTickCount - 1)));
+                m_gpuGraphLabelOrigins[i] = {
+                    m_gpuGraphOrigin.x - (6.0f * dpiScale) - m_gpuGraphLabelLayouts[i].width,
+                    tickY - (m_gpuGraphLabelLayouts[i].height * 0.5f)
+                };
+            }
+        }
+        else
+        {
+            m_gpuGraphOrigin = { 0.0f, 0.0f };
+            m_gpuGraphSize = { 0.0f, 0.0f };
+            for (uint32_t i = 0; i < GpuGraphTickCount; ++i)
+            {
+                m_gpuGraphLabelLayouts[i].Clear();
+                m_retainedGpuGraphLabels[i].Clear();
+                m_gpuGraphLabelOrigins[i] = { 0.0f, 0.0f };
+            }
+        }
         m_overlayVertexEstimate = m_retainedSceneStatsText.GetEstimatedVertexCount()
             + m_retainedRenderStatsText.GetEstimatedVertexCount()
             + m_retainedInputHintsText.GetEstimatedVertexCount();
+        for (uint32_t i = 0; i < GpuGraphTickCount; ++i)
+        {
+            m_overlayVertexEstimate += m_retainedGpuGraphLabels[i].GetEstimatedVertexCount();
+        }
         return true;
     }
 
@@ -2436,23 +2688,32 @@ namespace he
             (block.origin.y * m_sceneZoom) + m_scenePan.y
         };
         float leftEdgeX = Limits<float>::Max;
-        for (const scribe::TextCluster& cluster : block.layout.clusters)
+        float renderedMinX = 0.0f;
+        if (TryGetRenderedLineMinX(renderedMinX, block.retainedText, block.layout, 0))
         {
-            if (cluster.isWhitespace || (cluster.lineIndex != 0))
+            leftEdgeX = origin.x + (renderedMinX * m_sceneZoom);
+        }
+        else
+        {
+            for (const scribe::TextCluster& cluster : block.layout.clusters)
             {
-                continue;
+                if (cluster.isWhitespace || (cluster.lineIndex != 0))
+                {
+                    continue;
+                }
+
+                leftEdgeX = Min(leftEdgeX, origin.x + (cluster.x0 * m_sceneZoom));
             }
 
-            leftEdgeX = Min(leftEdgeX, origin.x + (cluster.x0 * m_sceneZoom));
+            if (leftEdgeX == Limits<float>::Max)
+            {
+                origin.x = Round(origin.x);
+            }
         }
 
         if (leftEdgeX != Limits<float>::Max)
         {
             origin.x += Round(leftEdgeX) - leftEdgeX;
-        }
-        else
-        {
-            origin.x = Round(origin.x);
         }
 
         if ((!block.pixelAlignBaseline && !block.pixelAlignCapHeight)
@@ -2690,6 +2951,22 @@ namespace he
             else
             {
                 m_lastGpuFrameMs = 0.0f;
+            }
+
+            if (m_smoothedGpuFrameMs <= 0.0f)
+            {
+                m_smoothedGpuFrameMs = m_lastGpuFrameMs;
+            }
+            else
+            {
+                m_smoothedGpuFrameMs = Lerp(m_smoothedGpuFrameMs, m_lastGpuFrameMs, 0.12f);
+            }
+
+            if (!m_gpuFrameHistory.IsEmpty())
+            {
+                m_gpuFrameHistory[m_gpuFrameHistoryHead] = m_smoothedGpuFrameMs;
+                m_gpuFrameHistoryHead = (m_gpuFrameHistoryHead + 1u) % m_gpuFrameHistory.Size();
+                m_gpuFrameHistoryFilled |= m_gpuFrameHistoryHead == 0u;
             }
 
             frame.hasSubmittedWork = false;

@@ -42,9 +42,10 @@ HE_TEST(scribe, line_curve_utils, offsets_axis_aligned_and_diagonal_lines_off_th
     checkLine({ 0.0f, 0.0f }, { 2000.0f, 3000.0f });
 }
 
-HE_TEST(scribe, line_curve_utils, keeps_vertical_line_controls_on_the_stem_axis)
+HE_TEST(scribe, line_curve_utils, keeps_vertical_line_controls_near_the_stem_axis)
 {
     using he::scribe::editor::LineCurvePoint;
+    using he::scribe::editor::ComputeMinimalHalfFloatOffset;
     using he::scribe::editor::TryComputeStableLineQuadraticControlPoint;
 
     constexpr float kDegenerateLineLengthSq = 1.0e-6f;
@@ -52,13 +53,14 @@ HE_TEST(scribe, line_curve_utils, keeps_vertical_line_controls_on_the_stem_axis)
 
     HE_EXPECT(TryComputeStableLineQuadraticControlPoint(control, { 0.0f, 0.0f }, { 0.0f, 2000.0f }, kDegenerateLineLengthSq));
 
-    HE_EXPECT(Abs(control.x) <= 1.0e-4f);
+    HE_EXPECT_EQ(control.x, ComputeMinimalHalfFloatOffset(0.0f));
     HE_EXPECT(Abs(control.y - 1000.5f) <= 1.0e-4f);
 }
 
-HE_TEST(scribe, line_curve_utils, keeps_horizontal_line_controls_on_the_stem_axis)
+HE_TEST(scribe, line_curve_utils, keeps_horizontal_line_controls_near_the_stem_axis)
 {
     using he::scribe::editor::LineCurvePoint;
+    using he::scribe::editor::ComputeMinimalHalfFloatOffset;
     using he::scribe::editor::TryComputeStableLineQuadraticControlPoint;
 
     constexpr float kDegenerateLineLengthSq = 1.0e-6f;
@@ -67,5 +69,5 @@ HE_TEST(scribe, line_curve_utils, keeps_horizontal_line_controls_on_the_stem_axi
     HE_EXPECT(TryComputeStableLineQuadraticControlPoint(control, { 0.0f, 0.0f }, { 2000.0f, 0.0f }, kDegenerateLineLengthSq));
 
     HE_EXPECT(Abs(control.x - 1000.5f) <= 1.0e-4f);
-    HE_EXPECT(Abs(control.y) <= 1.0e-4f);
+    HE_EXPECT_EQ(control.y, ComputeMinimalHalfFloatOffset(0.0f));
 }

@@ -2,7 +2,7 @@
 
 #include "he/scribe/editor/svg_importer.h"
 
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/assets/types.h"
 #include "he/assets/types_fmt.h"

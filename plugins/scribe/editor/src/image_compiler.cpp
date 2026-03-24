@@ -4,7 +4,7 @@
 
 #include "image_compile_geometry.h"
 
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/assets/types.h"
 #include "he/assets/types_fmt.h"
@@ -18,7 +18,7 @@ namespace he::scribe::editor
     bool ImageCompiler::Compile(const assets::CompileContext& ctx, [[maybe_unused]] assets::CompileResult& result)
     {
         constexpr assets::ResourceId ImportSourceId{ ScribeImage::ImportSourceResourceName };
-        constexpr assets::ResourceId RuntimeBlobId{ ScribeImage::RuntimeBlobResourceName };
+        constexpr assets::ResourceId RuntimeBlobId{ ScribeImage::RuntimeResourceName };
 
         Vector<schema::Word> importSourceBytes;
         Result r = ctx.db.GetResource(importSourceBytes, ctx.asset.GetUuid(), ImportSourceId);
@@ -78,8 +78,10 @@ namespace he::scribe::editor
             HE_KV(reused_bands, imageData.reusedBandCount),
             HE_KV(reused_band_payload_texels, imageData.reusedBandPayloadTexelCount));
 
-        schema::Builder metadataBuilder;
-        VectorImageRuntimeMetadata::Builder metadata = metadataBuilder.AddStruct<VectorImageRuntimeMetadata>();
+        schema::Builder blobBuilder;
+        VectorImageResource::Builder blob = blobBuilder.AddStruct<VectorImageResource>();
+
+        VectorImageRuntimeMetadata::Builder metadata = blob.InitMetadata();
         metadata.SetSourceViewBoxMinX(imageData.viewBoxMinX);
         metadata.SetSourceViewBoxMinY(imageData.viewBoxMinY);
         metadata.SetSourceViewBoxWidth(imageData.viewBoxWidth);
@@ -88,10 +90,8 @@ namespace he::scribe::editor
         metadata.SetSourceBoundsMinY(imageData.boundsMinY);
         metadata.SetSourceBoundsMaxX(imageData.boundsMaxX);
         metadata.SetSourceBoundsMaxY(imageData.boundsMaxY);
-        metadataBuilder.SetRoot(metadata);
 
-        schema::Builder renderBuilder;
-        VectorImageRenderData::Builder render = renderBuilder.AddStruct<VectorImageRenderData>();
+        VectorImageRenderData::Builder render = blob.InitRender();
         render.SetCurveTextureWidth(imageData.curveTextureWidth);
         render.SetCurveTextureHeight(imageData.curveTextureHeight);
         render.SetBandTextureWidth(imageData.bandTextureWidth);
@@ -115,12 +115,9 @@ namespace he::scribe::editor
             dstShape.SetBandMaxX(srcShape.bandMaxX);
             dstShape.SetBandMaxY(srcShape.bandMaxY);
             dstShape.SetFillRule(srcShape.fillRule);
-            dstShape.SetFlags(srcShape.flags);
         }
-        renderBuilder.SetRoot(render);
 
-        schema::Builder paintBuilder;
-        VectorImagePaintData::Builder paint = paintBuilder.AddStruct<VectorImagePaintData>();
+        VectorImagePaintData::Builder paint = blob.InitPaint();
         auto layers = paint.InitLayers(imageData.layers.Size());
         for (uint32_t layerIndex = 0; layerIndex < imageData.layers.Size(); ++layerIndex)
         {
@@ -132,19 +129,8 @@ namespace he::scribe::editor
             dstLayer.SetBlue(srcLayer.blue);
             dstLayer.SetAlpha(srcLayer.alpha);
         }
-        paintBuilder.SetRoot(paint);
-
-        schema::Builder blobBuilder;
-        CompiledVectorImageBlob::Builder blob = blobBuilder.AddStruct<CompiledVectorImageBlob>();
-        RuntimeBlobHeader::Builder header = blob.InitHeader();
-        header.SetFormatVersion(RuntimeBlobFormatVersion);
-        header.SetKind(RuntimeBlobKind::VectorImage);
-        header.SetFlags(0);
         blob.SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
         blob.SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
-        blob.SetPaintData(blobBuilder.AddBlob(Span<const schema::Word>(paintBuilder).AsBytes()));
-        blob.SetMetadataData(blobBuilder.AddBlob(Span<const schema::Word>(metadataBuilder).AsBytes()));
-        blob.SetRenderData(blobBuilder.AddBlob(Span<const schema::Word>(renderBuilder).AsBytes()));
         blobBuilder.SetRoot(blob);
 
         r = ctx.db.AddResource(ctx.asset.GetUuid(), RuntimeBlobId, Span<const schema::Word>(blobBuilder).AsBytes());

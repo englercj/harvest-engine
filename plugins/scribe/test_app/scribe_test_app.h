@@ -70,14 +70,14 @@ namespace he
         {
             String name{};
             Vector<schema::Word> blobWords{};
-            scribe::LoadedFontFaceBlob blob{};
+            scribe::FontFaceResourceReader blob{};
         };
 
         struct LoadedDemoImage
         {
             String name{};
             Vector<schema::Word> blobWords{};
-            scribe::LoadedVectorImageBlob blob{};
+            scribe::VectorImageResourceReader blob{};
         };
 
         struct CachedImageShape

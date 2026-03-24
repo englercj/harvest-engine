@@ -14,14 +14,15 @@ namespace he::scribe
             return BitCast<float>(value);
         }
 
-        Vec4f GetShapeVertexColor(const LoadedVectorImageBlob& image, uint32_t shapeIndex)
+        Vec4f GetShapeVertexColor(const VectorImageResourceReader& image, uint32_t shapeIndex)
         {
-            if (!image.paint.IsValid())
+            const VectorImagePaintData::Reader paint = image.GetPaint();
+            if (!paint.IsValid())
             {
                 return { 1.0f, 1.0f, 1.0f, 1.0f };
             }
 
-            const auto layers = image.paint.GetLayers();
+            const auto layers = paint.GetLayers();
             for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
             {
                 const VectorImageLayer::Reader layer = layers[layerIndex];
@@ -64,17 +65,18 @@ namespace he::scribe
 
     bool BuildCompiledVectorShapeResourceData(
         CompiledVectorShapeResourceData& out,
-        const LoadedVectorImageBlob& image,
+        const VectorImageResourceReader& image,
         uint32_t shapeIndex)
     {
         out = {};
 
-        if (!image.render.IsValid())
+        const VectorImageRenderData::Reader render = image.GetRender();
+        if (!render.IsValid())
         {
             return false;
         }
 
-        const auto shapes = image.render.GetShapes();
+        const auto shapes = render.GetShapes();
         if (shapeIndex >= shapes.Size())
         {
             return false;
@@ -125,37 +127,38 @@ namespace he::scribe
         out.vertices[4] = MakeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
         out.vertices[5] = MakeVertex(minX, maxY, -1.0f, 1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
 
-        const auto curveBytes = image.root.GetCurveData();
-        const auto bandBytes = image.root.GetBandData();
+        const auto curveBytes = image.GetCurveData();
+        const auto bandBytes = image.GetBandData();
         out.createInfo.vertices = out.vertices;
         out.createInfo.vertexCount = ScribeGlyphVertexCount;
         out.createInfo.curveTexture.data = curveBytes.Data();
         out.createInfo.curveTexture.size = {
-            image.render.GetCurveTextureWidth(),
-            image.render.GetCurveTextureHeight()
+            render.GetCurveTextureWidth(),
+            render.GetCurveTextureHeight()
         };
-        out.createInfo.curveTexture.rowPitch = image.render.GetCurveTextureWidth() * sizeof(PackedCurveTexel);
+        out.createInfo.curveTexture.rowPitch = render.GetCurveTextureWidth() * sizeof(PackedCurveTexel);
         out.createInfo.bandTexture.data = bandBytes.Data();
         out.createInfo.bandTexture.size = {
-            image.render.GetBandTextureWidth(),
-            image.render.GetBandTextureHeight()
+            render.GetBandTextureWidth(),
+            render.GetBandTextureHeight()
         };
-        out.createInfo.bandTexture.rowPitch = image.render.GetBandTextureWidth() * sizeof(PackedBandTexel);
+        out.createInfo.bandTexture.rowPitch = render.GetBandTextureWidth() * sizeof(PackedBandTexel);
         out.shape = shape;
         return true;
     }
 
     bool GetCompiledVectorImageLayers(
         Vector<CompiledVectorImageLayer>& out,
-        const LoadedVectorImageBlob& image)
+        const VectorImageResourceReader& image)
     {
         out.Clear();
-        if (!image.paint.IsValid())
+        const VectorImagePaintData::Reader paint = image.GetPaint();
+        if (!paint.IsValid())
         {
             return false;
         }
 
-        const auto layers = image.paint.GetLayers();
+        const auto layers = paint.GetLayers();
         out.Reserve(layers.Size());
         for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
         {

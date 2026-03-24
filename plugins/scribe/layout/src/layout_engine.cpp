@@ -253,7 +253,7 @@ namespace he::scribe
             return 0;
         }
 
-        bool BuildFontContexts(Vector<FontContext>& out, Span<const LoadedFontFaceBlob> faces, const LayoutOptions& options)
+        bool BuildFontContexts(Vector<FontContext>& out, Span<const FontFaceResourceReader> faces, const LayoutOptions& options)
         {
             out.Clear();
             out.Resize(faces.Size());
@@ -261,15 +261,17 @@ namespace he::scribe
             for (uint32_t i = 0; i < faces.Size(); ++i)
             {
                 FontContext& ctx = out[i];
-                const auto sourceBytes = faces[i].shaping.GetSourceBytes();
-                const uint32_t unitsPerEm = Max(faces[i].metadata.GetMetrics().GetUnitsPerEm(), 1u);
+                const FontFaceShapingData::Reader shaping = faces[i].GetShaping();
+                const FontFaceImportMetadata::Reader metadata = faces[i].GetMetadata();
+                const auto sourceBytes = shaping.GetSourceBytes();
+                const uint32_t unitsPerEm = Max(metadata.GetMetrics().GetUnitsPerEm(), 1u);
 
                 ctx.fontSize = options.fontSize;
                 ctx.unitScale = options.fontSize / static_cast<float>(unitsPerEm);
-                ctx.ascent = static_cast<float>(faces[i].metadata.GetMetrics().GetAscender()) * ctx.unitScale;
-                ctx.descent = static_cast<float>(Abs(faces[i].metadata.GetMetrics().GetDescender())) * ctx.unitScale;
-                ctx.lineHeight = static_cast<float>(faces[i].metadata.GetMetrics().GetLineHeight()) * ctx.unitScale;
-                ctx.hasColorGlyphs = faces[i].metadata.IsValid() && faces[i].metadata.GetHasColorGlyphs();
+                ctx.ascent = static_cast<float>(metadata.GetMetrics().GetAscender()) * ctx.unitScale;
+                ctx.descent = static_cast<float>(Abs(metadata.GetMetrics().GetDescender())) * ctx.unitScale;
+                ctx.lineHeight = static_cast<float>(metadata.GetMetrics().GetLineHeight()) * ctx.unitScale;
+                ctx.hasColorGlyphs = metadata.IsValid() && metadata.GetHasColorGlyphs();
                 if (ctx.lineHeight <= 0.0f)
                 {
                     ctx.lineHeight = ctx.ascent + ctx.descent;
@@ -291,7 +293,7 @@ namespace he::scribe
                     return false;
                 }
 
-                ctx.face = hb_face_create(ctx.blob, faces[i].shaping.GetFaceIndex());
+                ctx.face = hb_face_create(ctx.blob, shaping.GetFaceIndex());
                 ctx.font = hb_font_create(ctx.face);
                 hb_ot_font_set_funcs(ctx.font);
                 hb_font_set_scale(ctx.font, static_cast<int32_t>(unitsPerEm), static_cast<int32_t>(unitsPerEm));
@@ -956,7 +958,7 @@ namespace he::scribe
 
     bool LayoutEngine::LayoutText(
         LayoutResult& out,
-        Span<const LoadedFontFaceBlob> faces,
+        Span<const FontFaceResourceReader> faces,
         StringView text,
         const LayoutOptions& options) const
     {

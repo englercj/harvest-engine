@@ -6,7 +6,7 @@
 #include "he/scribe/editor/font_importer.h"
 #include "he/scribe/editor/image_compiler.h"
 #include "he/scribe/editor/svg_importer.h"
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/assets/asset_type_registry.h"
 #include "he/core/module_registry.h"

@@ -10,15 +10,16 @@ namespace he::scribe
     {
         Clear();
 
-        if (!desc.image || !desc.image->root.IsValid() || !desc.image->render.IsValid() || !desc.image->paint.IsValid())
+        if (!desc.image || !desc.image->IsValid() || !desc.image->GetRender().IsValid() || !desc.image->GetPaint().IsValid())
         {
             return false;
         }
 
         m_image = *desc.image;
+        const VectorImageRuntimeMetadata::Reader metadata = desc.image->GetMetadata();
         m_viewBoxSize = {
-            desc.image->metadata.GetSourceViewBoxWidth(),
-            desc.image->metadata.GetSourceViewBoxHeight()
+            metadata.GetSourceViewBoxWidth(),
+            metadata.GetSourceViewBoxHeight()
         };
 
         Vector<CompiledVectorImageLayer> layers{};
@@ -28,8 +29,8 @@ namespace he::scribe
         }
 
         const Vec2f drawOffset{
-            -desc.image->metadata.GetSourceViewBoxMinX(),
-            desc.image->metadata.GetSourceViewBoxMinY()
+            -metadata.GetSourceViewBoxMinX(),
+            metadata.GetSourceViewBoxMinY()
         };
 
         m_draws.Reserve(layers.Size());
@@ -53,8 +54,8 @@ namespace he::scribe
         m_estimatedVertexCount = 0;
     }
 
-    const LoadedVectorImageBlob* RetainedVectorImageModel::GetImage() const
+    const VectorImageResourceReader* RetainedVectorImageModel::GetImage() const
     {
-        return m_image.root.IsValid() ? &m_image : nullptr;
+        return m_image.IsValid() ? &m_image : nullptr;
     }
 }

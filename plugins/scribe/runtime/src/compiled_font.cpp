@@ -9,9 +9,6 @@ namespace he::scribe
 {
     namespace
     {
-        constexpr uint32_t PaletteFlagForLightBackground = 0x01u;
-        constexpr uint32_t PaletteFlagForDarkBackground = 0x02u;
-
         float PackBits(uint32_t value)
         {
             return BitCast<float>(value);
@@ -58,24 +55,25 @@ namespace he::scribe
 
     bool BuildCompiledGlyphResourceData(
         CompiledGlyphResourceData& out,
-        const LoadedFontFaceBlob& fontFace,
+        const FontFaceResourceReader& fontFace,
         uint32_t glyphIndex)
     {
         out = {};
 
-        if (!fontFace.render.IsValid())
+        const FontFaceRenderData::Reader render = fontFace.GetRender();
+        if (!render.IsValid())
         {
             return false;
         }
 
-        const auto glyphs = fontFace.render.GetGlyphs();
+        const auto glyphs = render.GetGlyphs();
         if (glyphIndex >= glyphs.Size())
         {
             return false;
         }
 
         const FontFaceGlyphRenderData::Reader glyph = glyphs[glyphIndex];
-        if (!glyph.IsValid() || ((glyph.GetFlags() & CompiledFontGlyphFlagHasGeometry) == 0))
+        if (!glyph.IsValid() || !glyph.GetHasGeometry())
         {
             return false;
         }
@@ -126,68 +124,71 @@ namespace he::scribe
         out.vertices[4] = MakeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding);
         out.vertices[5] = MakeVertex(minX, objectMaxY, -1.0f, 1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding);
 
-        const auto curveBytes = fontFace.root.GetCurveData();
-        const auto bandBytes = fontFace.root.GetBandData();
+        const auto curveBytes = fontFace.GetCurveData();
+        const auto bandBytes = fontFace.GetBandData();
 
         out.createInfo.vertices = out.vertices;
         out.createInfo.vertexCount = ScribeGlyphVertexCount;
         out.createInfo.curveTexture.data = curveBytes.Data();
         out.createInfo.curveTexture.size = {
-            fontFace.render.GetCurveTextureWidth(),
-            fontFace.render.GetCurveTextureHeight()
+            render.GetCurveTextureWidth(),
+            render.GetCurveTextureHeight()
         };
-        out.createInfo.curveTexture.rowPitch = fontFace.render.GetCurveTextureWidth() * sizeof(PackedCurveTexel);
+        out.createInfo.curveTexture.rowPitch = render.GetCurveTextureWidth() * sizeof(PackedCurveTexel);
         out.createInfo.bandTexture.data = bandBytes.Data();
         out.createInfo.bandTexture.size = {
-            fontFace.render.GetBandTextureWidth(),
-            fontFace.render.GetBandTextureHeight()
+            render.GetBandTextureWidth(),
+            render.GetBandTextureHeight()
         };
-        out.createInfo.bandTexture.rowPitch = fontFace.render.GetBandTextureWidth() * sizeof(PackedBandTexel);
+        out.createInfo.bandTexture.rowPitch = render.GetBandTextureWidth() * sizeof(PackedBandTexel);
         out.glyph = glyph;
         return true;
     }
 
-    uint32_t SelectCompiledFontPalette(const LoadedFontFaceBlob& fontFace, bool darkBackgroundPreferred)
+    uint32_t SelectCompiledFontPalette(const FontFaceResourceReader& fontFace, bool darkBackgroundPreferred)
     {
-        if (!fontFace.paint.IsValid())
+        const FontFacePaintData::Reader paint = fontFace.GetPaint();
+        if (!paint.IsValid())
         {
             return 0;
         }
 
-        const auto palettes = fontFace.paint.GetPalettes();
+        const auto palettes = paint.GetPalettes();
         if (palettes.IsEmpty())
         {
             return 0;
         }
-
-        const uint32_t desiredFlag = darkBackgroundPreferred ? PaletteFlagForDarkBackground : PaletteFlagForLightBackground;
         for (uint32_t paletteIndex = 0; paletteIndex < palettes.Size(); ++paletteIndex)
         {
-            if ((palettes[paletteIndex].GetFlags() & desiredFlag) != 0)
+            const FontFacePaletteBackground background = palettes[paletteIndex].GetBackground();
+            if (background == FontFacePaletteBackground::Any
+                || (darkBackgroundPreferred && (background == FontFacePaletteBackground::Dark))
+                || (!darkBackgroundPreferred && (background == FontFacePaletteBackground::Light)))
             {
                 return paletteIndex;
             }
         }
 
-        const uint32_t defaultPaletteIndex = fontFace.paint.GetDefaultPaletteIndex();
+        const uint32_t defaultPaletteIndex = paint.GetDefaultPaletteIndex();
         return defaultPaletteIndex < palettes.Size() ? defaultPaletteIndex : 0;
     }
 
     bool GetCompiledColorGlyphLayers(
         Vector<CompiledColorGlyphLayer>& out,
-        const LoadedFontFaceBlob& fontFace,
+        const FontFaceResourceReader& fontFace,
         uint32_t glyphIndex,
         uint32_t paletteIndex,
         const Vec4f& foregroundColor)
     {
         out.Clear();
 
-        if (!fontFace.paint.IsValid())
+        const FontFacePaintData::Reader paint = fontFace.GetPaint();
+        if (!paint.IsValid())
         {
             return false;
         }
 
-        const auto colorGlyphs = fontFace.paint.GetColorGlyphs();
+        const auto colorGlyphs = paint.GetColorGlyphs();
         if (glyphIndex >= colorGlyphs.Size())
         {
             return true;
@@ -200,8 +201,8 @@ namespace he::scribe
             return true;
         }
 
-        const auto palettes = fontFace.paint.GetPalettes();
-        const auto layers = fontFace.paint.GetLayers();
+        const auto palettes = paint.GetPalettes();
+        const auto layers = paint.GetLayers();
         if (palettes.IsEmpty())
         {
             return false;
@@ -228,7 +229,7 @@ namespace he::scribe
             resolvedLayer.basisY = { layer.GetTransform01(), layer.GetTransform11() };
             resolvedLayer.offset = { layer.GetTransformTx(), layer.GetTransformTy() };
 
-            if ((layer.GetFlags() & CompiledFontColorLayerFlagUseForeground) == 0)
+            if (layer.GetColorSource() != FontFaceColorSource::Foreground)
             {
                 const uint32_t paletteEntryIndex = layer.GetPaletteEntryIndex();
                 if (paletteEntryIndex < colors.Size())

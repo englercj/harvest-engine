@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/core/string_view.h"
 #include "he/core/types.h"
@@ -133,7 +133,7 @@ namespace he::scribe
 
     struct StyledTextLayoutDesc
     {
-        Span<const LoadedFontFaceBlob> fontFaces{};
+        Span<const FontFaceResourceReader> fontFaces{};
         StringView text{};
         LayoutOptions options{};
         Span<const TextStyle> styles{};
@@ -215,7 +215,7 @@ namespace he::scribe
 
         bool LayoutText(
             LayoutResult& out,
-            Span<const LoadedFontFaceBlob> faces,
+            Span<const FontFaceResourceReader> faces,
             StringView text,
             const LayoutOptions& options = {}) const;
 

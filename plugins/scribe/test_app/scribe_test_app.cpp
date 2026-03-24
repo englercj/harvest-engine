@@ -8,7 +8,7 @@
 
 #include "he/scribe/compiled_font.h"
 #include "he/scribe/compiled_vector_image.h"
-#include "he/scribe/schema/runtime_blob.hsc.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/core/assert.h"
 #include "he/core/clock.h"
@@ -223,7 +223,7 @@ namespace he
                 }
 
                 const scribe::RetainedTextDraw& draw = draws[glyphLayoutIndex];
-                const scribe::LoadedFontFaceBlob* fontFace = text.GetFontFace(draw.fontFaceIndex);
+                const scribe::FontFaceResourceReader* fontFace = text.GetFontFace(draw.fontFaceIndex);
                 if (!fontFace || !fontFace->render.IsValid())
                 {
                     continue;
@@ -236,7 +236,7 @@ namespace he
                 }
 
                 const scribe::FontFaceGlyphRenderData::Reader compiledGlyph = glyphs[draw.glyphIndex];
-                if (!compiledGlyph.IsValid() || ((compiledGlyph.GetFlags() & scribe::CompiledFontGlyphFlagHasGeometry) == 0))
+                if (!compiledGlyph.IsValid() || !compiledGlyph.GetHasGeometry())
                 {
                     outMinX = Min(outMinX, draw.position.x);
                     continue;
@@ -269,14 +269,15 @@ namespace he
             return outMinX != Limits<float>::Max;
         }
 
-        float ComputeCapAlignedFontSize(const scribe::LoadedFontFaceBlob& font, float capHeightPixels)
+        float ComputeCapAlignedFontSize(const scribe::FontFaceResourceReader& font, float capHeightPixels)
         {
-            if (!font.metadata.IsValid())
+            const scribe::FontFaceImportMetadata::Reader metadata = font.GetMetadata();
+            if (!metadata.IsValid())
             {
                 return capHeightPixels;
             }
 
-            const auto metrics = font.metadata.GetMetrics();
+            const auto metrics = metadata.GetMetrics();
             const float unitsPerEm = static_cast<float>(Max(metrics.GetUnitsPerEm(), 1u));
             const float capHeightUnits = static_cast<float>(Max(Abs(metrics.GetCapHeight()), 1));
             return capHeightPixels * (unitsPerEm / capHeightUnits);
@@ -394,7 +395,7 @@ namespace he
             return true;
         }
 
-        bool BuildLoadedFontFaceFromFile(const char* fileName, Vector<schema::Word>& storage, scribe::LoadedFontFaceBlob& out)
+        bool BuildLoadedFontFaceFromFile(const char* fileName, Vector<schema::Word>& storage, scribe::FontFaceResourceReader& out)
         {
             String path;
             if (!ResolveFontPath(path, fileName))
@@ -432,20 +433,17 @@ namespace he
                 return false;
             }
 
-            schema::Builder shapingBuilder;
-            scribe::FontFaceShapingData::Builder shaping = shapingBuilder.AddStruct<scribe::FontFaceShapingData>();
+            schema::Builder rootBuilder;
+            scribe::FontFaceResource::Builder root = rootBuilder.AddStruct<scribe::FontFaceResource>();
+            scribe::FontFaceShapingData::Builder shaping = root.InitShaping();
             shaping.SetFaceIndex(faceInfo.faceIndex);
             shaping.SetSourceFormat(faceInfo.sourceFormat);
-            shaping.SetSourceBytes(shapingBuilder.AddBlob(Span<const uint8_t>(fontBytes)));
-            shapingBuilder.SetRoot(shaping);
+            shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(fontBytes)));
 
-            schema::Builder metadataBuilder;
-            scribe::FontFaceImportMetadata::Builder metadata = metadataBuilder.AddStruct<scribe::FontFaceImportMetadata>();
+            scribe::FontFaceImportMetadata::Builder metadata = root.InitMetadata();
             scribe::editor::FillFontFaceImportMetadata(metadata, faceInfo);
-            metadataBuilder.SetRoot(metadata);
 
-            schema::Builder renderBuilder;
-            scribe::FontFaceRenderData::Builder render = renderBuilder.AddStruct<scribe::FontFaceRenderData>();
+            scribe::FontFaceRenderData::Builder render = root.InitRender();
             render.SetCurveTextureWidth(renderData.curveTextureWidth);
             render.SetCurveTextureHeight(renderData.curveTextureHeight);
             render.SetBandTextureWidth(renderData.bandTextureWidth);
@@ -472,12 +470,11 @@ namespace he
                 dstGlyph.SetBandMaxX(srcGlyph.bandMaxX);
                 dstGlyph.SetBandMaxY(srcGlyph.bandMaxY);
                 dstGlyph.SetFillRule(srcGlyph.fillRule);
-                dstGlyph.SetFlags(srcGlyph.flags);
+                dstGlyph.SetHasGeometry(srcGlyph.hasGeometry);
+                dstGlyph.SetHasColorLayers(srcGlyph.hasColorLayers);
             }
-            renderBuilder.SetRoot(render);
 
-            schema::Builder paintBuilder;
-            scribe::FontFacePaintData::Builder paint = paintBuilder.AddStruct<scribe::FontFacePaintData>();
+            scribe::FontFacePaintData::Builder paint = root.InitPaint();
             paint.SetDefaultPaletteIndex(renderData.paint.defaultPaletteIndex);
 
             auto palettes = paint.InitPalettes(renderData.paint.palettes.Size());
@@ -485,7 +482,7 @@ namespace he
             {
                 const scribe::editor::CompiledFontPalette& srcPalette = renderData.paint.palettes[paletteIndex];
                 scribe::FontFacePalette::Builder dstPalette = palettes[paletteIndex];
-                dstPalette.SetFlags(srcPalette.flags);
+                dstPalette.SetBackground(srcPalette.background);
 
                 auto colors = dstPalette.InitColors(srcPalette.colors.Size());
                 for (uint32_t colorIndex = 0; colorIndex < srcPalette.colors.Size(); ++colorIndex)
@@ -515,7 +512,7 @@ namespace he
                 scribe::FontFaceColorGlyphLayer::Builder dstLayer = layers[layerIndex];
                 dstLayer.SetGlyphIndex(srcLayer.glyphIndex);
                 dstLayer.SetPaletteEntryIndex(srcLayer.paletteEntryIndex);
-                dstLayer.SetFlags(srcLayer.flags);
+                dstLayer.SetColorSource(srcLayer.colorSource);
                 dstLayer.SetAlphaScale(srcLayer.alphaScale);
                 dstLayer.SetTransform00(srcLayer.transform00);
                 dstLayer.SetTransform01(srcLayer.transform01);
@@ -524,27 +521,16 @@ namespace he
                 dstLayer.SetTransformTx(srcLayer.transformTx);
                 dstLayer.SetTransformTy(srcLayer.transformTy);
             }
-            paintBuilder.SetRoot(paint);
-
-            schema::Builder rootBuilder;
-            scribe::CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<scribe::CompiledFontFaceBlob>();
-            scribe::RuntimeBlobHeader::Builder header = root.InitHeader();
-            header.SetFormatVersion(scribe::RuntimeBlobFormatVersion);
-            header.SetKind(scribe::RuntimeBlobKind::FontFace);
-            header.SetFlags(0);
-            root.SetShapingData(rootBuilder.AddBlob(Span<const schema::Word>(shapingBuilder).AsBytes()));
             root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
             root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
-            root.SetPaintData(rootBuilder.AddBlob(Span<const schema::Word>(paintBuilder).AsBytes()));
-            root.SetMetadataData(rootBuilder.AddBlob(Span<const schema::Word>(metadataBuilder).AsBytes()));
-            root.SetRenderData(rootBuilder.AddBlob(Span<const schema::Word>(renderBuilder).AsBytes()));
             rootBuilder.SetRoot(root);
 
             storage = Span<const schema::Word>(rootBuilder);
-            return scribe::LoadCompiledFontFaceBlob(out, storage);
+            out = schema::ReadRoot<scribe::FontFaceResource>(storage.Data());
+            return out.IsValid();
         }
 
-        bool BuildLoadedVectorImageFromFile(const char* fileName, Vector<schema::Word>& storage, scribe::LoadedVectorImageBlob& out)
+        bool BuildLoadedVectorImageFromFile(const char* fileName, Vector<schema::Word>& storage, scribe::VectorImageResourceReader& out)
         {
             String path;
             if (!ResolveImagePath(path, fileName))
@@ -572,8 +558,9 @@ namespace he
                 return false;
             }
 
-            schema::Builder metadataBuilder;
-            scribe::VectorImageRuntimeMetadata::Builder metadata = metadataBuilder.AddStruct<scribe::VectorImageRuntimeMetadata>();
+            schema::Builder rootBuilder;
+            scribe::VectorImageResource::Builder root = rootBuilder.AddStruct<scribe::VectorImageResource>();
+            scribe::VectorImageRuntimeMetadata::Builder metadata = root.InitMetadata();
             metadata.SetSourceViewBoxMinX(imageData.viewBoxMinX);
             metadata.SetSourceViewBoxMinY(imageData.viewBoxMinY);
             metadata.SetSourceViewBoxWidth(imageData.viewBoxWidth);
@@ -582,10 +569,8 @@ namespace he
             metadata.SetSourceBoundsMinY(imageData.boundsMinY);
             metadata.SetSourceBoundsMaxX(imageData.boundsMaxX);
             metadata.SetSourceBoundsMaxY(imageData.boundsMaxY);
-            metadataBuilder.SetRoot(metadata);
 
-            schema::Builder renderBuilder;
-            scribe::VectorImageRenderData::Builder render = renderBuilder.AddStruct<scribe::VectorImageRenderData>();
+            scribe::VectorImageRenderData::Builder render = root.InitRender();
             render.SetCurveTextureWidth(imageData.curveTextureWidth);
             render.SetCurveTextureHeight(imageData.curveTextureHeight);
             render.SetBandTextureWidth(imageData.bandTextureWidth);
@@ -609,12 +594,9 @@ namespace he
                 dstShape.SetBandMaxX(srcShape.bandMaxX);
                 dstShape.SetBandMaxY(srcShape.bandMaxY);
                 dstShape.SetFillRule(srcShape.fillRule);
-                dstShape.SetFlags(srcShape.flags);
             }
-            renderBuilder.SetRoot(render);
 
-            schema::Builder paintBuilder;
-            scribe::VectorImagePaintData::Builder paint = paintBuilder.AddStruct<scribe::VectorImagePaintData>();
+            scribe::VectorImagePaintData::Builder paint = root.InitPaint();
             auto layers = paint.InitLayers(imageData.layers.Size());
             for (uint32_t layerIndex = 0; layerIndex < imageData.layers.Size(); ++layerIndex)
             {
@@ -626,23 +608,13 @@ namespace he
                 dstLayer.SetBlue(srcLayer.blue);
                 dstLayer.SetAlpha(srcLayer.alpha);
             }
-            paintBuilder.SetRoot(paint);
-
-            schema::Builder rootBuilder;
-            scribe::CompiledVectorImageBlob::Builder root = rootBuilder.AddStruct<scribe::CompiledVectorImageBlob>();
-            scribe::RuntimeBlobHeader::Builder header = root.InitHeader();
-            header.SetFormatVersion(scribe::RuntimeBlobFormatVersion);
-            header.SetKind(scribe::RuntimeBlobKind::VectorImage);
-            header.SetFlags(0);
             root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
             root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
-            root.SetPaintData(rootBuilder.AddBlob(Span<const schema::Word>(paintBuilder).AsBytes()));
-            root.SetMetadataData(rootBuilder.AddBlob(Span<const schema::Word>(metadataBuilder).AsBytes()));
-            root.SetRenderData(rootBuilder.AddBlob(Span<const schema::Word>(renderBuilder).AsBytes()));
             rootBuilder.SetRoot(root);
 
             storage = Span<const schema::Word>(rootBuilder);
-            return scribe::LoadCompiledVectorImageBlob(out, storage);
+            out = schema::ReadRoot<scribe::VectorImageResource>(storage.Data());
+            return out.IsValid();
         }
     }
 
@@ -1577,10 +1549,10 @@ namespace he
 
         UpdateSceneTitle();
 
-        Vector<scribe::LoadedFontFaceBlob> faces{};
+        Vector<scribe::FontFaceResourceReader> faces{};
         for (const LoadedDemoFont& font : m_fonts)
         {
-            if (font.blob.root.IsValid())
+            if (font.blob.IsValid())
             {
                 faces.EmplaceBack(font.blob);
             }
@@ -1591,8 +1563,8 @@ namespace he
             return false;
         }
 
-        const Span<const scribe::LoadedFontFaceBlob> faceSpan(faces.Data(), faces.Size());
-        const Span<const scribe::LoadedFontFaceBlob> primaryFace(faces.Data(), 1);
+        const Span<const scribe::FontFaceResourceReader> faceSpan(faces.Data(), faces.Size());
+        const Span<const scribe::FontFaceResourceReader> primaryFace(faces.Data(), 1);
         const Vec2i viewSize = m_view->GetSize();
         const float dpiScale = Max(m_view->GetDpiScale(), 1.0f);
         const float margin = 40.0f * dpiScale;
@@ -1609,7 +1581,7 @@ namespace he
         m_bodyOrigin = { 0.0f, 0.0f };
 
         auto layoutText = [&](scribe::LayoutResult& out,
-                              Span<const scribe::LoadedFontFaceBlob> blockFaces,
+                              Span<const scribe::FontFaceResourceReader> blockFaces,
                               const String& text,
                               float fontSize,
                               float maxWidth,
@@ -1633,7 +1605,7 @@ namespace he
         };
 
         auto buildRetainedText = [&](scribe::RetainedTextModel& out,
-                                     Span<const scribe::LoadedFontFaceBlob> blockFaces,
+                                     Span<const scribe::FontFaceResourceReader> blockFaces,
                                      const scribe::LayoutResult& layout,
                                      float fontSize,
                                      Span<const scribe::TextStyle> styles = {}) -> bool
@@ -1658,7 +1630,7 @@ namespace he
             return out.Build(retainedDesc) && m_renderer.PrepareRetainedVectorImage(out);
         };
 
-        auto resolveBlockFaces = [&](const SceneTextBlock& block, Vector<scribe::LoadedFontFaceBlob>& out) -> bool
+        auto resolveBlockFaces = [&](const SceneTextBlock& block, Vector<scribe::FontFaceResourceReader>& out) -> bool
         {
             out.Clear();
 
@@ -1667,7 +1639,7 @@ namespace he
                 out.Reserve(block.faceIndices.Size());
                 for (uint32_t fontIndex : block.faceIndices)
                 {
-                    if ((fontIndex < m_fonts.Size()) && m_fonts[fontIndex].blob.root.IsValid())
+            if ((fontIndex < m_fonts.Size()) && m_fonts[fontIndex].blob.IsValid())
                     {
                         out.EmplaceBack(m_fonts[fontIndex].blob);
                     }
@@ -1677,7 +1649,7 @@ namespace he
             {
                 out = faceSpan;
             }
-            else if ((block.fontFaceIndex < m_fonts.Size()) && m_fonts[block.fontFaceIndex].blob.root.IsValid())
+            else if ((block.fontFaceIndex < m_fonts.Size()) && m_fonts[block.fontFaceIndex].blob.IsValid())
             {
                 out.EmplaceBack(m_fonts[block.fontFaceIndex].blob);
             }
@@ -1690,13 +1662,13 @@ namespace he
                                       scribe::TextDirection direction,
                                       bool wrap = true) -> bool
         {
-            Vector<scribe::LoadedFontFaceBlob> blockFacesStorage{};
+            Vector<scribe::FontFaceResourceReader> blockFacesStorage{};
             if (!resolveBlockFaces(block, blockFacesStorage))
             {
                 return false;
             }
 
-            const Span<const scribe::LoadedFontFaceBlob> blockFaces(blockFacesStorage.Data(), blockFacesStorage.Size());
+            const Span<const scribe::FontFaceResourceReader> blockFaces(blockFacesStorage.Data(), blockFacesStorage.Size());
             if (!layoutText(
                     block.layout,
                     blockFaces,
@@ -2377,8 +2349,8 @@ namespace he
                     const float y = rowY + (static_cast<float>(rowIndex) * (cellHeight + rowGap));
                     const Vec2f imageOrigin{ x, y };
 
-                    const float viewBoxWidth = Max(m_images[imageIndex].blob.metadata.GetSourceViewBoxWidth(), 1.0f);
-                    const float viewBoxHeight = Max(m_images[imageIndex].blob.metadata.GetSourceViewBoxHeight(), 1.0f);
+                    const float viewBoxWidth = Max(m_images[imageIndex].blob.GetMetadata().GetSourceViewBoxWidth(), 1.0f);
+                    const float viewBoxHeight = Max(m_images[imageIndex].blob.GetMetadata().GetSourceViewBoxHeight(), 1.0f);
                     const float scale = Min(cellWidth / viewBoxWidth, (cellHeight - (28.0f * dpiScale)) / viewBoxHeight);
 
                     if (!addSceneImage(m_images[imageIndex], imageOrigin, scale))
@@ -2507,7 +2479,7 @@ namespace he
 
     bool ScribeTestApp::UpdateOverlayLayout()
     {
-        if (m_fonts.IsEmpty() || !m_fonts[0].blob.root.IsValid())
+        if (m_fonts.IsEmpty() || !m_fonts[0].blob.IsValid())
         {
             return false;
         }
@@ -2562,8 +2534,8 @@ namespace he
         overlayOptions.maxWidth = columnWidth;
         overlayOptions.direction = scribe::TextDirection::LeftToRight;
 
-        const scribe::LoadedFontFaceBlob primaryFace[] = { m_fonts[0].blob };
-        const Span<const scribe::LoadedFontFaceBlob> faceSpan(primaryFace, 1);
+        const scribe::FontFaceResourceReader primaryFace[] = { m_fonts[0].blob };
+        const Span<const scribe::FontFaceResourceReader> faceSpan(primaryFace, 1);
         if (!m_layoutEngine.LayoutText(m_sceneStatsLayout, faceSpan, m_sceneStatsText, overlayOptions)
             || !m_layoutEngine.LayoutText(m_renderStatsLayout, faceSpan, m_renderStatsText, overlayOptions)
             || !m_layoutEngine.LayoutText(m_inputHintsLayout, faceSpan, m_inputHintsText, overlayOptions))
@@ -2720,12 +2692,12 @@ namespace he
             || (Abs(m_sceneZoom - 1.0f) > 0.001f)
             || block.layout.lines.IsEmpty()
             || (block.fontFaceIndex >= m_fonts.Size())
-            || !m_fonts[block.fontFaceIndex].blob.metadata.IsValid())
+            || !m_fonts[block.fontFaceIndex].blob.GetMetadata().IsValid())
         {
             return origin;
         }
 
-        const auto metrics = m_fonts[block.fontFaceIndex].blob.metadata.GetMetrics();
+        const auto metrics = m_fonts[block.fontFaceIndex].blob.GetMetadata().GetMetrics();
         const float unitsPerEm = static_cast<float>(Max(metrics.GetUnitsPerEm(), 1u));
         const float scale = block.fontSize / unitsPerEm;
         const float baselineY = origin.y + block.layout.lines[0].baselineY;
@@ -3025,17 +2997,17 @@ namespace he
 
     bool ScribeTestApp::HasRtlDemoFallbackFont() const
     {
-        return (m_fonts.Size() > 2) && m_fonts[2].blob.root.IsValid();
+        return (m_fonts.Size() > 2) && m_fonts[2].blob.IsValid();
     }
 
     bool ScribeTestApp::HasColorDemoFont() const
     {
         for (const LoadedDemoFont& font : m_fonts)
         {
-            if (font.blob.metadata.IsValid()
-                && font.blob.metadata.GetHasColorGlyphs()
-                && font.blob.paint.IsValid()
-                && !font.blob.paint.GetPalettes().IsEmpty())
+            if (font.blob.GetMetadata().IsValid()
+                && font.blob.GetMetadata().GetHasColorGlyphs()
+                && font.blob.GetPaint().IsValid()
+                && !font.blob.GetPaint().GetPalettes().IsEmpty())
             {
                 return true;
             }

@@ -210,17 +210,19 @@ namespace he::scribe
         m_fontFaces.Resize(desc.fontFaces.Size(), DefaultInit);
         for (uint32_t fontIndex = 0; fontIndex < desc.fontFaces.Size(); ++fontIndex)
         {
-            const LoadedFontFaceBlob& fontFace = desc.fontFaces[fontIndex];
+            const FontFaceResourceReader& fontFace = desc.fontFaces[fontIndex];
             m_fontFaces[fontIndex] = fontFace;
 
-            const uint32_t unitsPerEm = Max(fontFace.metadata.GetMetrics().GetUnitsPerEm(), 1u);
+            const FontFaceImportMetadata::Reader metadata = fontFace.GetMetadata();
+            const FontFacePaintData::Reader paint = fontFace.GetPaint();
+            const uint32_t unitsPerEm = Max(metadata.GetMetrics().GetUnitsPerEm(), 1u);
             FontBuildState& fontState = fontStates[fontIndex];
             fontState.scale = desc.fontSize / static_cast<float>(unitsPerEm);
             fontState.hasColorGlyphs =
-                fontFace.metadata.IsValid()
-                && fontFace.metadata.GetHasColorGlyphs()
-                && fontFace.paint.IsValid()
-                && !fontFace.paint.GetPalettes().IsEmpty();
+                metadata.IsValid()
+                && metadata.GetHasColorGlyphs()
+                && paint.IsValid()
+                && !paint.GetPalettes().IsEmpty();
             if (fontState.hasColorGlyphs)
             {
                 fontState.paletteIndex = SelectCompiledFontPalette(fontFace, desc.darkBackgroundPreferred);
@@ -235,21 +237,22 @@ namespace he::scribe
                 continue;
             }
 
-            const LoadedFontFaceBlob& fontFace = desc.fontFaces[glyph.fontFaceIndex];
+            const FontFaceResourceReader& fontFace = desc.fontFaces[glyph.fontFaceIndex];
             const FontBuildState& fontState = fontStates[glyph.fontFaceIndex];
             const TextStyle* style = GetStyle(styles, glyph.styleIndex);
             if (fontState.hasColorGlyphs)
             {
-                const auto colorGlyphs = fontFace.paint.GetColorGlyphs();
+                const FontFacePaintData::Reader paint = fontFace.GetPaint();
+                const auto colorGlyphs = paint.GetColorGlyphs();
                 if (glyph.glyphIndex < colorGlyphs.Size())
                 {
                     const FontFaceColorGlyph::Reader colorGlyph = colorGlyphs[glyph.glyphIndex];
                     const uint32_t layerCount = colorGlyph.GetLayerCount();
                     if (layerCount > 0)
                     {
-                        const auto palette = fontFace.paint.GetPalettes()[fontState.paletteIndex];
+                        const auto palette = paint.GetPalettes()[fontState.paletteIndex];
                         const auto colors = palette.GetColors();
-                        const auto layers = fontFace.paint.GetLayers();
+                        const auto layers = paint.GetLayers();
 
                         m_draws.Reserve(m_draws.Size() + layerCount);
                         for (uint32_t layerIndex = 0; layerIndex < layerCount; ++layerIndex)
@@ -267,7 +270,7 @@ namespace he::scribe
                             draw.flags = 0;
                             draw.color = { 1.0f, 1.0f, 1.0f, Max(layer.GetAlphaScale(), 0.0f) };
 
-                            if ((layer.GetFlags() & CompiledFontColorLayerFlagUseForeground) != 0)
+                            if (layer.GetColorSource() == FontFaceColorSource::Foreground)
                             {
                                 draw.flags |= RetainedTextDrawFlagUseForegroundColor;
                             }
@@ -283,7 +286,7 @@ namespace he::scribe
 
                             if (style)
                             {
-                                if ((layer.GetFlags() & CompiledFontColorLayerFlagUseForeground) != 0)
+                                if (layer.GetColorSource() == FontFaceColorSource::Foreground)
                                 {
                                     draw.color = MultiplyColor(draw.color, style->color);
                                 }
@@ -345,7 +348,7 @@ namespace he::scribe
         m_estimatedVertexCount = 0;
     }
 
-    const LoadedFontFaceBlob* RetainedTextModel::GetFontFace(uint32_t fontFaceIndex) const
+    const FontFaceResourceReader* RetainedTextModel::GetFontFace(uint32_t fontFaceIndex) const
     {
         return fontFaceIndex < m_fontFaces.Size() ? &m_fontFaces[fontFaceIndex] : nullptr;
     }

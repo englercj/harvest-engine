@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/core/string.h"
 #include "he/core/vector.h"

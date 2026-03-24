@@ -9,12 +9,6 @@ namespace he::scribe
     inline constexpr uint32_t ScribeBandTextureWidth = 4096;
     inline constexpr uint32_t ScribeGlyphVertexCount = 6;
 
-    inline constexpr uint32_t CompiledFontGlyphFlagHasGeometry = 1u << 0;
-    inline constexpr uint32_t CompiledFontGlyphFlagEvenOdd = 1u << 1;
-    inline constexpr uint32_t CompiledFontGlyphFlagHasColorLayers = 1u << 2;
-
-    inline constexpr uint32_t CompiledFontColorLayerFlagUseForeground = 1u << 0;
-
     struct PackedCurveTexel
     {
         uint16_t x{ 0 };

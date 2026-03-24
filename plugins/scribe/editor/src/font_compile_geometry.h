@@ -3,7 +3,7 @@
 #pragma once
 
 #include "he/scribe/packed_data.h"
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/core/span.h"
 #include "he/core/vector.h"
@@ -20,7 +20,7 @@ namespace he::scribe::editor
 
     struct CompiledFontPalette
     {
-        uint32_t flags{ 0 };
+        FontFacePaletteBackground background{ FontFacePaletteBackground::Unspecified };
         Vector<CompiledFontPaletteColor> colors{};
     };
 
@@ -28,7 +28,7 @@ namespace he::scribe::editor
     {
         uint32_t glyphIndex{ 0 };
         uint32_t paletteEntryIndex{ 0 };
-        uint32_t flags{ 0 };
+        FontFaceColorSource colorSource{ FontFaceColorSource::Palette };
         float alphaScale{ 1.0f };
         float transform00{ 1.0f };
         float transform01{ 0.0f };
@@ -69,7 +69,8 @@ namespace he::scribe::editor
         uint32_t bandMaxX{ 0 };
         uint32_t bandMaxY{ 0 };
         FillRule fillRule{ FillRule::NonZero };
-        uint32_t flags{ 0 };
+        bool hasGeometry{ false };
+        bool hasColorLayers{ false };
     };
 
     struct CompiledFontRenderData

@@ -8,8 +8,9 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
         include_dirs { "assets/src" }
 
         schema_compile "c++" scope=public {
-            files { "assets/include/he/scribe/schema/runtime_blob.hsc" }
+            files { "assets/include/he/scribe/schema/scribe_assets.hsc" }
             include_dirs { "assets/include"; "../assets/assets/include"; "../editor/include" }
+            dependencies { he_assets; he_editor }
         }
 
         public {

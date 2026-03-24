@@ -605,19 +605,19 @@ namespace he::scribe::editor
         struct PaintColorInfo
         {
             uint32_t paletteEntryIndex{ 0 };
-            uint32_t flags{ 0 };
+            FontFaceColorSource colorSource{ FontFaceColorSource::Palette };
             float alphaScale{ 1.0f };
         };
 
         bool TryResolveColorIndexInfo(PaintColorInfo& out, const FT_ColorIndex& colorIndex)
         {
             out.paletteEntryIndex = colorIndex.palette_index;
-            out.flags = 0;
+            out.colorSource = FontFaceColorSource::Palette;
             out.alphaScale = ColorAlphaToFloat(colorIndex.alpha);
             if (out.paletteEntryIndex == 0xFFFFu)
             {
                 out.paletteEntryIndex = 0;
-                out.flags |= CompiledFontColorLayerFlagUseForeground;
+                out.colorSource = FontFaceColorSource::Foreground;
             }
 
             return true;
@@ -699,7 +699,7 @@ namespace he::scribe::editor
                     CompiledColorGlyphLayerEntry& layer = out.EmplaceBack();
                     layer.glyphIndex = paint.u.glyph.glyphID;
                     layer.paletteEntryIndex = colorInfo.paletteEntryIndex;
-                    layer.flags = colorInfo.flags;
+                    layer.colorSource = colorInfo.colorSource;
                     layer.alphaScale = colorInfo.alphaScale;
                     layer.transform00 = transform.m00;
                     layer.transform01 = transform.m01;
@@ -885,7 +885,16 @@ namespace he::scribe::editor
                 }
 
                 CompiledFontPalette& palette = out.palettes[paletteIndex];
-                palette.flags = paletteData.palette_flags != nullptr ? paletteData.palette_flags[paletteIndex] : 0u;
+                const uint16_t paletteFlags = paletteData.palette_flags != nullptr ? paletteData.palette_flags[paletteIndex] : 0u;
+                const bool forLight = (paletteFlags & 0x0001u) != 0u;
+                const bool forDark = (paletteFlags & 0x0002u) != 0u;
+                palette.background = forLight && forDark
+                    ? FontFacePaletteBackground::Any
+                    : forLight
+                        ? FontFacePaletteBackground::Light
+                        : forDark
+                            ? FontFacePaletteBackground::Dark
+                            : FontFacePaletteBackground::Unspecified;
                 palette.colors.Resize(paletteData.num_palette_entries);
                 for (uint32_t colorIndex = 0; colorIndex < paletteData.num_palette_entries; ++colorIndex)
                 {
@@ -911,7 +920,7 @@ namespace he::scribe::editor
                     CompiledColorGlyphLayerEntry& layer = out.layers.EmplaceBack();
                     layer.glyphIndex = layerGlyphIndex;
                     layer.paletteEntryIndex = colorIndex;
-                    layer.flags = 0;
+                    layer.colorSource = FontFaceColorSource::Palette;
                     layer.transform00 = 1.0f;
                     layer.transform01 = 0.0f;
                     layer.transform10 = 0.0f;
@@ -922,7 +931,7 @@ namespace he::scribe::editor
                     if (colorIndex == 0xFFFFu)
                     {
                         layer.paletteEntryIndex = 0;
-                        layer.flags |= CompiledFontColorLayerFlagUseForeground;
+                        layer.colorSource = FontFaceColorSource::Foreground;
                     }
                 }
 
@@ -953,7 +962,7 @@ namespace he::scribe::editor
                     CompiledColorGlyphEntry& colorGlyph = out.colorGlyphs[glyphIndex];
                     colorGlyph.firstLayer = firstLayer;
                     colorGlyph.layerCount = resolvedLayerCount;
-                    glyphs[glyphIndex].flags |= CompiledFontGlyphFlagHasColorLayers;
+                    glyphs[glyphIndex].hasColorLayers = true;
                 }
             }
 
@@ -1029,7 +1038,7 @@ namespace he::scribe::editor
                 continue;
             }
 
-            glyphEntry.flags |= CompiledFontGlyphFlagHasGeometry;
+            glyphEntry.hasGeometry = true;
             glyphEntry.boundsMinX = curves[0].minX;
             glyphEntry.boundsMinY = curves[0].minY;
             glyphEntry.boundsMaxX = curves[0].maxX;

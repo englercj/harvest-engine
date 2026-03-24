@@ -3,7 +3,7 @@
 #pragma once
 
 #include "he/scribe/renderer.h"
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 namespace he::scribe
 {
@@ -25,13 +25,13 @@ namespace he::scribe
 
     bool BuildCompiledGlyphResourceData(
         CompiledGlyphResourceData& out,
-        const LoadedFontFaceBlob& fontFace,
+        const FontFaceResourceReader& fontFace,
         uint32_t glyphIndex);
 
-    uint32_t SelectCompiledFontPalette(const LoadedFontFaceBlob& fontFace, bool darkBackgroundPreferred);
+    uint32_t SelectCompiledFontPalette(const FontFaceResourceReader& fontFace, bool darkBackgroundPreferred);
     bool GetCompiledColorGlyphLayers(
         Vector<CompiledColorGlyphLayer>& out,
-        const LoadedFontFaceBlob& fontFace,
+        const FontFaceResourceReader& fontFace,
         uint32_t glyphIndex,
         uint32_t paletteIndex,
         const Vec4f& foregroundColor = { 1.0f, 1.0f, 1.0f, 1.0f });

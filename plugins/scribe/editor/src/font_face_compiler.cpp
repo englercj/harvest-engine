@@ -5,7 +5,7 @@
 #include "font_compile_geometry.h"
 #include "font_import_utils.h"
 
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/assets/types.h"
 #include "he/assets/types_fmt.h"
@@ -20,7 +20,7 @@ namespace he::scribe::editor
     {
         constexpr assets::ResourceId ImportSourceId{ ScribeFontFace::ImportSourceResourceName };
         constexpr assets::ResourceId ImportMetadataId{ ScribeFontFace::ImportMetadataResourceName };
-        constexpr assets::ResourceId RuntimeBlobId{ ScribeFontFace::RuntimeBlobResourceName };
+        constexpr assets::ResourceId RuntimeBlobId{ ScribeFontFace::RuntimeResourceName };
 
         Vector<schema::Word> importSourceBytes;
         Result r = ctx.db.GetResource(importSourceBytes, ctx.asset.GetUuid(), ImportSourceId);
@@ -69,48 +69,6 @@ namespace he::scribe::editor
             return false;
         }
 
-        schema::Builder shapingBuilder;
-        FontFaceShapingData::Builder shaping = shapingBuilder.AddStruct<FontFaceShapingData>();
-        shaping.SetFaceIndex(asset.GetFaceIndex());
-        shaping.SetSourceFormat(importSource.GetSourceFormat());
-
-        if (asset.GetPreserveSourceBytesForShaping())
-        {
-            const auto sourceBlob = importSource.GetSourceBytes();
-            shaping.SetSourceBytes(shapingBuilder.AddBlob({ sourceBlob.Data(), sourceBlob.Size() }));
-        }
-        else
-        {
-            shaping.SetSourceBytes(shapingBuilder.AddBlob({}));
-        }
-
-        shapingBuilder.SetRoot(shaping);
-
-        schema::Builder metadataBuilder;
-        FontFaceImportMetadata::Builder metadata = metadataBuilder.AddStruct<FontFaceImportMetadata>();
-        FillFontFaceImportMetadata(metadata, {
-            asset.GetFaceIndex(),
-            importSource.GetFaceCount(),
-            importSource.GetSourceFormat(),
-            String(importMetadata.GetMetadata().GetFamilyName()),
-            String(importMetadata.GetMetadata().GetStyleName()),
-            String(importMetadata.GetMetadata().GetPostscriptName()),
-            importMetadata.GetMetadata().GetGlyphCount(),
-            importMetadata.GetMetadata().GetMetrics().GetUnitsPerEm(),
-            importMetadata.GetMetadata().GetMetrics().GetMaxAdvanceWidth(),
-            importMetadata.GetMetadata().GetMetrics().GetMaxAdvanceHeight(),
-            importMetadata.GetMetadata().GetMetrics().GetAscender(),
-            importMetadata.GetMetadata().GetMetrics().GetDescender(),
-            importMetadata.GetMetadata().GetMetrics().GetLineHeight(),
-            importMetadata.GetMetadata().GetMetrics().GetCapHeight(),
-            importMetadata.GetMetadata().GetIsScalable(),
-            importMetadata.GetMetadata().GetHasColorGlyphs(),
-            importMetadata.GetMetadata().GetHasKerning(),
-            importMetadata.GetMetadata().GetHasHorizontalLayout(),
-            importMetadata.GetMetadata().GetHasVerticalLayout()
-        });
-        metadataBuilder.SetRoot(metadata);
-
         CompiledFontRenderData renderData{};
         Stopwatch timer;
         {
@@ -137,8 +95,46 @@ namespace he::scribe::editor
             HE_KV(reused_bands, renderData.reusedBandCount),
             HE_KV(reused_band_payload_texels, renderData.reusedBandPayloadTexelCount));
 
-        schema::Builder renderBuilder;
-        FontFaceRenderData::Builder render = renderBuilder.AddStruct<FontFaceRenderData>();
+        schema::Builder blobBuilder;
+        FontFaceResource::Builder blob = blobBuilder.AddStruct<FontFaceResource>();
+
+        FontFaceShapingData::Builder shaping = blob.InitShaping();
+        shaping.SetFaceIndex(asset.GetFaceIndex());
+        shaping.SetSourceFormat(importSource.GetSourceFormat());
+        if (asset.GetPreserveSourceBytesForShaping())
+        {
+            const auto sourceBlob = importSource.GetSourceBytes();
+            shaping.SetSourceBytes(blobBuilder.AddBlob({ sourceBlob.Data(), sourceBlob.Size() }));
+        }
+        else
+        {
+            shaping.SetSourceBytes(blobBuilder.AddBlob({}));
+        }
+
+        FontFaceImportMetadata::Builder metadata = blob.InitMetadata();
+        FillFontFaceImportMetadata(metadata, {
+            asset.GetFaceIndex(),
+            importSource.GetFaceCount(),
+            importSource.GetSourceFormat(),
+            String(importMetadata.GetMetadata().GetFamilyName()),
+            String(importMetadata.GetMetadata().GetStyleName()),
+            String(importMetadata.GetMetadata().GetPostscriptName()),
+            importMetadata.GetMetadata().GetGlyphCount(),
+            importMetadata.GetMetadata().GetMetrics().GetUnitsPerEm(),
+            importMetadata.GetMetadata().GetMetrics().GetMaxAdvanceWidth(),
+            importMetadata.GetMetadata().GetMetrics().GetMaxAdvanceHeight(),
+            importMetadata.GetMetadata().GetMetrics().GetAscender(),
+            importMetadata.GetMetadata().GetMetrics().GetDescender(),
+            importMetadata.GetMetadata().GetMetrics().GetLineHeight(),
+            importMetadata.GetMetadata().GetMetrics().GetCapHeight(),
+            importMetadata.GetMetadata().GetIsScalable(),
+            importMetadata.GetMetadata().GetHasColorGlyphs(),
+            importMetadata.GetMetadata().GetHasKerning(),
+            importMetadata.GetMetadata().GetHasHorizontalLayout(),
+            importMetadata.GetMetadata().GetHasVerticalLayout()
+        });
+
+        FontFaceRenderData::Builder render = blob.InitRender();
         render.SetCurveTextureWidth(renderData.curveTextureWidth);
         render.SetCurveTextureHeight(renderData.curveTextureHeight);
         render.SetBandTextureWidth(renderData.bandTextureWidth);
@@ -165,12 +161,11 @@ namespace he::scribe::editor
             dstGlyph.SetBandMaxX(srcGlyph.bandMaxX);
             dstGlyph.SetBandMaxY(srcGlyph.bandMaxY);
             dstGlyph.SetFillRule(srcGlyph.fillRule);
-            dstGlyph.SetFlags(srcGlyph.flags);
+            dstGlyph.SetHasGeometry(srcGlyph.hasGeometry);
+            dstGlyph.SetHasColorLayers(srcGlyph.hasColorLayers);
         }
-        renderBuilder.SetRoot(render);
 
-        schema::Builder paintBuilder;
-        FontFacePaintData::Builder paint = paintBuilder.AddStruct<FontFacePaintData>();
+        FontFacePaintData::Builder paint = blob.InitPaint();
         paint.SetDefaultPaletteIndex(renderData.paint.defaultPaletteIndex);
 
         auto palettes = paint.InitPalettes(renderData.paint.palettes.Size());
@@ -178,7 +173,7 @@ namespace he::scribe::editor
         {
             const CompiledFontPalette& srcPalette = renderData.paint.palettes[paletteIndex];
             FontFacePalette::Builder dstPalette = palettes[paletteIndex];
-            dstPalette.SetFlags(srcPalette.flags);
+            dstPalette.SetBackground(srcPalette.background);
 
             auto colors = dstPalette.InitColors(srcPalette.colors.Size());
             for (uint32_t colorIndex = 0; colorIndex < srcPalette.colors.Size(); ++colorIndex)
@@ -208,7 +203,7 @@ namespace he::scribe::editor
             FontFaceColorGlyphLayer::Builder dstLayer = layers[layerIndex];
             dstLayer.SetGlyphIndex(srcLayer.glyphIndex);
             dstLayer.SetPaletteEntryIndex(srcLayer.paletteEntryIndex);
-            dstLayer.SetFlags(srcLayer.flags);
+            dstLayer.SetColorSource(srcLayer.colorSource);
             dstLayer.SetAlphaScale(srcLayer.alphaScale);
             dstLayer.SetTransform00(srcLayer.transform00);
             dstLayer.SetTransform01(srcLayer.transform01);
@@ -217,20 +212,8 @@ namespace he::scribe::editor
             dstLayer.SetTransformTx(srcLayer.transformTx);
             dstLayer.SetTransformTy(srcLayer.transformTy);
         }
-        paintBuilder.SetRoot(paint);
-
-        schema::Builder blobBuilder;
-        CompiledFontFaceBlob::Builder blob = blobBuilder.AddStruct<CompiledFontFaceBlob>();
-        RuntimeBlobHeader::Builder header = blob.InitHeader();
-        header.SetFormatVersion(RuntimeBlobFormatVersion);
-        header.SetKind(RuntimeBlobKind::FontFace);
-        header.SetFlags(0);
-        blob.SetShapingData(blobBuilder.AddBlob(Span<const schema::Word>(shapingBuilder).AsBytes()));
         blob.SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
         blob.SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
-        blob.SetPaintData(blobBuilder.AddBlob(Span<const schema::Word>(paintBuilder).AsBytes()));
-        blob.SetMetadataData(blobBuilder.AddBlob(Span<const schema::Word>(metadataBuilder).AsBytes()));
-        blob.SetRenderData(blobBuilder.AddBlob(Span<const schema::Word>(renderBuilder).AsBytes()));
         blobBuilder.SetRoot(blob);
 
         r = ctx.db.AddResource(ctx.asset.GetUuid(), RuntimeBlobId, Span<const schema::Word>(blobBuilder).AsBytes());

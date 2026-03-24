@@ -549,7 +549,7 @@ namespace he::scribe
 
     bool Renderer::CreateCompiledGlyphResource(
         GlyphResource& out,
-        const LoadedFontFaceBlob& fontFace,
+        const FontFaceResourceReader& fontFace,
         uint32_t glyphIndex)
     {
         CompiledGlyphResourceData glyphData{};
@@ -573,7 +573,7 @@ namespace he::scribe
 
     bool Renderer::CreateCompiledVectorShapeResource(
         GlyphResource& out,
-        const LoadedVectorImageBlob& image,
+        const VectorImageResourceReader& image,
         uint32_t shapeIndex)
     {
         CompiledVectorShapeResourceData shapeData{};
@@ -709,7 +709,7 @@ namespace he::scribe
     {
         for (const RetainedTextDraw& draw : text.GetDraws())
         {
-            const LoadedFontFaceBlob* fontFace = text.GetFontFace(draw.fontFaceIndex);
+            const FontFaceResourceReader* fontFace = text.GetFontFace(draw.fontFaceIndex);
             if (!fontFace)
             {
                 continue;
@@ -727,7 +727,7 @@ namespace he::scribe
 
     bool Renderer::PrepareRetainedVectorImage(const RetainedVectorImageModel& image)
     {
-        const LoadedVectorImageBlob* loadedImage = image.GetImage();
+        const VectorImageResourceReader* loadedImage = image.GetImage();
         if (!loadedImage)
         {
             return false;
@@ -789,7 +789,7 @@ namespace he::scribe
 
         for (const RetainedTextDraw& draw : text.GetDraws())
         {
-            const LoadedFontFaceBlob* fontFace = text.GetFontFace(draw.fontFaceIndex);
+            const FontFaceResourceReader* fontFace = text.GetFontFace(draw.fontFaceIndex);
             if (!fontFace)
             {
                 continue;
@@ -841,7 +841,7 @@ namespace he::scribe
 
     void Renderer::QueueRetainedVectorImage(const RetainedVectorImageModel& image, const RetainedVectorImageInstanceDesc& instance)
     {
-        const LoadedVectorImageBlob* loadedImage = image.GetImage();
+        const VectorImageResourceReader* loadedImage = image.GetImage();
         if (!loadedImage)
         {
             return;
@@ -1054,14 +1054,14 @@ namespace he::scribe
     }
 
     bool Renderer::EnsureRetainedGlyphResource(
-        const LoadedFontFaceBlob& fontFace,
+        const FontFaceResourceReader& fontFace,
         uint32_t glyphIndex,
         const GlyphResource*& out)
     {
         out = nullptr;
 
         CachedCompiledFontGlyphSet* glyphSet = nullptr;
-        const schema::Word* fontFaceData = fontFace.root.Data();
+        const schema::Word* fontFaceData = fontFace.Data();
         for (CachedCompiledFontGlyphSet& cachedSet : m_cachedFontGlyphSets)
         {
             if (cachedSet.fontFaceData == fontFaceData)
@@ -1075,7 +1075,7 @@ namespace he::scribe
         {
             glyphSet = &m_cachedFontGlyphSets.EmplaceBack();
             glyphSet->fontFaceData = fontFaceData;
-            glyphSet->glyphIndices.Resize(fontFace.metadata.GetGlyphCount(), int32_t(-1));
+            glyphSet->glyphIndices.Resize(fontFace.GetMetadata().GetGlyphCount(), int32_t(-1));
         }
 
         if (glyphIndex < glyphSet->glyphIndices.Size())
@@ -1106,14 +1106,14 @@ namespace he::scribe
     }
 
     bool Renderer::EnsureRetainedVectorShapeResource(
-        const LoadedVectorImageBlob& image,
+        const VectorImageResourceReader& image,
         uint32_t shapeIndex,
         const GlyphResource*& out)
     {
         out = nullptr;
 
         CachedCompiledVectorShapeSet* shapeSet = nullptr;
-        const schema::Word* imageData = image.root.Data();
+        const schema::Word* imageData = image.Data();
         for (CachedCompiledVectorShapeSet& cachedSet : m_cachedVectorShapeSets)
         {
             if (cachedSet.imageData == imageData)
@@ -1127,7 +1127,7 @@ namespace he::scribe
         {
             shapeSet = &m_cachedVectorShapeSets.EmplaceBack();
             shapeSet->imageData = imageData;
-            shapeSet->shapeIndices.Resize(image.render.GetShapes().Size(), int32_t(-1));
+            shapeSet->shapeIndices.Resize(image.GetRender().GetShapes().Size(), int32_t(-1));
         }
 
         if (shapeIndex < shapeSet->shapeIndices.Size())

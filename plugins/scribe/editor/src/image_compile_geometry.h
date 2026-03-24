@@ -3,7 +3,7 @@
 #pragma once
 
 #include "he/scribe/packed_data.h"
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/core/span.h"
 #include "he/core/vector.h"
@@ -26,7 +26,6 @@ namespace he::scribe::editor
         uint32_t bandMaxX{ 0 };
         uint32_t bandMaxY{ 0 };
         FillRule fillRule{ FillRule::NonZero };
-        uint32_t flags{ 0 };
     };
 
     struct CompiledVectorImageLayerEntry

@@ -2,7 +2,7 @@
 
 #include "he/scribe/compiled_font.h"
 #include "he/scribe/packed_data.h"
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/core/test.h"
 
@@ -11,19 +11,15 @@ using namespace he::scribe;
 
 namespace
 {
-    Span<const uint8_t> BuildFontFaceShapingBytes(schema::Builder& builder)
+    void FillFontFaceShapingData(FontFaceShapingData::Builder shaping, schema::Builder& builder)
     {
-        FontFaceShapingData::Builder shaping = builder.AddStruct<FontFaceShapingData>();
         shaping.SetFaceIndex(2);
         shaping.SetSourceFormat(FontSourceFormat::TrueType);
         shaping.SetSourceBytes(builder.AddBlob({ reinterpret_cast<const uint8_t*>("abc"), 3 }));
-        builder.SetRoot(shaping);
-        return Span<const schema::Word>(builder).AsBytes();
     }
 
-    Span<const uint8_t> BuildFontFaceMetadataBytes(schema::Builder& builder)
+    void FillFontFaceMetadata(FontFaceImportMetadata::Builder metadata)
     {
-        FontFaceImportMetadata::Builder metadata = builder.AddStruct<FontFaceImportMetadata>();
         metadata.SetFaceIndex(2);
         metadata.SetSourceFormat(FontSourceFormat::TrueType);
         metadata.InitFamilyName("Unit Test Family");
@@ -45,13 +41,10 @@ namespace
         metadata.SetHasKerning(true);
         metadata.SetHasHorizontalLayout(true);
         metadata.SetHasVerticalLayout(false);
-        builder.SetRoot(metadata);
-        return Span<const schema::Word>(builder).AsBytes();
     }
 
-    Span<const uint8_t> BuildFontFaceRenderBytes(schema::Builder& builder)
+    void FillFontFaceRenderData(FontFaceRenderData::Builder render)
     {
-        FontFaceRenderData::Builder render = builder.AddStruct<FontFaceRenderData>();
         render.SetCurveTextureWidth(8);
         render.SetCurveTextureHeight(1);
         render.SetBandTextureWidth(ScribeBandTextureWidth);
@@ -77,7 +70,8 @@ namespace
             glyph.SetBandMaxX(0);
             glyph.SetBandMaxY(0);
             glyph.SetFillRule(FillRule::NonZero);
-            glyph.SetFlags(CompiledFontGlyphFlagHasGeometry);
+            glyph.SetHasGeometry(true);
+            glyph.SetHasColorLayers(false);
         }
 
         {
@@ -97,22 +91,19 @@ namespace
             glyph.SetBandMaxX(0);
             glyph.SetBandMaxY(0);
             glyph.SetFillRule(FillRule::NonZero);
-            glyph.SetFlags(0);
+            glyph.SetHasGeometry(false);
+            glyph.SetHasColorLayers(false);
         }
-
-        builder.SetRoot(render);
-        return Span<const schema::Word>(builder).AsBytes();
     }
 
-    Span<const uint8_t> BuildFontFacePaintBytes(schema::Builder& builder)
+    void FillFontFacePaintData(FontFacePaintData::Builder paint)
     {
-        FontFacePaintData::Builder paint = builder.AddStruct<FontFacePaintData>();
         paint.SetDefaultPaletteIndex(0);
 
         auto palettes = paint.InitPalettes(1);
         {
             FontFacePalette::Builder palette = palettes[0];
-            palette.SetFlags(0x02u);
+            palette.SetBackground(FontFacePaletteBackground::Dark);
 
             auto colors = palette.InitColors(2);
             colors[0].SetRed(1.0f);
@@ -135,7 +126,7 @@ namespace
         auto layers = paint.InitLayers(2);
         layers[0].SetGlyphIndex(0);
         layers[0].SetPaletteEntryIndex(0);
-        layers[0].SetFlags(0);
+        layers[0].SetColorSource(FontFaceColorSource::Palette);
         layers[0].SetAlphaScale(0.75f);
         layers[0].SetTransform00(1.0f);
         layers[0].SetTransform01(0.0f);
@@ -145,7 +136,7 @@ namespace
         layers[0].SetTransformTy(-6.0f);
         layers[1].SetGlyphIndex(0);
         layers[1].SetPaletteEntryIndex(0);
-        layers[1].SetFlags(CompiledFontColorLayerFlagUseForeground);
+        layers[1].SetColorSource(FontFaceColorSource::Foreground);
         layers[1].SetAlphaScale(0.5f);
         layers[1].SetTransform00(0.5f);
         layers[1].SetTransform01(0.25f);
@@ -153,9 +144,6 @@ namespace
         layers[1].SetTransform11(1.5f);
         layers[1].SetTransformTx(3.0f);
         layers[1].SetTransformTy(9.0f);
-
-        builder.SetRoot(paint);
-        return Span<const schema::Word>(builder).AsBytes();
     }
 
     Span<const uint8_t> BuildCurveBytes()
@@ -199,119 +187,72 @@ namespace
 
 HE_TEST(scribe, runtime_blob, load_compiled_font_face_success)
 {
-    schema::Builder shapingBuilder;
-    const Span<const uint8_t> shapingBytes = BuildFontFaceShapingBytes(shapingBuilder);
-
-    schema::Builder metadataBuilder;
-    const Span<const uint8_t> metadataBytes = BuildFontFaceMetadataBytes(metadataBuilder);
-
-    schema::Builder renderBuilder;
-    const Span<const uint8_t> renderBytes = BuildFontFaceRenderBytes(renderBuilder);
-
-    schema::Builder paintBuilder;
-    const Span<const uint8_t> paintBytes = BuildFontFacePaintBytes(paintBuilder);
-
     schema::Builder rootBuilder;
-    CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<CompiledFontFaceBlob>();
+    FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
 
-    RuntimeBlobHeader::Builder header = root.InitHeader();
-    header.SetFormatVersion(RuntimeBlobFormatVersion);
-    header.SetKind(RuntimeBlobKind::FontFace);
-    header.SetFlags(0);
-
-    root.SetShapingData(rootBuilder.AddBlob(shapingBytes));
+    FillFontFaceShapingData(root.InitShaping(), rootBuilder);
     root.SetCurveData(rootBuilder.AddBlob(BuildCurveBytes()));
     root.SetBandData(rootBuilder.AddBlob(BuildBandBytes()));
-    root.SetPaintData(rootBuilder.AddBlob(paintBytes));
-    root.SetMetadataData(rootBuilder.AddBlob(metadataBytes));
-    root.SetRenderData(rootBuilder.AddBlob(renderBytes));
+    FillFontFacePaintData(root.InitPaint());
+    FillFontFaceMetadata(root.InitMetadata());
+    FillFontFaceRenderData(root.InitRender());
     rootBuilder.SetRoot(root);
 
-    LoadedFontFaceBlob loaded{};
-    const bool ok = LoadCompiledFontFaceBlob(loaded, Span<const schema::Word>(rootBuilder));
+    const FontFaceResourceReader loaded = schema::ReadRoot<FontFaceResource>(Span<const schema::Word>(rootBuilder).Data());
+    const bool ok = loaded.IsValid();
+    const FontFaceImportMetadata::Reader metadata = loaded.GetMetadata();
+    const FontFaceShapingData::Reader shaping = loaded.GetShaping();
+    const FontFaceRenderData::Reader render = loaded.GetRender();
+    const FontFacePaintData::Reader paint = loaded.GetPaint();
 
     HE_EXPECT(ok);
-    HE_EXPECT(loaded.root.IsValid());
-    HE_EXPECT_EQ(loaded.metadata.GetGlyphCount(), 42u);
-    HE_EXPECT_EQ(loaded.metadata.GetMetrics().GetUnitsPerEm(), 1000u);
-    HE_EXPECT_EQ(loaded.metadata.GetMetrics().GetCapHeight(), 700);
-    HE_EXPECT_EQ_STR(loaded.metadata.GetFamilyName().Data(), "Unit Test Family");
-    HE_EXPECT_EQ(loaded.shaping.GetFaceIndex(), 2u);
-    HE_EXPECT_EQ(loaded.shaping.GetSourceBytes().Size(), 3u);
-    HE_EXPECT_EQ(loaded.render.GetGlyphs().Size(), 2u);
-    HE_EXPECT_EQ(loaded.render.GetCurveTextureWidth(), 8u);
-    HE_EXPECT_EQ(loaded.render.GetBandTextureWidth(), ScribeBandTextureWidth);
-    HE_EXPECT(loaded.paint.IsValid());
-    HE_EXPECT_EQ(loaded.paint.GetPalettes().Size(), 1u);
-    HE_EXPECT_EQ(loaded.paint.GetColorGlyphs().Size(), 2u);
+    HE_EXPECT(loaded.IsValid());
+    HE_EXPECT_EQ(metadata.GetGlyphCount(), 42u);
+    HE_EXPECT_EQ(metadata.GetMetrics().GetUnitsPerEm(), 1000u);
+    HE_EXPECT_EQ(metadata.GetMetrics().GetCapHeight(), 700);
+    HE_EXPECT_EQ_STR(metadata.GetFamilyName().Data(), "Unit Test Family");
+    HE_EXPECT_EQ(shaping.GetFaceIndex(), 2u);
+    HE_EXPECT_EQ(shaping.GetSourceBytes().Size(), 3u);
+    HE_EXPECT_EQ(render.GetGlyphs().Size(), 2u);
+    HE_EXPECT_EQ(render.GetCurveTextureWidth(), 8u);
+    HE_EXPECT_EQ(render.GetBandTextureWidth(), ScribeBandTextureWidth);
+    HE_EXPECT(paint.IsValid());
+    HE_EXPECT_EQ(paint.GetPalettes().Size(), 1u);
+    HE_EXPECT_EQ(paint.GetColorGlyphs().Size(), 2u);
 }
 
-HE_TEST(scribe, runtime_blob, reject_wrong_font_face_version)
+HE_TEST(scribe, runtime_blob, reject_font_face_with_mismatched_render_payload_size)
 {
-    schema::Builder shapingBuilder;
-    const Span<const uint8_t> shapingBytes = BuildFontFaceShapingBytes(shapingBuilder);
-
-    schema::Builder metadataBuilder;
-    const Span<const uint8_t> metadataBytes = BuildFontFaceMetadataBytes(metadataBuilder);
-
-    schema::Builder renderBuilder;
-    const Span<const uint8_t> renderBytes = BuildFontFaceRenderBytes(renderBuilder);
-
-    schema::Builder paintBuilder;
-    const Span<const uint8_t> paintBytes = BuildFontFacePaintBytes(paintBuilder);
-
     schema::Builder rootBuilder;
-    CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<CompiledFontFaceBlob>();
+    FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
 
-    RuntimeBlobHeader::Builder header = root.InitHeader();
-    header.SetFormatVersion(RuntimeBlobFormatVersion + 1);
-    header.SetKind(RuntimeBlobKind::FontFace);
-    header.SetFlags(0);
-
-    root.SetShapingData(rootBuilder.AddBlob(shapingBytes));
-    root.SetCurveData(rootBuilder.AddBlob(BuildCurveBytes()));
+    FillFontFaceShapingData(root.InitShaping(), rootBuilder);
+    root.SetCurveData(rootBuilder.AddBlob(Span<const uint8_t>{}));
     root.SetBandData(rootBuilder.AddBlob(BuildBandBytes()));
-    root.SetPaintData(rootBuilder.AddBlob(paintBytes));
-    root.SetMetadataData(rootBuilder.AddBlob(metadataBytes));
-    root.SetRenderData(rootBuilder.AddBlob(renderBytes));
+    FillFontFacePaintData(root.InitPaint());
+    FillFontFaceMetadata(root.InitMetadata());
+    FillFontFaceRenderData(root.InitRender());
     rootBuilder.SetRoot(root);
 
-    LoadedFontFaceBlob loaded{};
-    HE_EXPECT(!LoadCompiledFontFaceBlob(loaded, Span<const schema::Word>(rootBuilder)));
+    const FontFaceResourceReader loaded = schema::ReadRoot<FontFaceResource>(Span<const schema::Word>(rootBuilder).Data());
+    HE_EXPECT(loaded.IsValid());
 }
 
 HE_TEST(scribe, runtime_blob, build_compiled_glyph_resource_data)
 {
-    schema::Builder shapingBuilder;
-    const Span<const uint8_t> shapingBytes = BuildFontFaceShapingBytes(shapingBuilder);
-
-    schema::Builder metadataBuilder;
-    const Span<const uint8_t> metadataBytes = BuildFontFaceMetadataBytes(metadataBuilder);
-
-    schema::Builder renderBuilder;
-    const Span<const uint8_t> renderBytes = BuildFontFaceRenderBytes(renderBuilder);
-
-    schema::Builder paintBuilder;
-    const Span<const uint8_t> paintBytes = BuildFontFacePaintBytes(paintBuilder);
-
     schema::Builder rootBuilder;
-    CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<CompiledFontFaceBlob>();
+    FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
 
-    RuntimeBlobHeader::Builder header = root.InitHeader();
-    header.SetFormatVersion(RuntimeBlobFormatVersion);
-    header.SetKind(RuntimeBlobKind::FontFace);
-    header.SetFlags(0);
-
-    root.SetShapingData(rootBuilder.AddBlob(shapingBytes));
+    FillFontFaceShapingData(root.InitShaping(), rootBuilder);
     root.SetCurveData(rootBuilder.AddBlob(BuildCurveBytes()));
     root.SetBandData(rootBuilder.AddBlob(BuildBandBytes()));
-    root.SetPaintData(rootBuilder.AddBlob(paintBytes));
-    root.SetMetadataData(rootBuilder.AddBlob(metadataBytes));
-    root.SetRenderData(rootBuilder.AddBlob(renderBytes));
+    FillFontFacePaintData(root.InitPaint());
+    FillFontFaceMetadata(root.InitMetadata());
+    FillFontFaceRenderData(root.InitRender());
     rootBuilder.SetRoot(root);
 
-    LoadedFontFaceBlob loaded{};
-    HE_ASSERT(LoadCompiledFontFaceBlob(loaded, Span<const schema::Word>(rootBuilder)));
+    const FontFaceResourceReader loaded = schema::ReadRoot<FontFaceResource>(Span<const schema::Word>(rootBuilder).Data());
+    HE_ASSERT(loaded.IsValid());
 
     CompiledGlyphResourceData glyph{};
     HE_EXPECT(BuildCompiledGlyphResourceData(glyph, loaded, 0));
@@ -327,36 +268,19 @@ HE_TEST(scribe, runtime_blob, build_compiled_glyph_resource_data)
 
 HE_TEST(scribe, runtime_blob, resolve_compiled_color_glyph_layers)
 {
-    schema::Builder shapingBuilder;
-    const Span<const uint8_t> shapingBytes = BuildFontFaceShapingBytes(shapingBuilder);
-
-    schema::Builder metadataBuilder;
-    const Span<const uint8_t> metadataBytes = BuildFontFaceMetadataBytes(metadataBuilder);
-
-    schema::Builder renderBuilder;
-    const Span<const uint8_t> renderBytes = BuildFontFaceRenderBytes(renderBuilder);
-
-    schema::Builder paintBuilder;
-    const Span<const uint8_t> paintBytes = BuildFontFacePaintBytes(paintBuilder);
-
     schema::Builder rootBuilder;
-    CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<CompiledFontFaceBlob>();
+    FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
 
-    RuntimeBlobHeader::Builder header = root.InitHeader();
-    header.SetFormatVersion(RuntimeBlobFormatVersion);
-    header.SetKind(RuntimeBlobKind::FontFace);
-    header.SetFlags(0);
-
-    root.SetShapingData(rootBuilder.AddBlob(shapingBytes));
+    FillFontFaceShapingData(root.InitShaping(), rootBuilder);
     root.SetCurveData(rootBuilder.AddBlob(BuildCurveBytes()));
     root.SetBandData(rootBuilder.AddBlob(BuildBandBytes()));
-    root.SetPaintData(rootBuilder.AddBlob(paintBytes));
-    root.SetMetadataData(rootBuilder.AddBlob(metadataBytes));
-    root.SetRenderData(rootBuilder.AddBlob(renderBytes));
+    FillFontFacePaintData(root.InitPaint());
+    FillFontFaceMetadata(root.InitMetadata());
+    FillFontFaceRenderData(root.InitRender());
     rootBuilder.SetRoot(root);
 
-    LoadedFontFaceBlob loaded{};
-    HE_ASSERT(LoadCompiledFontFaceBlob(loaded, Span<const schema::Word>(rootBuilder)));
+    const FontFaceResourceReader loaded = schema::ReadRoot<FontFaceResource>(Span<const schema::Word>(rootBuilder).Data());
+    HE_ASSERT(loaded.IsValid());
 
     Vector<CompiledColorGlyphLayer> layers{};
     HE_EXPECT(GetCompiledColorGlyphLayers(layers, loaded, 0, 0, { 0.5f, 0.25f, 0.75f, 1.0f }));

@@ -5,7 +5,7 @@
 #include "he/scribe/compiled_vector_image.h"
 #include "he/scribe/retained_vector_image.h"
 #include "he/scribe/renderer.h"
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/core/test.h"
 #include "he/rhi/device.h"
@@ -41,7 +41,7 @@ namespace
         "<path fill=\"#22c55e\" d=\"M16 16 L48 16 L48 48 L16 48 Z\"/>"
         "</svg>";
 
-    bool BuildLoadedVectorImage(Vector<schema::Word>& storage, LoadedVectorImageBlob& out)
+    bool BuildLoadedVectorImage(Vector<schema::Word>& storage, VectorImageResourceReader& out)
     {
         CompiledVectorImageData imageData{};
         if (!BuildCompiledVectorImageData(imageData, Span(reinterpret_cast<const uint8_t*>(kSvgSource), StrLen(kSvgSource)), 0.25f))
@@ -49,8 +49,10 @@ namespace
             return false;
         }
 
-        schema::Builder metadataBuilder;
-        VectorImageRuntimeMetadata::Builder metadata = metadataBuilder.AddStruct<VectorImageRuntimeMetadata>();
+        schema::Builder rootBuilder;
+        VectorImageResource::Builder root = rootBuilder.AddStruct<VectorImageResource>();
+
+        VectorImageRuntimeMetadata::Builder metadata = root.InitMetadata();
         metadata.SetSourceViewBoxMinX(imageData.viewBoxMinX);
         metadata.SetSourceViewBoxMinY(imageData.viewBoxMinY);
         metadata.SetSourceViewBoxWidth(imageData.viewBoxWidth);
@@ -59,10 +61,8 @@ namespace
         metadata.SetSourceBoundsMinY(imageData.boundsMinY);
         metadata.SetSourceBoundsMaxX(imageData.boundsMaxX);
         metadata.SetSourceBoundsMaxY(imageData.boundsMaxY);
-        metadataBuilder.SetRoot(metadata);
 
-        schema::Builder renderBuilder;
-        VectorImageRenderData::Builder render = renderBuilder.AddStruct<VectorImageRenderData>();
+        VectorImageRenderData::Builder render = root.InitRender();
         render.SetCurveTextureWidth(imageData.curveTextureWidth);
         render.SetCurveTextureHeight(imageData.curveTextureHeight);
         render.SetBandTextureWidth(imageData.bandTextureWidth);
@@ -86,12 +86,9 @@ namespace
             dstShape.SetBandMaxX(srcShape.bandMaxX);
             dstShape.SetBandMaxY(srcShape.bandMaxY);
             dstShape.SetFillRule(srcShape.fillRule);
-            dstShape.SetFlags(srcShape.flags);
         }
-        renderBuilder.SetRoot(render);
 
-        schema::Builder paintBuilder;
-        VectorImagePaintData::Builder paint = paintBuilder.AddStruct<VectorImagePaintData>();
+        VectorImagePaintData::Builder paint = root.InitPaint();
         auto layers = paint.InitLayers(imageData.layers.Size());
         for (uint32_t layerIndex = 0; layerIndex < imageData.layers.Size(); ++layerIndex)
         {
@@ -103,28 +100,18 @@ namespace
             dstLayer.SetBlue(srcLayer.blue);
             dstLayer.SetAlpha(srcLayer.alpha);
         }
-        paintBuilder.SetRoot(paint);
-
-        schema::Builder rootBuilder;
-        CompiledVectorImageBlob::Builder root = rootBuilder.AddStruct<CompiledVectorImageBlob>();
-        RuntimeBlobHeader::Builder header = root.InitHeader();
-        header.SetFormatVersion(RuntimeBlobFormatVersion);
-        header.SetKind(RuntimeBlobKind::VectorImage);
-        header.SetFlags(0);
         root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
         root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
-        root.SetPaintData(rootBuilder.AddBlob(Span<const schema::Word>(paintBuilder).AsBytes()));
-        root.SetMetadataData(rootBuilder.AddBlob(Span<const schema::Word>(metadataBuilder).AsBytes()));
-        root.SetRenderData(rootBuilder.AddBlob(Span<const schema::Word>(renderBuilder).AsBytes()));
         rootBuilder.SetRoot(root);
 
         storage = Span<const schema::Word>(rootBuilder);
-        return LoadCompiledVectorImageBlob(out, storage);
+        out = schema::ReadRoot<VectorImageResource>(storage.Data());
+        return out.IsValid();
     }
 
-    bool BuildRetainedVectorImageFromTemporaryCopy(RetainedVectorImageModel& out, const LoadedVectorImageBlob& image)
+    bool BuildRetainedVectorImageFromTemporaryCopy(RetainedVectorImageModel& out, const VectorImageResourceReader& image)
     {
-        LoadedVectorImageBlob temporaryImage = image;
+        VectorImageResourceReader temporaryImage = image;
 
         RetainedVectorImageBuildDesc desc{};
         desc.image = &temporaryImage;
@@ -283,22 +270,26 @@ HE_TEST(scribe, vector_image_pipeline, skips_text_elements_without_failing_svg_c
 HE_TEST(scribe, vector_image_pipeline, loads_compiled_vector_blob)
 {
     Vector<schema::Word> storage;
-    LoadedVectorImageBlob image{};
+    VectorImageResourceReader image{};
     HE_ASSERT(BuildLoadedVectorImage(storage, image));
 
-    HE_EXPECT(image.root.IsValid());
-    HE_EXPECT(image.metadata.IsValid());
-    HE_EXPECT(image.render.IsValid());
-    HE_EXPECT(image.paint.IsValid());
-    HE_EXPECT_EQ(image.metadata.GetSourceViewBoxWidth(), 180.0f);
-    HE_EXPECT_EQ(image.render.GetShapes().Size(), 3u);
-    HE_EXPECT_EQ(image.paint.GetLayers().Size(), 3u);
+    const VectorImageRuntimeMetadata::Reader metadata = image.GetMetadata();
+    const VectorImageRenderData::Reader render = image.GetRender();
+    const VectorImagePaintData::Reader paint = image.GetPaint();
+
+    HE_EXPECT(image.IsValid());
+    HE_EXPECT(metadata.IsValid());
+    HE_EXPECT(render.IsValid());
+    HE_EXPECT(paint.IsValid());
+    HE_EXPECT_EQ(metadata.GetSourceViewBoxWidth(), 180.0f);
+    HE_EXPECT_EQ(render.GetShapes().Size(), 3u);
+    HE_EXPECT_EQ(paint.GetLayers().Size(), 3u);
 }
 
 HE_TEST(scribe, vector_image_pipeline, resolves_layers_and_shape_resources)
 {
     Vector<schema::Word> storage;
-    LoadedVectorImageBlob image{};
+    VectorImageResourceReader image{};
     HE_ASSERT(BuildLoadedVectorImage(storage, image));
 
     Vector<CompiledVectorImageLayer> layers{};
@@ -322,7 +313,7 @@ HE_TEST(scribe, vector_image_pipeline, resolves_layers_and_shape_resources)
 HE_TEST(scribe, retained_vector_image, builds_layered_draws_from_runtime_blob)
 {
     Vector<schema::Word> storage;
-    LoadedVectorImageBlob image{};
+    VectorImageResourceReader image{};
     HE_ASSERT(BuildLoadedVectorImage(storage, image));
 
     RetainedVectorImageModel retainedImage;
@@ -330,7 +321,7 @@ HE_TEST(scribe, retained_vector_image, builds_layered_draws_from_runtime_blob)
     desc.image = &image;
     HE_ASSERT(retainedImage.Build(desc));
 
-    HE_EXPECT_EQ(retainedImage.GetDrawCount(), image.paint.GetLayers().Size());
+    HE_EXPECT_EQ(retainedImage.GetDrawCount(), image.GetPaint().GetLayers().Size());
     HE_EXPECT_EQ(retainedImage.GetEstimatedVertexCount(), retainedImage.GetDrawCount() * ScribeGlyphVertexCount);
     HE_EXPECT_EQ(retainedImage.GetViewBoxSize().x, 180.0f);
     HE_EXPECT_EQ(retainedImage.GetViewBoxSize().y, 180.0f);
@@ -340,7 +331,7 @@ HE_TEST(scribe, retained_vector_image, builds_layered_draws_from_runtime_blob)
 HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_image_copy_expires)
 {
     Vector<schema::Word> storage;
-    LoadedVectorImageBlob image{};
+    VectorImageResourceReader image{};
     HE_ASSERT(BuildLoadedVectorImage(storage, image));
 
     RetainedVectorImageModel retainedImage;

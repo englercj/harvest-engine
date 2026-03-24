@@ -38,7 +38,7 @@ namespace he::scribe
 
     struct RetainedTextBuildDesc
     {
-        Span<const LoadedFontFaceBlob> fontFaces{};
+        Span<const FontFaceResourceReader> fontFaces{};
         const LayoutResult* layout{ nullptr };
         float fontSize{ 16.0f };
         bool darkBackgroundPreferred{ true };
@@ -64,10 +64,10 @@ namespace he::scribe
         uint32_t GetEstimatedVertexCount() const { return m_estimatedVertexCount; }
         Span<const RetainedTextDraw> GetDraws() const { return m_draws; }
         Span<const RetainedTextQuad> GetQuads() const { return m_quads; }
-        const LoadedFontFaceBlob* GetFontFace(uint32_t fontFaceIndex) const;
+        const FontFaceResourceReader* GetFontFace(uint32_t fontFaceIndex) const;
 
     private:
-        Vector<LoadedFontFaceBlob> m_fontFaces{};
+        Vector<FontFaceResourceReader> m_fontFaces{};
         Vector<RetainedTextDraw> m_draws{};
         Vector<RetainedTextQuad> m_quads{};
         uint32_t m_estimatedVertexCount{ 0 };

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "he/scribe/renderer.h"
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 namespace he::scribe
 {
@@ -22,10 +22,10 @@ namespace he::scribe
 
     bool BuildCompiledVectorShapeResourceData(
         CompiledVectorShapeResourceData& out,
-        const LoadedVectorImageBlob& image,
+        const VectorImageResourceReader& image,
         uint32_t shapeIndex);
 
     bool GetCompiledVectorImageLayers(
         Vector<CompiledVectorImageLayer>& out,
-        const LoadedVectorImageBlob& image);
+        const VectorImageResourceReader& image);
 }

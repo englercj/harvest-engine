@@ -7,7 +7,7 @@
 #include "he/scribe/layout_engine.h"
 #include "he/scribe/retained_text.h"
 #include "he/scribe/renderer.h"
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/core/file.h"
 #include "he/core/test.h"
@@ -67,7 +67,7 @@ namespace
 
     bool BuildLoadedCompiledFontFace(
         Vector<schema::Word>& storage,
-        LoadedFontFaceBlob& out,
+        FontFaceResourceReader& out,
         const Vector<uint8_t>& fontBytes,
         const char* displayName)
     {
@@ -83,24 +83,22 @@ namespace
             return false;
         }
 
-        schema::Builder shapingBuilder;
-        FontFaceShapingData::Builder shaping = shapingBuilder.AddStruct<FontFaceShapingData>();
+        schema::Builder rootBuilder;
+        FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
+
+        FontFaceShapingData::Builder shaping = root.InitShaping();
         shaping.SetFaceIndex(faceInfo.faceIndex);
         shaping.SetSourceFormat(faceInfo.sourceFormat);
-        shaping.SetSourceBytes(shapingBuilder.AddBlob(fontBytes));
-        shapingBuilder.SetRoot(shaping);
+        shaping.SetSourceBytes(rootBuilder.AddBlob(fontBytes));
 
-        schema::Builder metadataBuilder;
-        FontFaceImportMetadata::Builder metadata = metadataBuilder.AddStruct<FontFaceImportMetadata>();
+        FontFaceImportMetadata::Builder metadata = root.InitMetadata();
         FillFontFaceImportMetadata(metadata, faceInfo);
         if (metadata.GetFamilyName().Size() == 0)
         {
             metadata.InitFamilyName(displayName);
         }
-        metadataBuilder.SetRoot(metadata);
 
-        schema::Builder renderBuilder;
-        FontFaceRenderData::Builder render = renderBuilder.AddStruct<FontFaceRenderData>();
+        FontFaceRenderData::Builder render = root.InitRender();
         render.SetCurveTextureWidth(renderData.curveTextureWidth);
         render.SetCurveTextureHeight(renderData.curveTextureHeight);
         render.SetBandTextureWidth(renderData.bandTextureWidth);
@@ -127,12 +125,11 @@ namespace
             dstGlyph.SetBandMaxX(srcGlyph.bandMaxX);
             dstGlyph.SetBandMaxY(srcGlyph.bandMaxY);
             dstGlyph.SetFillRule(srcGlyph.fillRule);
-            dstGlyph.SetFlags(srcGlyph.flags);
+            dstGlyph.SetHasGeometry(srcGlyph.hasGeometry);
+            dstGlyph.SetHasColorLayers(srcGlyph.hasColorLayers);
         }
-        renderBuilder.SetRoot(render);
 
-        schema::Builder paintBuilder;
-        FontFacePaintData::Builder paint = paintBuilder.AddStruct<FontFacePaintData>();
+        FontFacePaintData::Builder paint = root.InitPaint();
         paint.SetDefaultPaletteIndex(renderData.paint.defaultPaletteIndex);
 
         auto palettes = paint.InitPalettes(renderData.paint.palettes.Size());
@@ -140,7 +137,7 @@ namespace
         {
             const CompiledFontPalette& srcPalette = renderData.paint.palettes[paletteIndex];
             FontFacePalette::Builder dstPalette = palettes[paletteIndex];
-            dstPalette.SetFlags(srcPalette.flags);
+            dstPalette.SetBackground(srcPalette.background);
 
             auto colors = dstPalette.InitColors(srcPalette.colors.Size());
             for (uint32_t colorIndex = 0; colorIndex < srcPalette.colors.Size(); ++colorIndex)
@@ -170,7 +167,7 @@ namespace
             FontFaceColorGlyphLayer::Builder dstLayer = layers[layerIndex];
             dstLayer.SetGlyphIndex(srcLayer.glyphIndex);
             dstLayer.SetPaletteEntryIndex(srcLayer.paletteEntryIndex);
-            dstLayer.SetFlags(srcLayer.flags);
+            dstLayer.SetColorSource(srcLayer.colorSource);
             dstLayer.SetAlphaScale(srcLayer.alphaScale);
             dstLayer.SetTransform00(srcLayer.transform00);
             dstLayer.SetTransform01(srcLayer.transform01);
@@ -179,34 +176,23 @@ namespace
             dstLayer.SetTransformTx(srcLayer.transformTx);
             dstLayer.SetTransformTy(srcLayer.transformTy);
         }
-        paintBuilder.SetRoot(paint);
-
-        schema::Builder rootBuilder;
-        CompiledFontFaceBlob::Builder root = rootBuilder.AddStruct<CompiledFontFaceBlob>();
-        RuntimeBlobHeader::Builder header = root.InitHeader();
-        header.SetFormatVersion(RuntimeBlobFormatVersion);
-        header.SetKind(RuntimeBlobKind::FontFace);
-        header.SetFlags(0);
-        root.SetShapingData(rootBuilder.AddBlob(Span<const schema::Word>(shapingBuilder).AsBytes()));
         root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
         root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
-        root.SetPaintData(rootBuilder.AddBlob(Span<const schema::Word>(paintBuilder).AsBytes()));
-        root.SetMetadataData(rootBuilder.AddBlob(Span<const schema::Word>(metadataBuilder).AsBytes()));
-        root.SetRenderData(rootBuilder.AddBlob(Span<const schema::Word>(renderBuilder).AsBytes()));
         rootBuilder.SetRoot(root);
 
         storage = Span<const schema::Word>(rootBuilder);
-        return LoadCompiledFontFaceBlob(out, storage);
+        out = schema::ReadRoot<FontFaceResource>(storage.Data());
+        return out.IsValid();
     }
 
     bool BuildRetainedTextFromTemporaryFaceCopy(
         RetainedTextModel& out,
-        Span<const LoadedFontFaceBlob> fontFaces,
+        Span<const FontFaceResourceReader> fontFaces,
         const char* text,
         float fontSize,
         bool darkBackgroundPreferred = true)
     {
-        Vector<LoadedFontFaceBlob> temporaryFaces{};
+        Vector<FontFaceResourceReader> temporaryFaces{};
         temporaryFaces.Resize(fontFaces.Size(), DefaultInit);
         for (uint32_t fontIndex = 0; fontIndex < fontFaces.Size(); ++fontIndex)
         {
@@ -222,7 +208,7 @@ namespace
         options.direction = TextDirection::Auto;
         if (!engine.LayoutText(
             layout,
-            Span<const LoadedFontFaceBlob>(temporaryFaces.Data(), temporaryFaces.Size()),
+            Span<const FontFaceResourceReader>(temporaryFaces.Data(), temporaryFaces.Size()),
             text,
             options))
         {
@@ -230,7 +216,7 @@ namespace
         }
 
         RetainedTextBuildDesc desc{};
-        desc.fontFaces = Span<const LoadedFontFaceBlob>(temporaryFaces.Data(), temporaryFaces.Size());
+        desc.fontFaces = Span<const FontFaceResourceReader>(temporaryFaces.Data(), temporaryFaces.Size());
         desc.layout = &layout;
         desc.fontSize = fontSize;
         desc.darkBackgroundPreferred = darkBackgroundPreferred;
@@ -803,7 +789,7 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_bounds_match_freetype_ou
     HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
 
     Vector<schema::Word> storage;
-    LoadedFontFaceBlob font{};
+    FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
 
     LayoutEngine engine;
@@ -811,7 +797,7 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_bounds_match_freetype_ou
     LayoutOptions options{};
     options.fontSize = 96.0f;
     options.wrap = false;
-    HE_ASSERT(engine.LayoutText(layout, Span<const LoadedFontFaceBlob>(&font, 1), "T", options));
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), "T", options));
     HE_ASSERT(layout.glyphs.Size() == 1);
 
     const uint32_t glyphIndex = layout.glyphs[0].glyphIndex;
@@ -861,7 +847,7 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_has_no_detached_left_edg
     HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
 
     Vector<schema::Word> storage;
-    LoadedFontFaceBlob font{};
+    FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
 
     LayoutEngine engine;
@@ -869,11 +855,11 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_has_no_detached_left_edg
     LayoutOptions options{};
     options.fontSize = 96.0f;
     options.wrap = false;
-    HE_ASSERT(engine.LayoutText(layout, Span<const LoadedFontFaceBlob>(&font, 1), "T", options));
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), "T", options));
     HE_ASSERT(layout.glyphs.Size() == 1);
 
     const uint32_t glyphIndex = layout.glyphs[0].glyphIndex;
-    const float pixelsPerUnitValue = options.fontSize / static_cast<float>(Max(font.metadata.GetMetrics().GetUnitsPerEm(), 1u));
+    const float pixelsPerUnitValue = options.fontSize / static_cast<float>(Max(font.GetMetadata().GetMetrics().GetUnitsPerEm(), 1u));
     const Vec2f pixelsPerUnit = { pixelsPerUnitValue, pixelsPerUnitValue };
     CompiledFontRenderData renderData{};
     HE_ASSERT(BuildCompiledFontRenderData(renderData, fontBytes, 0));
@@ -1013,7 +999,7 @@ HE_TEST(scribe, color_font_pipeline, segoeui_capital_t_mid_left_bounds_coverage_
     HE_ASSERT(ReadFontFile(fontBytes, SegoeUiPath));
 
     Vector<schema::Word> storage;
-    LoadedFontFaceBlob font{};
+    FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Segoe UI"));
 
     LayoutEngine engine;
@@ -1021,11 +1007,11 @@ HE_TEST(scribe, color_font_pipeline, segoeui_capital_t_mid_left_bounds_coverage_
     LayoutOptions options{};
     options.fontSize = 96.0f;
     options.wrap = false;
-    HE_ASSERT(engine.LayoutText(layout, Span<const LoadedFontFaceBlob>(&font, 1), "T", options));
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), "T", options));
     HE_ASSERT(layout.glyphs.Size() == 1);
 
     const uint32_t glyphIndex = layout.glyphs[0].glyphIndex;
-    const float pixelsPerUnitValue = options.fontSize / static_cast<float>(Max(font.metadata.GetMetrics().GetUnitsPerEm(), 1u));
+    const float pixelsPerUnitValue = options.fontSize / static_cast<float>(Max(font.GetMetadata().GetMetrics().GetUnitsPerEm(), 1u));
     const Vec2f pixelsPerUnit = { pixelsPerUnitValue, pixelsPerUnitValue };
 
     CompiledFontRenderData renderData{};
@@ -1071,7 +1057,7 @@ HE_TEST(scribe, color_font_pipeline, resolves_compiled_layers_from_runtime_blob)
     HE_ASSERT(ReadFontFile(fontBytes, ColorFontPath));
 
     Vector<schema::Word> storage;
-    LoadedFontFaceBlob font{};
+    FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "seguiemj.ttf"));
 
     const uint32_t paletteIndex = SelectCompiledFontPalette(font, true);
@@ -1114,12 +1100,12 @@ HE_TEST(scribe, color_font_pipeline, layout_prefers_color_face_for_emoji_scene)
 
     Vector<schema::Word> repoStorage;
     Vector<schema::Word> colorStorage;
-    LoadedFontFaceBlob repoFont{};
-    LoadedFontFaceBlob colorFont{};
+    FontFaceResourceReader repoFont{};
+    FontFaceResourceReader colorFont{};
     HE_ASSERT(BuildLoadedCompiledFontFace(repoStorage, repoFont, repoFontBytes, "NotoSans-Regular.ttf"));
     HE_ASSERT(BuildLoadedCompiledFontFace(colorStorage, colorFont, colorFontBytes, "seguiemj.ttf"));
 
-    const LoadedFontFaceBlob faces[] =
+    const FontFaceResourceReader faces[] =
     {
         repoFont,
         colorFont,
@@ -1135,7 +1121,7 @@ HE_TEST(scribe, color_font_pipeline, layout_prefers_color_face_for_emoji_scene)
 
     HE_ASSERT(engine.LayoutText(
         layout,
-        Span<const LoadedFontFaceBlob>(faces),
+        Span<const FontFaceResourceReader>(faces),
         "\xF0\x9F\x99\x82 \xF0\x9F\x98\x80 \xF0\x9F\x8E\xA8 \xF0\x9F\x8C\x88 \xE2\x9C\xA8",
         options));
 
@@ -1173,12 +1159,12 @@ HE_TEST(scribe, color_font_pipeline, shaped_emoji_scene_resolves_nonwhite_layers
 
     Vector<schema::Word> repoStorage;
     Vector<schema::Word> colorStorage;
-    LoadedFontFaceBlob repoFont{};
-    LoadedFontFaceBlob colorFont{};
+    FontFaceResourceReader repoFont{};
+    FontFaceResourceReader colorFont{};
     HE_ASSERT(BuildLoadedCompiledFontFace(repoStorage, repoFont, repoFontBytes, "NotoSans-Regular.ttf"));
     HE_ASSERT(BuildLoadedCompiledFontFace(colorStorage, colorFont, colorFontBytes, "seguiemj.ttf"));
 
-    const LoadedFontFaceBlob faces[] =
+    const FontFaceResourceReader faces[] =
     {
         repoFont,
         colorFont,
@@ -1194,7 +1180,7 @@ HE_TEST(scribe, color_font_pipeline, shaped_emoji_scene_resolves_nonwhite_layers
 
     HE_ASSERT(engine.LayoutText(
         layout,
-        Span<const LoadedFontFaceBlob>(faces),
+        Span<const FontFaceResourceReader>(faces),
         "\xF0\x9F\x99\x82 \xF0\x9F\x98\x80 \xF0\x9F\x8E\xA8 \xF0\x9F\x8C\x88 \xE2\x9C\xA8",
         options));
 
@@ -1239,7 +1225,7 @@ HE_TEST(scribe, retained_text, builds_monochrome_draws_from_layout)
     HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
 
     Vector<schema::Word> storage;
-    LoadedFontFaceBlob font{};
+    FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
 
     LayoutEngine engine;
@@ -1247,11 +1233,11 @@ HE_TEST(scribe, retained_text, builds_monochrome_draws_from_layout)
     LayoutOptions options{};
     options.fontSize = 28.0f;
     options.wrap = false;
-    HE_ASSERT(engine.LayoutText(layout, Span<const LoadedFontFaceBlob>(&font, 1), "Retained text", options));
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), "Retained text", options));
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc desc{};
-    desc.fontFaces = Span<const LoadedFontFaceBlob>(&font, 1);
+    desc.fontFaces = Span<const FontFaceResourceReader>(&font, 1);
     desc.layout = &layout;
     desc.fontSize = options.fontSize;
     HE_ASSERT(retainedText.Build(desc));
@@ -1283,12 +1269,12 @@ HE_TEST(scribe, retained_text, applies_styled_run_color_and_transform)
 
     Vector<schema::Word> sansStorage;
     Vector<schema::Word> monoStorage;
-    LoadedFontFaceBlob sans{};
-    LoadedFontFaceBlob mono{};
+    FontFaceResourceReader sans{};
+    FontFaceResourceReader mono{};
     HE_ASSERT(BuildLoadedCompiledFontFace(sansStorage, sans, sansBytes, "Noto Sans"));
     HE_ASSERT(BuildLoadedCompiledFontFace(monoStorage, mono, monoBytes, "Noto Mono"));
 
-    const LoadedFontFaceBlob faces[] = { sans, mono };
+    const FontFaceResourceReader faces[] = { sans, mono };
     const String text = "alpha beta";
     const uint32_t betaStart = 6;
     const uint32_t betaEnd = 10;
@@ -1309,7 +1295,7 @@ HE_TEST(scribe, retained_text, applies_styled_run_color_and_transform)
     };
 
     StyledTextLayoutDesc layoutDesc{};
-    layoutDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
     layoutDesc.text = text;
     layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
@@ -1322,7 +1308,7 @@ HE_TEST(scribe, retained_text, applies_styled_run_color_and_transform)
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc retainedDesc{};
-    retainedDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
     retainedDesc.layout = &layout;
     retainedDesc.fontSize = layoutDesc.options.fontSize;
     retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
@@ -1358,10 +1344,10 @@ HE_TEST(scribe, retained_text, textsub_demo_line_starts_are_the_leftmost_rendere
     HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
 
     Vector<schema::Word> storage;
-    LoadedFontFaceBlob font{};
+    FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
 
-    const LoadedFontFaceBlob faces[] = { font };
+    const FontFaceResourceReader faces[] = { font };
     const String text = "TextSub1 Sub2\nTextSup1 Sup2";
 
     TextStyle styles[5]{};
@@ -1383,7 +1369,7 @@ HE_TEST(scribe, retained_text, textsub_demo_line_starts_are_the_leftmost_rendere
     };
 
     StyledTextLayoutDesc layoutDesc{};
-    layoutDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
     layoutDesc.text = text;
     layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
@@ -1397,7 +1383,7 @@ HE_TEST(scribe, retained_text, textsub_demo_line_starts_are_the_leftmost_rendere
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc retainedDesc{};
-    retainedDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
     retainedDesc.layout = &layout;
     retainedDesc.fontSize = layoutDesc.options.fontSize;
     retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
@@ -1453,10 +1439,10 @@ HE_TEST(scribe, retained_text, emits_decoration_quads_for_styled_runs)
     HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
 
     Vector<schema::Word> storage;
-    LoadedFontFaceBlob font{};
+    FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
 
-    const LoadedFontFaceBlob faces[] = { font };
+    const FontFaceResourceReader faces[] = { font };
     const String text = "Underline\nStrike-through";
 
     TextStyle styles[3]{};
@@ -1472,7 +1458,7 @@ HE_TEST(scribe, retained_text, emits_decoration_quads_for_styled_runs)
     };
 
     StyledTextLayoutDesc layoutDesc{};
-    layoutDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
     layoutDesc.text = text;
     layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
@@ -1485,7 +1471,7 @@ HE_TEST(scribe, retained_text, emits_decoration_quads_for_styled_runs)
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc retainedDesc{};
-    retainedDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
     retainedDesc.layout = &layout;
     retainedDesc.fontSize = layoutDesc.options.fontSize;
     retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
@@ -1519,10 +1505,10 @@ HE_TEST(scribe, retained_text, expands_shadow_and_outline_effects_into_extra_dra
     HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
 
     Vector<schema::Word> storage;
-    LoadedFontFaceBlob font{};
+    FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
 
-    const LoadedFontFaceBlob faces[] = { font };
+    const FontFaceResourceReader faces[] = { font };
     const String text = "Both";
 
     TextStyle styles[2]{};
@@ -1539,7 +1525,7 @@ HE_TEST(scribe, retained_text, expands_shadow_and_outline_effects_into_extra_dra
     };
 
     StyledTextLayoutDesc layoutDesc{};
-    layoutDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
     layoutDesc.text = text;
     layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
@@ -1552,7 +1538,7 @@ HE_TEST(scribe, retained_text, expands_shadow_and_outline_effects_into_extra_dra
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc retainedDesc{};
-    retainedDesc.fontFaces = Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
     retainedDesc.layout = &layout;
     retainedDesc.fontSize = layoutDesc.options.fontSize;
     retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
@@ -1600,7 +1586,7 @@ HE_TEST(scribe, retained_text, expands_color_glyphs_into_layered_draws)
     HE_ASSERT(ReadFontFile(fontBytes, ColorFontPath));
 
     Vector<schema::Word> storage;
-    LoadedFontFaceBlob font{};
+    FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Segoe UI Emoji"));
 
     LayoutEngine engine;
@@ -1608,11 +1594,11 @@ HE_TEST(scribe, retained_text, expands_color_glyphs_into_layered_draws)
     LayoutOptions options{};
     options.fontSize = 44.0f;
     options.wrap = false;
-    HE_ASSERT(engine.LayoutText(layout, Span<const LoadedFontFaceBlob>(&font, 1), "🙂😀🎨", options));
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), "🙂😀🎨", options));
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc desc{};
-    desc.fontFaces = Span<const LoadedFontFaceBlob>(&font, 1);
+    desc.fontFaces = Span<const FontFaceResourceReader>(&font, 1);
     desc.layout = &layout;
     desc.fontSize = options.fontSize;
     HE_ASSERT(retainedText.Build(desc));
@@ -1650,13 +1636,13 @@ HE_TEST(scribe, retained_text, prepares_with_renderer_after_temporary_face_span_
     HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
 
     Vector<schema::Word> storage;
-    LoadedFontFaceBlob font{};
+    FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
 
     RetainedTextModel retainedText;
     HE_ASSERT(BuildRetainedTextFromTemporaryFaceCopy(
         retainedText,
-        Span<const LoadedFontFaceBlob>(&font, 1),
+        Span<const FontFaceResourceReader>(&font, 1),
         "Retained text",
         28.0f));
 
@@ -1693,12 +1679,12 @@ HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_fac
 
     Vector<schema::Word> repoStorage;
     Vector<schema::Word> colorStorage;
-    LoadedFontFaceBlob repoFont{};
-    LoadedFontFaceBlob colorFont{};
+    FontFaceResourceReader repoFont{};
+    FontFaceResourceReader colorFont{};
     HE_ASSERT(BuildLoadedCompiledFontFace(repoStorage, repoFont, repoFontBytes, "NotoSans-Regular.ttf"));
     HE_ASSERT(BuildLoadedCompiledFontFace(colorStorage, colorFont, colorFontBytes, "seguiemj.ttf"));
 
-    const LoadedFontFaceBlob faces[] =
+    const FontFaceResourceReader faces[] =
     {
         repoFont,
         colorFont,
@@ -1707,7 +1693,7 @@ HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_fac
     RetainedTextModel retainedText;
     HE_ASSERT(BuildRetainedTextFromTemporaryFaceCopy(
         retainedText,
-        Span<const LoadedFontFaceBlob>(faces, HE_LENGTH_OF(faces)),
+        Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)),
         "\xF0\x9F\x99\x82 \xF0\x9F\x98\x80 \xF0\x9F\x8E\xA8 \xF0\x9F\x8C\x88 \xE2\x9C\xA8",
         44.0f));
 

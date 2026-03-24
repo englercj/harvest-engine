@@ -2,7 +2,8 @@
 
 #pragma once
 
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/packed_data.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/core/types.h"
 #include "he/core/vector.h"
@@ -114,11 +115,11 @@ namespace he::scribe
         bool CreateGlyphResource(GlyphResource& out, const GlyphResourceCreateInfo& desc);
         bool CreateCompiledGlyphResource(
             GlyphResource& out,
-            const LoadedFontFaceBlob& fontFace,
+            const FontFaceResourceReader& fontFace,
             uint32_t glyphIndex);
         bool CreateCompiledVectorShapeResource(
             GlyphResource& out,
-            const LoadedVectorImageBlob& image,
+            const VectorImageResourceReader& image,
             uint32_t shapeIndex);
         bool CreateDebugGlyphResource(GlyphResource& out);
         void DestroyGlyphResource(GlyphResource& resource);
@@ -181,11 +182,11 @@ namespace he::scribe
         void DestroyDeviceResources();
         void AppendDrawVertices(const DrawGlyphDesc& draw);
         bool EnsureRetainedGlyphResource(
-            const LoadedFontFaceBlob& fontFace,
+            const FontFaceResourceReader& fontFace,
             uint32_t glyphIndex,
             const GlyphResource*& out);
         bool EnsureRetainedVectorShapeResource(
-            const LoadedVectorImageBlob& image,
+            const VectorImageResourceReader& image,
             uint32_t shapeIndex,
             const GlyphResource*& out);
 

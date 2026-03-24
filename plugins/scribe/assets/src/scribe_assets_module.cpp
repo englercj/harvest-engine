@@ -1,6 +1,6 @@
 // Copyright Chad Engler
 
-#include "he/scribe/runtime_blob.h"
+#include "he/scribe/schema_types.h"
 
 #include "he/core/module_registry.h"
 

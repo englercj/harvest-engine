@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/scribe/context.h"
 #include "he/scribe/schema_types.h"
 
 #include "he/core/vector.h"
@@ -18,7 +19,8 @@ namespace he::scribe
 
     struct RetainedVectorImageBuildDesc
     {
-        const VectorImageResourceReader* image{ nullptr };
+        ScribeContext* context{ nullptr };
+        VectorImageHandle image{};
     };
 
     struct RetainedVectorImageInstanceDesc
@@ -38,16 +40,15 @@ namespace he::scribe
         uint32_t GetDrawCount() const { return m_draws.Size(); }
         uint32_t GetEstimatedVertexCount() const { return m_estimatedVertexCount; }
         Span<const RetainedVectorImageDraw> GetDraws() const { return m_draws; }
-        const VectorImageResourceReader* GetImage() const;
+        ScribeContext* GetContext() const { return m_context; }
+        VectorImageHandle GetImageHandle() const { return m_image; }
         Vec2f GetViewBoxSize() const { return m_viewBoxSize; }
-        uint64_t GetImageHash() const { return m_imageHash; }
 
     private:
-        Vector<schema::Word> m_imageStorage{};
-        VectorImageResourceReader m_image{};
+        ScribeContext* m_context{ nullptr };
+        VectorImageHandle m_image{};
         Vector<RetainedVectorImageDraw> m_draws{};
         Vec2f m_viewBoxSize{ 0.0f, 0.0f };
-        uint64_t m_imageHash{ 0 };
         uint32_t m_estimatedVertexCount{ 0 };
     };
 }

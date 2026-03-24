@@ -19,23 +19,13 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
         }
     }
 
-    module he_scribe_layout kind=lib_static group="engine/libs" {
-        files { "layout/include/**"; "layout/src/**" }
-        include_dirs { "layout/src" }
-
-        public {
-            dependencies { harfbuzz; he_core; he_math; he_scribe_assets }
-            include_dirs { "layout/include" }
-        }
-    }
-
     module he_scribe kind=lib_static group="engine/libs" {
-        files { "runtime/include/**"; "runtime/src/**" }
-        include_dirs { "runtime/src"; "${module.gen_dir}/runtime/src"; "${module.gen_dir}/runtime/src/shaders" }
+        files { "layout/include/**"; "layout/src/**"; "runtime/include/**"; "runtime/src/**" }
+        include_dirs { "layout/src"; "runtime/src"; "${module.gen_dir}/runtime/src"; "${module.gen_dir}/runtime/src/shaders" }
 
         public {
-            dependencies { he_core; he_math; he_rhi; he_scribe_layout; he_scribe_assets }
-            include_dirs { "runtime/include" }
+            dependencies { harfbuzz; he_core; he_math; he_rhi; he_scribe_assets }
+            include_dirs { "layout/include"; "runtime/include" }
         }
 
         when platform.system=windows {

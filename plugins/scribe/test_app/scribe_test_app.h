@@ -71,6 +71,7 @@ namespace he
             String name{};
             Vector<schema::Word> blobWords{};
             scribe::FontFaceResourceReader blob{};
+            scribe::FontFaceHandle handle{};
         };
 
         struct LoadedDemoImage
@@ -78,6 +79,7 @@ namespace he
             String name{};
             Vector<schema::Word> blobWords{};
             scribe::VectorImageResourceReader blob{};
+            scribe::VectorImageHandle handle{};
         };
 
         struct CachedImageShape
@@ -156,6 +158,7 @@ namespace he
         window::Device* m_windowDevice{ nullptr };
         window::View* m_view{ nullptr };
         RenderState m_render{};
+        scribe::ScribeContext m_scribeContext{};
         scribe::Renderer m_renderer{};
         scribe::LayoutEngine m_layoutEngine{};
         scribe::GlyphResource m_caretGlyph{};

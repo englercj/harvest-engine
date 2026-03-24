@@ -114,19 +114,26 @@ namespace
 
     bool BuildRetainedTextFromTemporaryFaceCopy(
         RetainedTextModel& out,
+        ScribeContext& context,
         Span<const FontFaceResourceReader> fontFaces,
         const char* text,
         float fontSize,
         bool darkBackgroundPreferred = true)
     {
-        Vector<FontFaceResourceReader> temporaryFaces{};
-        temporaryFaces.Resize(fontFaces.Size(), DefaultInit);
-        for (uint32_t fontIndex = 0; fontIndex < fontFaces.Size(); ++fontIndex)
+        Vector<FontFaceHandle> handles{};
+        handles.Reserve(fontFaces.Size());
+        for (const FontFaceResourceReader& fontFace : fontFaces)
         {
-            temporaryFaces[fontIndex] = fontFaces[fontIndex];
+            const FontFaceHandle handle = context.RegisterFontFace(fontFace);
+            if (!handle.IsValid())
+            {
+                return false;
+            }
+
+            handles.EmplaceBack(handle);
         }
 
-        LayoutEngine engine;
+        LayoutEngine engine(context);
         LayoutResult layout;
         LayoutOptions options{};
         options.fontSize = fontSize;
@@ -135,7 +142,7 @@ namespace
         options.direction = TextDirection::Auto;
         if (!engine.LayoutText(
             layout,
-            Span<const FontFaceResourceReader>(temporaryFaces.Data(), temporaryFaces.Size()),
+            Span<const FontFaceHandle>(handles.Data(), handles.Size()),
             text,
             options))
         {
@@ -143,17 +150,41 @@ namespace
         }
 
         RetainedTextBuildDesc desc{};
-        desc.fontFaces = Span<const FontFaceResourceReader>(temporaryFaces.Data(), temporaryFaces.Size());
+        desc.context = &context;
+        desc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
         desc.layout = &layout;
         desc.fontSize = fontSize;
         desc.darkBackgroundPreferred = darkBackgroundPreferred;
         return out.Build(desc);
     }
 
+    bool RegisterFontFaces(
+        ScribeContext& context,
+        Span<const FontFaceResourceReader> fontFaces,
+        Vector<FontFaceHandle>& out)
+    {
+        out.Clear();
+        out.Reserve(fontFaces.Size());
+        for (const FontFaceResourceReader& fontFace : fontFaces)
+        {
+            const FontFaceHandle handle = context.RegisterFontFace(fontFace);
+            if (!handle.IsValid())
+            {
+                out.Clear();
+                return false;
+            }
+
+            out.EmplaceBack(handle);
+        }
+
+        return true;
+    }
+
     struct NullRendererHarness
     {
         rhi::Instance* instance{ nullptr };
         rhi::Device* device{ nullptr };
+        ScribeContext context{};
         Renderer renderer{};
 
         ~NullRendererHarness() noexcept
@@ -177,7 +208,8 @@ namespace
                 return false;
             }
 
-            if (!renderer.Initialize(*device, rhi::Format::BGRA8Unorm_sRGB))
+            if (!context.Initialize(*device)
+                || !renderer.Initialize(context, rhi::Format::BGRA8Unorm_sRGB))
             {
                 Terminate();
                 return false;
@@ -189,6 +221,7 @@ namespace
         void Terminate()
         {
             renderer.Terminate();
+            context.Terminate();
 
             if (device)
             {
@@ -747,12 +780,15 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_bounds_match_freetype_ou
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
     options.fontSize = 96.0f;
     options.wrap = false;
-    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), "T", options));
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), "T", options));
     HE_ASSERT(layout.glyphs.Size() == 1);
 
     const uint32_t glyphIndex = layout.glyphs[0].glyphIndex;
@@ -805,12 +841,15 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_has_no_detached_left_edg
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
     options.fontSize = 96.0f;
     options.wrap = false;
-    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), "T", options));
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), "T", options));
     HE_ASSERT(layout.glyphs.Size() == 1);
 
     const uint32_t glyphIndex = layout.glyphs[0].glyphIndex;
@@ -957,12 +996,15 @@ HE_TEST(scribe, color_font_pipeline, segoeui_capital_t_mid_left_bounds_coverage_
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Segoe UI"));
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
     options.fontSize = 96.0f;
     options.wrap = false;
-    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), "T", options));
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), "T", options));
     HE_ASSERT(layout.glyphs.Size() == 1);
 
     const uint32_t glyphIndex = layout.glyphs[0].glyphIndex;
@@ -1066,7 +1108,10 @@ HE_TEST(scribe, color_font_pipeline, layout_prefers_color_face_for_emoji_scene)
         colorFont,
     };
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces), handles));
+    LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
     options.fontSize = 24.0f;
@@ -1076,7 +1121,7 @@ HE_TEST(scribe, color_font_pipeline, layout_prefers_color_face_for_emoji_scene)
 
     HE_ASSERT(engine.LayoutText(
         layout,
-        Span<const FontFaceResourceReader>(faces),
+        Span<const FontFaceHandle>(handles.Data(), handles.Size()),
         "\xF0\x9F\x99\x82 \xF0\x9F\x98\x80 \xF0\x9F\x8E\xA8 \xF0\x9F\x8C\x88 \xE2\x9C\xA8",
         options));
 
@@ -1125,7 +1170,10 @@ HE_TEST(scribe, color_font_pipeline, shaped_emoji_scene_resolves_nonwhite_layers
         colorFont,
     };
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces), handles));
+    LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
     options.fontSize = 24.0f;
@@ -1135,7 +1183,7 @@ HE_TEST(scribe, color_font_pipeline, shaped_emoji_scene_resolves_nonwhite_layers
 
     HE_ASSERT(engine.LayoutText(
         layout,
-        Span<const FontFaceResourceReader>(faces),
+        Span<const FontFaceHandle>(handles.Data(), handles.Size()),
         "\xF0\x9F\x99\x82 \xF0\x9F\x98\x80 \xF0\x9F\x8E\xA8 \xF0\x9F\x8C\x88 \xE2\x9C\xA8",
         options));
 
@@ -1183,16 +1231,20 @@ HE_TEST(scribe, retained_text, builds_monochrome_draws_from_layout)
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
     options.fontSize = 28.0f;
     options.wrap = false;
-    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), "Retained text", options));
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), "Retained text", options));
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc desc{};
-    desc.fontFaces = Span<const FontFaceResourceReader>(&font, 1);
+    desc.context = &context;
+    desc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     desc.layout = &layout;
     desc.fontSize = options.fontSize;
     HE_ASSERT(retainedText.Build(desc));
@@ -1230,6 +1282,9 @@ HE_TEST(scribe, retained_text, applies_styled_run_color_and_transform)
     HE_ASSERT(BuildLoadedCompiledFontFace(monoStorage, mono, monoBytes, "Noto Mono"));
 
     const FontFaceResourceReader faces[] = { sans, mono };
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)), handles));
     const String text = "alpha beta";
     const uint32_t betaStart = 6;
     const uint32_t betaEnd = 10;
@@ -1250,20 +1305,21 @@ HE_TEST(scribe, retained_text, applies_styled_run_color_and_transform)
     };
 
     StyledTextLayoutDesc layoutDesc{};
-    layoutDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     layoutDesc.text = text;
     layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
     layoutDesc.options.fontSize = 28.0f;
     layoutDesc.options.wrap = false;
 
-    LayoutEngine engine;
+    LayoutEngine engine(context);
     LayoutResult layout;
     HE_ASSERT(engine.LayoutStyledText(layout, layoutDesc));
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc retainedDesc{};
-    retainedDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.context = &context;
+    retainedDesc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     retainedDesc.layout = &layout;
     retainedDesc.fontSize = layoutDesc.options.fontSize;
     retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
@@ -1301,6 +1357,9 @@ HE_TEST(scribe, retained_text, textsub_demo_line_starts_are_the_leftmost_rendere
     Vector<schema::Word> storage;
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
 
     const FontFaceResourceReader faces[] = { font };
     const String text = "TextSub1 Sub2\nTextSup1 Sup2";
@@ -1324,21 +1383,22 @@ HE_TEST(scribe, retained_text, textsub_demo_line_starts_are_the_leftmost_rendere
     };
 
     StyledTextLayoutDesc layoutDesc{};
-    layoutDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     layoutDesc.text = text;
     layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
     layoutDesc.options.fontSize = 24.0f;
     layoutDesc.options.wrap = false;
 
-    LayoutEngine engine;
+    LayoutEngine engine(context);
     LayoutResult layout;
     HE_ASSERT(engine.LayoutStyledText(layout, layoutDesc));
     HE_EXPECT_EQ(layout.lines.Size(), 2u);
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc retainedDesc{};
-    retainedDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.context = &context;
+    retainedDesc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     retainedDesc.layout = &layout;
     retainedDesc.fontSize = layoutDesc.options.fontSize;
     retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
@@ -1396,6 +1456,9 @@ HE_TEST(scribe, retained_text, emits_decoration_quads_for_styled_runs)
     Vector<schema::Word> storage;
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
 
     const FontFaceResourceReader faces[] = { font };
     const String text = "Underline\nStrike-through";
@@ -1413,20 +1476,21 @@ HE_TEST(scribe, retained_text, emits_decoration_quads_for_styled_runs)
     };
 
     StyledTextLayoutDesc layoutDesc{};
-    layoutDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     layoutDesc.text = text;
     layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
     layoutDesc.options.fontSize = 28.0f;
     layoutDesc.options.wrap = false;
 
-    LayoutEngine engine;
+    LayoutEngine engine(context);
     LayoutResult layout;
     HE_ASSERT(engine.LayoutStyledText(layout, layoutDesc));
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc retainedDesc{};
-    retainedDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.context = &context;
+    retainedDesc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     retainedDesc.layout = &layout;
     retainedDesc.fontSize = layoutDesc.options.fontSize;
     retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
@@ -1462,6 +1526,9 @@ HE_TEST(scribe, retained_text, expands_shadow_and_outline_effects_into_extra_dra
     Vector<schema::Word> storage;
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
 
     const FontFaceResourceReader faces[] = { font };
     const String text = "Both";
@@ -1480,20 +1547,21 @@ HE_TEST(scribe, retained_text, expands_shadow_and_outline_effects_into_extra_dra
     };
 
     StyledTextLayoutDesc layoutDesc{};
-    layoutDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
+    layoutDesc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     layoutDesc.text = text;
     layoutDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     layoutDesc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
     layoutDesc.options.fontSize = 40.0f;
     layoutDesc.options.wrap = false;
 
-    LayoutEngine engine;
+    LayoutEngine engine(context);
     LayoutResult layout;
     HE_ASSERT(engine.LayoutStyledText(layout, layoutDesc));
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc retainedDesc{};
-    retainedDesc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
+    retainedDesc.context = &context;
+    retainedDesc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     retainedDesc.layout = &layout;
     retainedDesc.fontSize = layoutDesc.options.fontSize;
     retainedDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
@@ -1544,16 +1612,20 @@ HE_TEST(scribe, retained_text, expands_color_glyphs_into_layered_draws)
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Segoe UI Emoji"));
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
     options.fontSize = 44.0f;
     options.wrap = false;
-    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), "🙂😀🎨", options));
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), "🙂😀🎨", options));
 
     RetainedTextModel retainedText;
     RetainedTextBuildDesc desc{};
-    desc.fontFaces = Span<const FontFaceResourceReader>(&font, 1);
+    desc.context = &context;
+    desc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     desc.layout = &layout;
     desc.fontSize = options.fontSize;
     HE_ASSERT(retainedText.Build(desc));
@@ -1593,10 +1665,12 @@ HE_TEST(scribe, retained_text, prepares_with_renderer_after_temporary_face_span_
     Vector<schema::Word> storage;
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
+    ScribeContext context{};
 
     RetainedTextModel retainedText;
     HE_ASSERT(BuildRetainedTextFromTemporaryFaceCopy(
         retainedText,
+        context,
         Span<const FontFaceResourceReader>(&font, 1),
         "Retained text",
         28.0f));
@@ -1604,7 +1678,7 @@ HE_TEST(scribe, retained_text, prepares_with_renderer_after_temporary_face_span_
     HE_EXPECT_GT(retainedText.GetDrawCount(), 0u);
     for (const RetainedTextDraw& draw : retainedText.GetDraws())
     {
-        HE_EXPECT_NE_PTR(retainedText.GetFontFace(draw.fontFaceIndex), nullptr);
+        HE_EXPECT_NE_PTR(context.GetFontFace(retainedText.GetFontFaceHandle(draw.fontFaceIndex)), nullptr);
     }
     storage.Clear();
 
@@ -1645,10 +1719,12 @@ HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_fac
         repoFont,
         colorFont,
     };
+    ScribeContext context{};
 
     RetainedTextModel retainedText;
     HE_ASSERT(BuildRetainedTextFromTemporaryFaceCopy(
         retainedText,
+        context,
         Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)),
         "\xF0\x9F\x99\x82 \xF0\x9F\x98\x80 \xF0\x9F\x8E\xA8 \xF0\x9F\x8C\x88 \xE2\x9C\xA8",
         44.0f));
@@ -1657,7 +1733,7 @@ HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_fac
     bool sawPaletteColorDraw = false;
     for (const RetainedTextDraw& draw : retainedText.GetDraws())
     {
-        HE_EXPECT_NE_PTR(retainedText.GetFontFace(draw.fontFaceIndex), nullptr);
+        HE_EXPECT_NE_PTR(context.GetFontFace(retainedText.GetFontFaceHandle(draw.fontFaceIndex)), nullptr);
         sawFallbackFaceDraw |= draw.fontFaceIndex == 1u;
         sawPaletteColorDraw |= (draw.flags & RetainedTextDrawFlagUseForegroundColor) == 0;
     }

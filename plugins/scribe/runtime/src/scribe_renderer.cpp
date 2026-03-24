@@ -4,10 +4,12 @@
 
 #include "he/scribe/compiled_font.h"
 #include "he/scribe/compiled_vector_image.h"
+#include "he/scribe/context.h"
 #include "he/scribe/retained_text.h"
 #include "he/scribe/retained_vector_image.h"
 
-#include "resource_key_utils.h"
+#include "glyph_atlas.h"
+#include "glyph_atlas_utils.h"
 
 #include "shaders/scribe.shaders.h"
 #include "shaders/solid.shaders.h"
@@ -25,27 +27,8 @@
 #include "he/rhi/device.h"
 
 #include <cstddef>
-#include <utility>
-
 namespace he::scribe
 {
-    struct GlyphAtlas
-    {
-        rhi::Texture* curveTexture{ nullptr };
-        rhi::TextureView* curveView{ nullptr };
-        rhi::Texture* bandTexture{ nullptr };
-        rhi::TextureView* bandView{ nullptr };
-        rhi::DescriptorTable* descriptorTable{ nullptr };
-        uint64_t curveHash{ 0 };
-        Vec2u curveSize{ 0, 0 };
-        uint32_t curveRowPitch{ 0 };
-        uint64_t bandHash{ 0 };
-        Vec2u bandSize{ 0, 0 };
-        uint32_t bandRowPitch{ 0 };
-        uint32_t refCount{ 0 };
-        bool cached{ false };
-    };
-
     namespace
     {
         constexpr uint32_t VertexShaderConstantCount = 20;
@@ -74,176 +57,6 @@ namespace he::scribe
             return true;
         }
 
-        bool UploadTexturePair2D(
-            rhi::Device& device,
-            rhi::Texture*& outTexture0,
-            rhi::TextureView*& outView0,
-            const TextureDataDesc& textureData0,
-            rhi::Format format0,
-            const char* textureName0,
-            const char* uploadBufferName0,
-            rhi::Texture*& outTexture1,
-            rhi::TextureView*& outView1,
-            const TextureDataDesc& textureData1,
-            rhi::Format format1,
-            const char* textureName1,
-            const char* uploadBufferName1)
-        {
-            struct PendingTextureUpload
-            {
-                rhi::Texture** texture{ nullptr };
-                rhi::TextureView** view{ nullptr };
-                TextureDataDesc data{};
-                rhi::Format format{ rhi::Format::Invalid };
-                const char* textureName{ nullptr };
-                const char* uploadBufferName{ nullptr };
-                rhi::Buffer* uploadBuffer{ nullptr };
-                uint32_t uploadPitch{ 0 };
-            };
-
-            PendingTextureUpload uploads[2]{};
-            uploads[0].texture = &outTexture0;
-            uploads[0].view = &outView0;
-            uploads[0].data = textureData0;
-            uploads[0].format = format0;
-            uploads[0].textureName = textureName0;
-            uploads[0].uploadBufferName = uploadBufferName0;
-            uploads[1].texture = &outTexture1;
-            uploads[1].view = &outView1;
-            uploads[1].data = textureData1;
-            uploads[1].format = format1;
-            uploads[1].textureName = textureName1;
-            uploads[1].uploadBufferName = uploadBufferName1;
-
-            HE_AT_SCOPE_EXIT([&]()
-            {
-                for (PendingTextureUpload& upload : uploads)
-                {
-                    device.SafeDestroy(upload.uploadBuffer);
-                }
-            });
-
-            const uint32_t alignment = device.GetDeviceInfo().uploadDataPitchAlignment;
-            for (PendingTextureUpload& upload : uploads)
-            {
-                const Vec3u textureSize{ upload.data.size.x, upload.data.size.y, 1 };
-
-                rhi::TextureDesc textureDesc{};
-                textureDesc.type = rhi::TextureType::_2D;
-                textureDesc.format = upload.format;
-                textureDesc.size = textureSize;
-                textureDesc.initialState = rhi::TextureState::CopyDst;
-                HE_RHI_SET_NAME(textureDesc, upload.textureName);
-
-                Result r = device.CreateTexture(textureDesc, *upload.texture);
-                if (!r)
-                {
-                    HE_LOGF_ERROR(scribe_render, "Failed to create texture '{}'. Error: {}", upload.textureName, r);
-                    return false;
-                }
-
-                upload.uploadPitch = AlignUp<uint32_t>(upload.data.rowPitch, alignment);
-                const uint32_t uploadSize = upload.data.size.y * upload.uploadPitch;
-
-                rhi::BufferDesc bufferDesc{};
-                bufferDesc.heapType = rhi::HeapType::Upload;
-                bufferDesc.usage = rhi::BufferUsage::CopySrc;
-                bufferDesc.size = uploadSize;
-                HE_RHI_SET_NAME(bufferDesc, upload.uploadBufferName);
-
-                r = device.CreateBuffer(bufferDesc, upload.uploadBuffer);
-                if (!r)
-                {
-                    HE_LOGF_ERROR(scribe_render, "Failed to create upload buffer '{}'. Error: {}", upload.uploadBufferName, r);
-                    return false;
-                }
-
-                uint8_t* uploadMem = static_cast<uint8_t*>(device.Map(upload.uploadBuffer));
-                const uint8_t* src = static_cast<const uint8_t*>(upload.data.data);
-                for (uint32_t y = 0; y < upload.data.size.y; ++y)
-                {
-                    MemCopy(uploadMem + (y * upload.uploadPitch), src + (y * upload.data.rowPitch), upload.data.rowPitch);
-                }
-                device.Unmap(upload.uploadBuffer);
-            }
-
-            rhi::CmdAllocator* cmdAllocator = nullptr;
-            rhi::RenderCmdList* cmdList = nullptr;
-            HE_AT_SCOPE_EXIT([&]()
-            {
-                device.SafeDestroy(cmdList);
-                device.SafeDestroy(cmdAllocator);
-            });
-
-            {
-                rhi::CmdAllocatorDesc desc{};
-                desc.type = rhi::CmdListType::Render;
-                HE_RHI_SET_NAME(desc, "Scribe Upload Cmd Allocator");
-
-                Result r = device.CreateCmdAllocator(desc, cmdAllocator);
-                if (!r)
-                {
-                    HE_LOGF_ERROR(scribe_render, "Failed to create upload cmd allocator. Error: {}", r);
-                    return false;
-                }
-            }
-
-            {
-                rhi::CmdListDesc desc{};
-                desc.alloc = cmdAllocator;
-                HE_RHI_SET_NAME(desc, "Scribe Upload Cmd List");
-
-                Result r = device.CreateRenderCmdList(desc, cmdList);
-                if (!r)
-                {
-                    HE_LOGF_ERROR(scribe_render, "Failed to create upload cmd list. Error: {}", r);
-                    return false;
-                }
-            }
-
-            Result r = cmdList->Begin(cmdAllocator);
-            if (!r)
-            {
-                HE_LOGF_ERROR(scribe_render, "Failed to begin upload cmd list. Error: {}", r);
-                return false;
-            }
-
-            for (PendingTextureUpload& upload : uploads)
-            {
-                rhi::BufferTextureCopy copyRegion{};
-                copyRegion.bufferRowPitch = upload.uploadPitch;
-                copyRegion.textureSize = { upload.data.size.x, upload.data.size.y, 1 };
-                cmdList->Copy(upload.uploadBuffer, *upload.texture, copyRegion);
-                cmdList->TransitionBarrier(*upload.texture, rhi::TextureState::CopyDst, rhi::TextureState::PixelShaderRead);
-            }
-
-            r = cmdList->End();
-            if (!r)
-            {
-                HE_LOGF_ERROR(scribe_render, "Failed to end upload cmd list. Error: {}", r);
-                return false;
-            }
-
-            rhi::RenderCmdQueue& cmdQueue = device.GetRenderCmdQueue();
-            cmdQueue.Submit(cmdList);
-            cmdQueue.WaitForFlush();
-
-            for (PendingTextureUpload& upload : uploads)
-            {
-                rhi::TextureViewDesc viewDesc{};
-                viewDesc.texture = *upload.texture;
-
-                Result viewResult = device.CreateTextureView(viewDesc, *upload.view);
-                if (!viewResult)
-                {
-                    HE_LOGF_ERROR(scribe_render, "Failed to create texture view '{}'. Error: {}", upload.textureName, viewResult);
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         float PackBits(uint32_t value)
         {
             return BitCast<float>(value);
@@ -257,22 +70,6 @@ namespace he::scribe
                 a.z * b.z,
                 a.w * b.w
             };
-        }
-
-        uint64_t HashTextureDataDesc(const TextureDataDesc& textureData)
-        {
-            Hash<WyHash> hash{};
-            hash.Update(textureData.size.x);
-            hash.Update(textureData.size.y);
-            hash.Update(textureData.rowPitch);
-
-            const uint8_t* src = static_cast<const uint8_t*>(textureData.data);
-            for (uint32_t y = 0; y < textureData.size.y; ++y)
-            {
-                hash.Update(src + (y * textureData.rowPitch), textureData.rowPitch);
-            }
-
-            return hash.Final();
         }
 
         void BuildFrameConstants(
@@ -366,11 +163,13 @@ namespace he::scribe
         Terminate();
     }
 
-    bool Renderer::Initialize(rhi::Device& device, rhi::Format targetFormat)
+    bool Renderer::Initialize(ScribeContext& context, rhi::Format targetFormat)
     {
-        HE_ASSERT(!m_device);
+        HE_ASSERT(!m_context);
 
-        m_device = &device;
+        m_context = &context;
+        m_device = context.GetDevice();
+        HE_ASSERT(m_device);
         m_targetFormat = targetFormat;
 
         if (!CreateDeviceResources())
@@ -384,7 +183,7 @@ namespace he::scribe
 
     void Renderer::Terminate()
     {
-        if (!m_device)
+        if (!m_context || !m_device)
         {
             return;
         }
@@ -394,25 +193,6 @@ namespace he::scribe
         m_streamVertices.Clear();
         m_quadVertices.Clear();
         m_frame = {};
-        for (CachedCompiledGlyphResource& cachedGlyph : m_cachedFontGlyphResources)
-        {
-            DestroyGlyphResource(cachedGlyph.resource);
-        }
-        m_cachedFontGlyphResources.Clear();
-        m_cachedFontGlyphSets.Clear();
-        for (CachedCompiledGlyphResource& cachedShape : m_cachedVectorShapeResources)
-        {
-            DestroyGlyphResource(cachedShape.resource);
-        }
-        m_cachedVectorShapeResources.Clear();
-        m_cachedVectorShapeSets.Clear();
-        Vector<GlyphAtlas*> cachedAtlases = Move(m_cachedAtlases);
-        m_cachedAtlases.Clear();
-        for (GlyphAtlas*& atlas : cachedAtlases)
-        {
-            atlas->cached = false;
-            ReleaseAtlas(atlas);
-        }
         for (StreamBuffer& streamBuffer : m_streamBuffers)
         {
             m_device->SafeDestroy(streamBuffer.buffer);
@@ -425,6 +205,7 @@ namespace he::scribe
         }
         DestroyDeviceResources();
         m_targetFormat = rhi::Format::Invalid;
+        m_context = nullptr;
         m_device = nullptr;
     }
 
@@ -489,51 +270,6 @@ namespace he::scribe
         return true;
     }
 
-    bool Renderer::CreateCachedAtlas(
-        GlyphAtlas*& out,
-        const TextureDataDesc& curveTexture,
-        const TextureDataDesc& bandTexture)
-    {
-        out = nullptr;
-        const uint64_t curveHash = HashTextureDataDesc(curveTexture);
-        const uint64_t bandHash = HashTextureDataDesc(bandTexture);
-        for (GlyphAtlas* atlas : m_cachedAtlases)
-        {
-            if (atlas
-                && atlas->cached
-                && (atlas->curveHash == curveHash)
-                && (atlas->curveSize.x == curveTexture.size.x)
-                && (atlas->curveSize.y == curveTexture.size.y)
-                && (atlas->curveRowPitch == curveTexture.rowPitch)
-                && (atlas->bandHash == bandHash)
-                && (atlas->bandSize.x == bandTexture.size.x)
-                && (atlas->bandSize.y == bandTexture.size.y)
-                && (atlas->bandRowPitch == bandTexture.rowPitch))
-            {
-                ++atlas->refCount;
-                out = atlas;
-                return true;
-            }
-        }
-
-        GlyphAtlas* atlas = nullptr;
-        if (!CreateDedicatedAtlas(atlas, curveTexture, bandTexture))
-        {
-            return false;
-        }
-
-        atlas->cached = true;
-        atlas->curveHash = curveHash;
-        atlas->curveSize = curveTexture.size;
-        atlas->curveRowPitch = curveTexture.rowPitch;
-        atlas->bandHash = bandHash;
-        atlas->bandSize = bandTexture.size;
-        atlas->bandRowPitch = bandTexture.rowPitch;
-        m_cachedAtlases.PushBack(atlas);
-        out = atlas;
-        return true;
-    }
-
     void Renderer::ReleaseAtlas(GlyphAtlas*& atlas)
     {
         if (!atlas || !m_device)
@@ -546,18 +282,6 @@ namespace he::scribe
         --atlas->refCount;
         if (atlas->refCount == 0)
         {
-            if (atlas->cached)
-            {
-                for (uint32_t index = 0; index < m_cachedAtlases.Size(); ++index)
-                {
-                    if (m_cachedAtlases[index] == atlas)
-                    {
-                        m_cachedAtlases.Erase(index);
-                        break;
-                    }
-                }
-            }
-
             m_device->SafeDestroy(atlas->descriptorTable);
             m_device->SafeDestroy(atlas->bandView);
             m_device->SafeDestroy(atlas->bandTexture);
@@ -592,54 +316,6 @@ namespace he::scribe
         MemCopy(resource.vertices, desc.vertices, desc.vertexCount * sizeof(PackedGlyphVertex));
         resource.vertexCount = desc.vertexCount;
         if (!CreateDedicatedAtlas(resource.atlas, desc.curveTexture, desc.bandTexture))
-        {
-            DestroyGlyphResource(resource);
-            return false;
-        }
-
-        out = resource;
-        return true;
-    }
-
-    bool Renderer::CreateCompiledGlyphResource(
-        GlyphResource& out,
-        const FontFaceResourceReader& fontFace,
-        uint32_t glyphIndex)
-    {
-        CompiledGlyphResourceData glyphData{};
-        if (!BuildCompiledGlyphResourceData(glyphData, fontFace, glyphIndex))
-        {
-            return false;
-        }
-
-        GlyphResource resource{};
-        MemCopy(resource.vertices, glyphData.vertices, sizeof(glyphData.vertices));
-        resource.vertexCount = glyphData.createInfo.vertexCount;
-        if (!CreateCachedAtlas(resource.atlas, glyphData.createInfo.curveTexture, glyphData.createInfo.bandTexture))
-        {
-            DestroyGlyphResource(resource);
-            return false;
-        }
-
-        out = resource;
-        return true;
-    }
-
-    bool Renderer::CreateCompiledVectorShapeResource(
-        GlyphResource& out,
-        const VectorImageResourceReader& image,
-        uint32_t shapeIndex)
-    {
-        CompiledVectorShapeResourceData shapeData{};
-        if (!BuildCompiledVectorShapeResourceData(shapeData, image, shapeIndex))
-        {
-            return false;
-        }
-
-        GlyphResource resource{};
-        MemCopy(resource.vertices, shapeData.vertices, sizeof(shapeData.vertices));
-        resource.vertexCount = shapeData.createInfo.vertexCount;
-        if (!CreateCachedAtlas(resource.atlas, shapeData.createInfo.curveTexture, shapeData.createInfo.bandTexture))
         {
             DestroyGlyphResource(resource);
             return false;
@@ -763,14 +439,8 @@ namespace he::scribe
     {
         for (const RetainedTextDraw& draw : text.GetDraws())
         {
-            const FontFaceResourceReader* fontFace = text.GetFontFace(draw.fontFaceIndex);
-            if (!fontFace)
-            {
-                continue;
-            }
-
             const GlyphResource* glyphResource = nullptr;
-            if (!EnsureRetainedGlyphResource(*fontFace, text.GetFontFaceHash(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
+            if (!m_context || !m_context->EnsureGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
             {
                 continue;
             }
@@ -781,8 +451,7 @@ namespace he::scribe
 
     bool Renderer::PrepareRetainedVectorImage(const RetainedVectorImageModel& image)
     {
-        const VectorImageResourceReader* loadedImage = image.GetImage();
-        if (!loadedImage)
+        if (!m_context)
         {
             return false;
         }
@@ -790,7 +459,7 @@ namespace he::scribe
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
-            if (!EnsureRetainedVectorShapeResource(*loadedImage, image.GetImageHash(), draw.shapeIndex, shapeResource))
+            if (!m_context->EnsureVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource))
             {
                 continue;
             }
@@ -843,14 +512,8 @@ namespace he::scribe
 
         for (const RetainedTextDraw& draw : text.GetDraws())
         {
-            const FontFaceResourceReader* fontFace = text.GetFontFace(draw.fontFaceIndex);
-            if (!fontFace)
-            {
-                continue;
-            }
-
             const GlyphResource* glyphResource = nullptr;
-            if (!EnsureRetainedGlyphResource(*fontFace, text.GetFontFaceHash(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
+            if (!m_context || !m_context->EnsureGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
             {
                 continue;
             }
@@ -895,8 +558,7 @@ namespace he::scribe
 
     void Renderer::QueueRetainedVectorImage(const RetainedVectorImageModel& image, const RetainedVectorImageInstanceDesc& instance)
     {
-        const VectorImageResourceReader* loadedImage = image.GetImage();
-        if (!loadedImage)
+        if (!m_context)
         {
             return;
         }
@@ -908,7 +570,7 @@ namespace he::scribe
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
-            if (!EnsureRetainedVectorShapeResource(*loadedImage, image.GetImageHash(), draw.shapeIndex, shapeResource))
+            if (!m_context->EnsureVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource))
             {
                 continue;
             }
@@ -1105,110 +767,6 @@ namespace he::scribe
         }
 
         batch->vertexCount += draw.glyph->vertexCount;
-    }
-
-    bool Renderer::EnsureRetainedGlyphResource(
-        const FontFaceResourceReader& fontFace,
-        uint64_t fontFaceHash,
-        uint32_t glyphIndex,
-        const GlyphResource*& out)
-    {
-        out = nullptr;
-
-        CachedCompiledFontGlyphSet* glyphSet = nullptr;
-        for (CachedCompiledFontGlyphSet& cachedSet : m_cachedFontGlyphSets)
-        {
-            if (cachedSet.fontFaceHash == fontFaceHash)
-            {
-                glyphSet = &cachedSet;
-                break;
-            }
-        }
-
-        if (!glyphSet)
-        {
-            glyphSet = &m_cachedFontGlyphSets.EmplaceBack();
-            glyphSet->fontFaceHash = fontFaceHash;
-            glyphSet->glyphIndices.Resize(fontFace.GetMetadata().GetGlyphCount(), int32_t(-1));
-        }
-
-        if (glyphIndex < glyphSet->glyphIndices.Size())
-        {
-            const int32_t cachedIndex = glyphSet->glyphIndices[glyphIndex];
-            if ((cachedIndex >= 0) && (static_cast<uint32_t>(cachedIndex) < m_cachedFontGlyphResources.Size()))
-            {
-                out = &m_cachedFontGlyphResources[static_cast<uint32_t>(cachedIndex)].resource;
-                return true;
-            }
-        }
-
-        const uint32_t cacheIndex = m_cachedFontGlyphResources.Size();
-        CachedCompiledGlyphResource& cachedGlyph = m_cachedFontGlyphResources.EmplaceBack();
-        if (!CreateCompiledGlyphResource(cachedGlyph.resource, fontFace, glyphIndex))
-        {
-            m_cachedFontGlyphResources.PopBack();
-            return false;
-        }
-
-        if (glyphIndex >= glyphSet->glyphIndices.Size())
-        {
-            glyphSet->glyphIndices.Resize(glyphIndex + 1, int32_t(-1));
-        }
-        glyphSet->glyphIndices[glyphIndex] = static_cast<int32_t>(cacheIndex);
-        out = &cachedGlyph.resource;
-        return true;
-    }
-
-    bool Renderer::EnsureRetainedVectorShapeResource(
-        const VectorImageResourceReader& image,
-        uint64_t imageHash,
-        uint32_t shapeIndex,
-        const GlyphResource*& out)
-    {
-        out = nullptr;
-
-        CachedCompiledVectorShapeSet* shapeSet = nullptr;
-        for (CachedCompiledVectorShapeSet& cachedSet : m_cachedVectorShapeSets)
-        {
-            if (cachedSet.imageHash == imageHash)
-            {
-                shapeSet = &cachedSet;
-                break;
-            }
-        }
-
-        if (!shapeSet)
-        {
-            shapeSet = &m_cachedVectorShapeSets.EmplaceBack();
-            shapeSet->imageHash = imageHash;
-            shapeSet->shapeIndices.Resize(image.GetRender().GetShapes().Size(), int32_t(-1));
-        }
-
-        if (shapeIndex < shapeSet->shapeIndices.Size())
-        {
-            const int32_t cachedIndex = shapeSet->shapeIndices[shapeIndex];
-            if ((cachedIndex >= 0) && (static_cast<uint32_t>(cachedIndex) < m_cachedVectorShapeResources.Size()))
-            {
-                out = &m_cachedVectorShapeResources[static_cast<uint32_t>(cachedIndex)].resource;
-                return true;
-            }
-        }
-
-        const uint32_t cacheIndex = m_cachedVectorShapeResources.Size();
-        CachedCompiledGlyphResource& cachedShape = m_cachedVectorShapeResources.EmplaceBack();
-        if (!CreateCompiledVectorShapeResource(cachedShape.resource, image, shapeIndex))
-        {
-            m_cachedVectorShapeResources.PopBack();
-            return false;
-        }
-
-        if (shapeIndex >= shapeSet->shapeIndices.Size())
-        {
-            shapeSet->shapeIndices.Resize(shapeIndex + 1, int32_t(-1));
-        }
-        shapeSet->shapeIndices[shapeIndex] = static_cast<int32_t>(cacheIndex);
-        out = &cachedShape.resource;
-        return true;
     }
 
     bool Renderer::CreateDeviceResources()

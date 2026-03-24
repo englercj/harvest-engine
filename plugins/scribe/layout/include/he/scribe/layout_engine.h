@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/scribe/context.h"
 #include "he/scribe/schema_types.h"
 
 #include "he/core/string_view.h"
@@ -133,7 +134,7 @@ namespace he::scribe
 
     struct StyledTextLayoutDesc
     {
-        Span<const FontFaceResourceReader> fontFaces{};
+        Span<const FontFaceHandle> fontFaces{};
         StringView text{};
         LayoutOptions options{};
         Span<const TextStyle> styles{};
@@ -211,16 +212,25 @@ namespace he::scribe
     {
     public:
         LayoutEngine() noexcept = default;
+        explicit LayoutEngine(ScribeContext& context) noexcept
+            : m_context(&context)
+        {}
+
         ~LayoutEngine() noexcept = default;
+
+        void SetContext(ScribeContext& context) { m_context = &context; }
 
         bool LayoutText(
             LayoutResult& out,
-            Span<const FontFaceResourceReader> faces,
+            Span<const FontFaceHandle> faces,
             StringView text,
             const LayoutOptions& options = {}) const;
 
         bool LayoutStyledText(LayoutResult& out, const StyledTextLayoutDesc& desc) const;
 
         bool HitTest(const LayoutResult& layout, const Vec2f& point, HitTestResult& out) const;
+
+    private:
+        ScribeContext* m_context{ nullptr };
     };
 }

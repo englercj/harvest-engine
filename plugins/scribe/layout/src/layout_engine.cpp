@@ -22,8 +22,6 @@ namespace he::scribe
 
         struct FontContext
         {
-            hb_blob_t* blob{ nullptr };
-            hb_face_t* face{ nullptr };
             hb_font_t* font{ nullptr };
             float fontSize{ 0.0f };
             float unitScale{ 0.0f };
@@ -301,7 +299,11 @@ namespace he::scribe
             return 0;
         }
 
-        bool BuildFontContexts(Vector<FontContext>& out, Span<const FontFaceResourceReader> faces, const LayoutOptions& options)
+        bool BuildFontContexts(
+            Vector<FontContext>& out,
+            Span<const FontFaceHandle> faces,
+            const LayoutOptions& options,
+            ScribeContext& context)
         {
             out.Clear();
             out.Resize(faces.Size());
@@ -309,8 +311,13 @@ namespace he::scribe
             for (uint32_t i = 0; i < faces.Size(); ++i)
             {
                 FontContext& ctx = out[i];
-                const FontFaceShapingData::Reader shaping = faces[i].GetShaping();
-                const FontFaceRuntimeMetadata::Reader metadata = faces[i].GetMetadata();
+                const FontFaceResourceReader* fontFace = context.GetFontFace(faces[i]);
+                if (!fontFace)
+                {
+                    continue;
+                }
+
+                const FontFaceRuntimeMetadata::Reader metadata = fontFace->GetMetadata();
                 const uint32_t unitsPerEm = Max(metadata.GetUnitsPerEm(), 1u);
 
                 ctx.fontSize = options.fontSize;
@@ -324,28 +331,8 @@ namespace he::scribe
                     ctx.lineHeight = ctx.ascent + ctx.descent;
                 }
 
-                const schema::Blob::Reader sourceBytes = shaping.GetSourceBytes();
-                if (sourceBytes.IsEmpty())
-                {
-                    continue;
-                }
-
-                ctx.blob = hb_blob_create(
-                    reinterpret_cast<const char*>(sourceBytes.Data()),
-                    static_cast<unsigned int>(sourceBytes.Size()),
-                    HB_MEMORY_MODE_DUPLICATE,
-                    nullptr,
-                    nullptr);
-                if (!ctx.blob)
-                {
-                    return false;
-                }
-
-                ctx.face = hb_face_create(ctx.blob, shaping.GetFaceIndex());
-                ctx.font = hb_font_create(ctx.face);
-                hb_ot_font_set_funcs(ctx.font);
-                hb_font_set_scale(ctx.font, static_cast<int32_t>(unitsPerEm), static_cast<int32_t>(unitsPerEm));
-                ctx.hasSourceBytes = true;
+                ctx.font = context.GetHbFont(faces[i]);
+                ctx.hasSourceBytes = context.HasSourceBytes(faces[i]) && (ctx.font != nullptr);
             }
 
             return true;
@@ -355,21 +342,6 @@ namespace he::scribe
         {
             for (FontContext& ctx : contexts)
             {
-                if (ctx.font)
-                {
-                    hb_font_destroy(ctx.font);
-                }
-
-                if (ctx.face)
-                {
-                    hb_face_destroy(ctx.face);
-                }
-
-                if (ctx.blob)
-                {
-                    hb_blob_destroy(ctx.blob);
-                }
-
                 ctx = {};
             }
         }
@@ -1010,7 +982,7 @@ namespace he::scribe
 
     bool LayoutEngine::LayoutText(
         LayoutResult& out,
-        Span<const FontFaceResourceReader> faces,
+        Span<const FontFaceHandle> faces,
         StringView text,
         const LayoutOptions& options) const
     {
@@ -1029,7 +1001,7 @@ namespace he::scribe
     {
         out.Clear();
 
-        if (desc.fontFaces.IsEmpty() || !UTF8Validate(desc.text.Data(), desc.text.Size()))
+        if ((m_context == nullptr) || desc.fontFaces.IsEmpty() || !UTF8Validate(desc.text.Data(), desc.text.Size()))
         {
             return false;
         }
@@ -1042,7 +1014,7 @@ namespace he::scribe
         }
 
         Vector<FontContext> fontContexts{};
-        if (!BuildFontContexts(fontContexts, desc.fontFaces, desc.options))
+        if (!BuildFontContexts(fontContexts, desc.fontFaces, desc.options, *m_context))
         {
             DestroyFontContexts(fontContexts);
             return false;

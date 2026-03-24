@@ -65,12 +65,20 @@ namespace
         return out.IsValid();
     }
 
-    bool BuildRetainedVectorImageFromTemporaryCopy(RetainedVectorImageModel& out, const VectorImageResourceReader& image)
+    bool BuildRetainedVectorImageFromTemporaryCopy(
+        RetainedVectorImageModel& out,
+        ScribeContext& context,
+        const VectorImageResourceReader& image)
     {
-        VectorImageResourceReader temporaryImage = image;
+        const VectorImageHandle handle = context.RegisterVectorImage(image);
+        if (!handle.IsValid())
+        {
+            return false;
+        }
 
         RetainedVectorImageBuildDesc desc{};
-        desc.image = &temporaryImage;
+        desc.context = &context;
+        desc.image = handle;
         return out.Build(desc);
     }
 
@@ -78,6 +86,7 @@ namespace
     {
         rhi::Instance* instance{ nullptr };
         rhi::Device* device{ nullptr };
+        ScribeContext context{};
         Renderer renderer{};
 
         ~NullRendererHarness() noexcept
@@ -101,7 +110,8 @@ namespace
                 return false;
             }
 
-            if (!renderer.Initialize(*device, rhi::Format::BGRA8Unorm_sRGB))
+            if (!context.Initialize(*device)
+                || !renderer.Initialize(context, rhi::Format::BGRA8Unorm_sRGB))
             {
                 Terminate();
                 return false;
@@ -113,6 +123,7 @@ namespace
         void Terminate()
         {
             renderer.Terminate();
+            context.Terminate();
 
             if (device)
             {
@@ -272,15 +283,19 @@ HE_TEST(scribe, retained_vector_image, builds_layered_draws_from_runtime_resourc
     HE_ASSERT(BuildLoadedVectorImage(storage, image));
 
     RetainedVectorImageModel retainedImage;
+    ScribeContext context{};
+    const VectorImageHandle handle = context.RegisterVectorImage(image);
+    HE_ASSERT(handle.IsValid());
     RetainedVectorImageBuildDesc desc{};
-    desc.image = &image;
+    desc.context = &context;
+    desc.image = handle;
     HE_ASSERT(retainedImage.Build(desc));
 
     HE_EXPECT_EQ(retainedImage.GetDrawCount(), image.GetPaint().GetLayers().Size());
     HE_EXPECT_EQ(retainedImage.GetEstimatedVertexCount(), retainedImage.GetDrawCount() * ScribeGlyphVertexCount);
     HE_EXPECT_EQ(retainedImage.GetViewBoxSize().x, 180.0f);
     HE_EXPECT_EQ(retainedImage.GetViewBoxSize().y, 180.0f);
-    HE_EXPECT_NE_PTR(retainedImage.GetImage(), nullptr);
+    HE_EXPECT(retainedImage.GetImageHandle().IsValid());
 }
 
 HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_image_copy_expires)
@@ -290,9 +305,10 @@ HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_im
     HE_ASSERT(BuildLoadedVectorImage(storage, image));
 
     RetainedVectorImageModel retainedImage;
-    HE_ASSERT(BuildRetainedVectorImageFromTemporaryCopy(retainedImage, image));
+    ScribeContext context{};
+    HE_ASSERT(BuildRetainedVectorImageFromTemporaryCopy(retainedImage, context, image));
     HE_EXPECT_GT(retainedImage.GetDrawCount(), 0u);
-    HE_EXPECT_NE_PTR(retainedImage.GetImage(), nullptr);
+    HE_EXPECT(retainedImage.GetImageHandle().IsValid());
     storage.Clear();
 
     NullRendererHarness harness;

@@ -225,7 +225,8 @@ namespace he
                 }
 
                 const scribe::RetainedTextDraw& draw = draws[glyphLayoutIndex];
-                const scribe::FontFaceResourceReader* fontFace = text.GetFontFace(draw.fontFaceIndex);
+                const scribe::FontFaceResourceReader* fontFace =
+                    text.GetContext() ? text.GetContext()->GetFontFace(text.GetFontFaceHandle(draw.fontFaceIndex)) : nullptr;
                 if (!fontFace)
                 {
                     continue;
@@ -975,7 +976,8 @@ namespace he
     {
         if (!InitializeView()
             || !InitializeRenderState()
-            || !m_renderer.Initialize(*m_render.device, m_render.preferredSwapChainFormat.format)
+            || !m_scribeContext.Initialize(*m_render.device)
+            || !m_renderer.Initialize(m_scribeContext, m_render.preferredSwapChainFormat.format)
             || !m_renderer.CreateDebugGlyphResource(m_caretGlyph)
             || !LoadDemoFonts()
             || !LoadDemoImages())
@@ -984,6 +986,7 @@ namespace he
         }
 
         m_renderer.SetGlyphBatchingEnabled(m_glyphBatchingEnabled);
+        m_layoutEngine.SetContext(m_scribeContext);
         m_gpuFrameHistory.Resize(120, 0.0f);
         m_gpuFrameHistoryHead = 0;
         m_gpuFrameHistoryFilled = false;
@@ -1015,6 +1018,7 @@ namespace he
         }
 
         m_renderer.Terminate();
+        m_scribeContext.Terminate();
         TerminateRenderState();
         if (m_view)
         {
@@ -1407,7 +1411,13 @@ namespace he
     {
         out = {};
         out.name = fileName;
-        return BuildLoadedFontFaceFromFile(fileName, out.blobWords, out.blob);
+        if (!BuildLoadedFontFaceFromFile(fileName, out.blobWords, out.blob))
+        {
+            return false;
+        }
+
+        out.handle = m_scribeContext.RegisterFontFace(out.blob);
+        return out.handle.IsValid();
     }
 
     bool ScribeTestApp::LoadOptionalDemoFont(LoadedDemoFont& out, Span<const char*> fileNames)
@@ -1429,7 +1439,13 @@ namespace he
     {
         out = {};
         out.name = fileName;
-        return BuildLoadedVectorImageFromFile(fileName, out.blobWords, out.blob);
+        if (!BuildLoadedVectorImageFromFile(fileName, out.blobWords, out.blob))
+        {
+            return false;
+        }
+
+        out.handle = m_scribeContext.RegisterVectorImage(out.blob);
+        return out.handle.IsValid();
     }
 
     bool ScribeTestApp::RebuildLayouts()
@@ -1441,12 +1457,12 @@ namespace he
 
         UpdateSceneTitle();
 
-        Vector<scribe::FontFaceResourceReader> faces{};
+        Vector<scribe::FontFaceHandle> faces{};
         for (const LoadedDemoFont& font : m_fonts)
         {
-            if (font.blob.IsValid())
+            if (font.handle.IsValid())
             {
-                faces.EmplaceBack(font.blob);
+                faces.EmplaceBack(font.handle);
             }
         }
 
@@ -1455,8 +1471,8 @@ namespace he
             return false;
         }
 
-        const Span<const scribe::FontFaceResourceReader> faceSpan(faces.Data(), faces.Size());
-        const Span<const scribe::FontFaceResourceReader> primaryFace(faces.Data(), 1);
+        const Span<const scribe::FontFaceHandle> faceSpan(faces.Data(), faces.Size());
+        const Span<const scribe::FontFaceHandle> primaryFace(faces.Data(), 1);
         const Vec2i viewSize = m_view->GetSize();
         const float dpiScale = Max(m_view->GetDpiScale(), 1.0f);
         const float margin = 40.0f * dpiScale;
@@ -1473,7 +1489,7 @@ namespace he
         m_bodyOrigin = { 0.0f, 0.0f };
 
         auto layoutText = [&](scribe::LayoutResult& out,
-                              Span<const scribe::FontFaceResourceReader> blockFaces,
+                              Span<const scribe::FontFaceHandle> blockFaces,
                               const String& text,
                               float fontSize,
                               float maxWidth,
@@ -1497,7 +1513,7 @@ namespace he
         };
 
         auto buildRetainedText = [&](scribe::RetainedTextModel& out,
-                                     Span<const scribe::FontFaceResourceReader> blockFaces,
+                                     Span<const scribe::FontFaceHandle> blockFaces,
                                      const scribe::LayoutResult& layout,
                                      float fontSize,
                                      Span<const scribe::TextStyle> styles = {}) -> bool
@@ -1505,6 +1521,7 @@ namespace he
             out.Clear();
 
             scribe::RetainedTextBuildDesc retainedDesc{};
+            retainedDesc.context = &m_scribeContext;
             retainedDesc.fontFaces = blockFaces;
             retainedDesc.layout = &layout;
             retainedDesc.fontSize = fontSize;
@@ -1518,11 +1535,12 @@ namespace he
             out.Clear();
 
             scribe::RetainedVectorImageBuildDesc retainedDesc{};
-            retainedDesc.image = &image.blob;
+            retainedDesc.context = &m_scribeContext;
+            retainedDesc.image = image.handle;
             return out.Build(retainedDesc) && m_renderer.PrepareRetainedVectorImage(out);
         };
 
-        auto resolveBlockFaces = [&](const SceneTextBlock& block, Vector<scribe::FontFaceResourceReader>& out) -> bool
+        auto resolveBlockFaces = [&](const SceneTextBlock& block, Vector<scribe::FontFaceHandle>& out) -> bool
         {
             out.Clear();
 
@@ -1531,9 +1549,9 @@ namespace he
                 out.Reserve(block.faceIndices.Size());
                 for (uint32_t fontIndex : block.faceIndices)
                 {
-            if ((fontIndex < m_fonts.Size()) && m_fonts[fontIndex].blob.IsValid())
+                    if ((fontIndex < m_fonts.Size()) && m_fonts[fontIndex].handle.IsValid())
                     {
-                        out.EmplaceBack(m_fonts[fontIndex].blob);
+                        out.EmplaceBack(m_fonts[fontIndex].handle);
                     }
                 }
             }
@@ -1541,9 +1559,9 @@ namespace he
             {
                 out = faceSpan;
             }
-            else if ((block.fontFaceIndex < m_fonts.Size()) && m_fonts[block.fontFaceIndex].blob.IsValid())
+            else if ((block.fontFaceIndex < m_fonts.Size()) && m_fonts[block.fontFaceIndex].handle.IsValid())
             {
-                out.EmplaceBack(m_fonts[block.fontFaceIndex].blob);
+                out.EmplaceBack(m_fonts[block.fontFaceIndex].handle);
             }
 
             return !out.IsEmpty();
@@ -1554,13 +1572,13 @@ namespace he
                                       scribe::TextDirection direction,
                                       bool wrap = true) -> bool
         {
-            Vector<scribe::FontFaceResourceReader> blockFacesStorage{};
+            Vector<scribe::FontFaceHandle> blockFacesStorage{};
             if (!resolveBlockFaces(block, blockFacesStorage))
             {
                 return false;
             }
 
-            const Span<const scribe::FontFaceResourceReader> blockFaces(blockFacesStorage.Data(), blockFacesStorage.Size());
+            const Span<const scribe::FontFaceHandle> blockFaces(blockFacesStorage.Data(), blockFacesStorage.Size());
             if (!layoutText(
                     block.layout,
                     blockFaces,
@@ -2426,8 +2444,8 @@ namespace he
         overlayOptions.maxWidth = columnWidth;
         overlayOptions.direction = scribe::TextDirection::LeftToRight;
 
-        const scribe::FontFaceResourceReader primaryFace[] = { m_fonts[0].blob };
-        const Span<const scribe::FontFaceResourceReader> faceSpan(primaryFace, 1);
+        const scribe::FontFaceHandle primaryFace[] = { m_fonts[0].handle };
+        const Span<const scribe::FontFaceHandle> faceSpan(primaryFace, 1);
         if (!m_layoutEngine.LayoutText(m_sceneStatsLayout, faceSpan, m_sceneStatsText, overlayOptions)
             || !m_layoutEngine.LayoutText(m_renderStatsLayout, faceSpan, m_renderStatsText, overlayOptions)
             || !m_layoutEngine.LayoutText(m_inputHintsLayout, faceSpan, m_inputHintsText, overlayOptions))
@@ -2440,6 +2458,7 @@ namespace he
             out.Clear();
 
             scribe::RetainedTextBuildDesc retainedDesc{};
+            retainedDesc.context = &m_scribeContext;
             retainedDesc.fontFaces = faceSpan;
             retainedDesc.layout = &layout;
             retainedDesc.fontSize = fontSize;

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/scribe/context.h"
 #include "he/scribe/layout_engine.h"
 
 #include "he/core/span.h"
@@ -38,7 +39,8 @@ namespace he::scribe
 
     struct RetainedTextBuildDesc
     {
-        Span<const FontFaceResourceReader> fontFaces{};
+        ScribeContext* context{ nullptr };
+        Span<const FontFaceHandle> fontFaces{};
         const LayoutResult* layout{ nullptr };
         float fontSize{ 16.0f };
         bool darkBackgroundPreferred{ true };
@@ -64,13 +66,12 @@ namespace he::scribe
         uint32_t GetEstimatedVertexCount() const { return m_estimatedVertexCount; }
         Span<const RetainedTextDraw> GetDraws() const { return m_draws; }
         Span<const RetainedTextQuad> GetQuads() const { return m_quads; }
-        const FontFaceResourceReader* GetFontFace(uint32_t fontFaceIndex) const;
-        uint64_t GetFontFaceHash(uint32_t fontFaceIndex) const;
+        ScribeContext* GetContext() const { return m_context; }
+        FontFaceHandle GetFontFaceHandle(uint32_t fontFaceIndex) const;
 
     private:
-        Vector<Vector<schema::Word>> m_fontFaceStorage{};
-        Vector<FontFaceResourceReader> m_fontFaces{};
-        Vector<uint64_t> m_fontFaceHashes{};
+        ScribeContext* m_context{ nullptr };
+        Vector<FontFaceHandle> m_fontFaces{};
         Vector<RetainedTextDraw> m_draws{};
         Vector<RetainedTextQuad> m_quads{};
         uint32_t m_estimatedVertexCount{ 0 };

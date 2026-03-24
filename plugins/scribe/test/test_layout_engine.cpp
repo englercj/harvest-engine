@@ -141,6 +141,28 @@ namespace
 
         return false;
     }
+
+    bool RegisterFontFaces(
+        ScribeContext& context,
+        Span<const FontFaceResourceReader> faces,
+        Vector<FontFaceHandle>& out)
+    {
+        out.Clear();
+        out.Reserve(faces.Size());
+        for (const FontFaceResourceReader& face : faces)
+        {
+            const FontFaceHandle handle = context.RegisterFontFace(face);
+            if (!handle.IsValid())
+            {
+                out.Clear();
+                return false;
+            }
+
+            out.EmplaceBack(handle);
+        }
+
+        return true;
+    }
 }
 
 HE_TEST(scribe, layout_engine, shape_combining_cluster)
@@ -149,11 +171,15 @@ HE_TEST(scribe, layout_engine, shape_combining_cluster)
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedFontFaceFromFile("NotoSans-Regular.ttf", fontStorage, font));
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+
+    LayoutEngine engine(context);
     LayoutResult layout;
     const String text = "A\xCC\x81 cafe";
 
-    HE_EXPECT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), text));
+    HE_EXPECT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
     HE_EXPECT_EQ(layout.lines.Size(), 1u);
     HE_EXPECT_GE(layout.glyphs.Size(), 1u);
     HE_EXPECT_GE(layout.clusters.Size(), 1u);
@@ -171,14 +197,17 @@ HE_TEST(scribe, layout_engine, uses_fallback_face)
     HE_ASSERT(BuildLoadedFontFaceFromFile("materialdesignicons.ttf", fallbackStorage, fallback));
 
     const FontFaceResourceReader faces[] = { primary, fallback };
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)), handles));
 
-    LayoutEngine engine;
+    LayoutEngine engine(context);
     LayoutResult layout;
     String text = "A";
     text += TestIconAccount;
     text += "B";
 
-    HE_EXPECT(engine.LayoutText(layout, faces, text));
+    HE_EXPECT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
     HE_EXPECT_GT(layout.fallbackGlyphCount, 0u);
 
     bool sawFallbackCluster = false;
@@ -204,12 +233,15 @@ HE_TEST(scribe, layout_engine, prefers_color_face_for_emoji_clusters)
     HE_ASSERT(BuildLoadedFontFaceFromFile("NotoSans-Regular.ttf", colorStorage, colorFace, true));
 
     const FontFaceResourceReader faces[] = { primary, colorFace };
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)), handles));
 
-    LayoutEngine engine;
+    LayoutEngine engine(context);
     LayoutResult layout;
     const String text = "A\xEF\xB8\x8F";
 
-    HE_EXPECT(engine.LayoutText(layout, faces, text));
+    HE_EXPECT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
     HE_EXPECT_EQ(layout.clusters.Size(), 1u);
     HE_EXPECT_EQ(layout.clusters[0].fontFaceIndex, 1u);
     HE_EXPECT_GT(layout.fallbackGlyphCount, 0u);
@@ -221,14 +253,18 @@ HE_TEST(scribe, layout_engine, wraps_and_hit_tests)
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedFontFaceFromFile("NotoSans-Regular.ttf", fontStorage, font));
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+
+    LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
     options.maxWidth = 35.0f;
     options.wrap = true;
 
     const String text = "wrap wrap wrap";
-    HE_EXPECT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), text, options));
+    HE_EXPECT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text, options));
     HE_EXPECT_GT(layout.lines.Size(), 1u);
 
     HitTestResult hit{};
@@ -248,13 +284,17 @@ HE_TEST(scribe, layout_engine, rtl_line_direction)
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedFontFaceFromFile("NotoSans-Regular.ttf", fontStorage, font));
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+
+    LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
     options.direction = TextDirection::RightToLeft;
 
     const String text = "abc";
-    HE_EXPECT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), text, options));
+    HE_EXPECT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text, options));
     HE_EXPECT_EQ(layout.lines.Size(), 1u);
     HE_EXPECT_GE(layout.clusters.Size(), 3u);
     HE_EXPECT_GT(layout.clusters[0].x0, layout.clusters[layout.clusters.Size() - 1].x0);
@@ -266,11 +306,15 @@ HE_TEST(scribe, layout_engine, trailing_newline_paragraph)
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedFontFaceFromFile("NotoSans-Regular.ttf", fontStorage, font));
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+
+    LayoutEngine engine(context);
     LayoutResult layout;
     const String text = "emoji page line\n";
 
-    HE_EXPECT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), text));
+    HE_EXPECT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
     HE_EXPECT_GE(layout.lines.Size(), 2u);
     HE_EXPECT_GE(layout.clusters.Size(), 1u);
 }
@@ -281,11 +325,15 @@ HE_TEST(scribe, layout_engine, textsub_demo_has_no_hidden_line_start_glyphs)
     FontFaceResourceReader font{};
     HE_ASSERT(BuildLoadedFontFaceFromFile("NotoSans-Regular.ttf", fontStorage, font));
 
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+
+    LayoutEngine engine(context);
     LayoutResult layout;
     const String text = "TextSub1 Sub2\nTextSup1 Sup2";
 
-    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceResourceReader>(&font, 1), text));
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
     HE_EXPECT_EQ(layout.lines.Size(), 2u);
     HE_EXPECT_GE(layout.clusters.Size(), 4u);
     HE_EXPECT_GE(layout.glyphs.Size(), 8u);
@@ -320,6 +368,9 @@ HE_TEST(scribe, layout_engine, styled_face_override)
     HE_ASSERT(BuildLoadedFontFaceFromFile("NotoMono-Regular.ttf", monoStorage, mono));
 
     const FontFaceResourceReader faces[] = { sans, mono };
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)), handles));
 
     const String text = "alpha beta";
     const uint32_t betaStart = 6;
@@ -334,12 +385,12 @@ HE_TEST(scribe, layout_engine, styled_face_override)
     };
 
     StyledTextLayoutDesc desc{};
-    desc.fontFaces = Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces));
+    desc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     desc.text = text;
     desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
 
-    LayoutEngine engine;
+    LayoutEngine engine(context);
     LayoutResult layout;
     HE_EXPECT(engine.LayoutStyledText(layout, desc));
 
@@ -367,11 +418,14 @@ HE_TEST(scribe, layout_engine, feature_flags_control_ligatures)
     }
 
     const FontFaceResourceReader faces[] = { font };
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)), handles));
     const String text = "office";
 
-    LayoutEngine engine;
+    LayoutEngine engine(context);
     LayoutResult defaultLayout;
-    HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceResourceReader>(faces, 1), text));
+    HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
 
     const TextFeatureSetting features[] =
     {
@@ -389,7 +443,7 @@ HE_TEST(scribe, layout_engine, feature_flags_control_ligatures)
     };
 
     StyledTextLayoutDesc desc{};
-    desc.fontFaces = Span<const FontFaceResourceReader>(faces, 1);
+    desc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     desc.text = text;
     desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
@@ -411,11 +465,14 @@ HE_TEST(scribe, layout_engine, feature_flags_control_kerning_and_tracking)
     }
 
     const FontFaceResourceReader faces[] = { font };
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)), handles));
     const String text = "AVATAR";
 
-    LayoutEngine engine;
+    LayoutEngine engine(context);
     LayoutResult defaultLayout;
-    HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceResourceReader>(faces, 1), text));
+    HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
 
     const TextFeatureSetting features[] =
     {
@@ -437,7 +494,7 @@ HE_TEST(scribe, layout_engine, feature_flags_control_kerning_and_tracking)
     };
 
     StyledTextLayoutDesc kernOffDesc{};
-    kernOffDesc.fontFaces = Span<const FontFaceResourceReader>(faces, 1);
+    kernOffDesc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     kernOffDesc.text = text;
     kernOffDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     kernOffDesc.styleSpans = Span<const TextStyleSpan>(kernOffSpans, HE_LENGTH_OF(kernOffSpans));
@@ -447,7 +504,7 @@ HE_TEST(scribe, layout_engine, feature_flags_control_kerning_and_tracking)
     HE_ASSERT(engine.LayoutStyledText(kernOffLayout, kernOffDesc));
 
     StyledTextLayoutDesc trackingDesc{};
-    trackingDesc.fontFaces = Span<const FontFaceResourceReader>(faces, 1);
+    trackingDesc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
     trackingDesc.text = text;
     trackingDesc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
     trackingDesc.styleSpans = Span<const TextStyleSpan>(trackingSpans, HE_LENGTH_OF(trackingSpans));
@@ -469,12 +526,15 @@ HE_TEST(scribe, layout_engine, feature_flags_enable_small_caps_and_case_forms)
     }
 
     const FontFaceResourceReader faces[] = { font };
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)), handles));
+    LayoutEngine engine(context);
 
     {
         const String text = "Harvest Engine";
         LayoutResult defaultLayout;
-        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceResourceReader>(faces, 1), text));
+        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
 
         const TextFeatureSetting features[] =
         {
@@ -491,7 +551,7 @@ HE_TEST(scribe, layout_engine, feature_flags_enable_small_caps_and_case_forms)
         };
 
         StyledTextLayoutDesc desc{};
-        desc.fontFaces = Span<const FontFaceResourceReader>(faces, 1);
+        desc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
         desc.text = text;
         desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
         desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
@@ -505,7 +565,7 @@ HE_TEST(scribe, layout_engine, feature_flags_enable_small_caps_and_case_forms)
     {
         const String text = "[(ALL-CAPS)]";
         LayoutResult defaultLayout;
-        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceResourceReader>(faces, 1), text));
+        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
 
         const TextFeatureSetting features[] =
         {
@@ -522,7 +582,7 @@ HE_TEST(scribe, layout_engine, feature_flags_enable_small_caps_and_case_forms)
         };
 
         StyledTextLayoutDesc desc{};
-        desc.fontFaces = Span<const FontFaceResourceReader>(faces, 1);
+        desc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
         desc.text = text;
         desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
         desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
@@ -544,12 +604,15 @@ HE_TEST(scribe, layout_engine, feature_flags_enable_numeric_forms)
     }
 
     const FontFaceResourceReader faces[] = { font };
-    LayoutEngine engine;
+    ScribeContext context{};
+    Vector<FontFaceHandle> handles{};
+    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)), handles));
+    LayoutEngine engine(context);
 
     {
         const String text = "1st 2nd 3rd 4th";
         LayoutResult defaultLayout;
-        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceResourceReader>(faces, 1), text));
+        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
 
         const TextFeatureSetting features[] =
         {
@@ -566,7 +629,7 @@ HE_TEST(scribe, layout_engine, feature_flags_enable_numeric_forms)
         };
 
         StyledTextLayoutDesc desc{};
-        desc.fontFaces = Span<const FontFaceResourceReader>(faces, 1);
+        desc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
         desc.text = text;
         desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
         desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
@@ -580,7 +643,7 @@ HE_TEST(scribe, layout_engine, feature_flags_enable_numeric_forms)
     {
         const String text = "123/456";
         LayoutResult defaultLayout;
-        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceResourceReader>(faces, 1), text));
+        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
 
         const TextFeatureSetting features[] =
         {
@@ -597,7 +660,7 @@ HE_TEST(scribe, layout_engine, feature_flags_enable_numeric_forms)
         };
 
         StyledTextLayoutDesc desc{};
-        desc.fontFaces = Span<const FontFaceResourceReader>(faces, 1);
+        desc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
         desc.text = text;
         desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
         desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));
@@ -611,7 +674,7 @@ HE_TEST(scribe, layout_engine, feature_flags_enable_numeric_forms)
     {
         const String text = "0123456789";
         LayoutResult defaultLayout;
-        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceResourceReader>(faces, 1), text));
+        HE_ASSERT(engine.LayoutText(defaultLayout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), text));
 
         const TextFeatureSetting features[] =
         {
@@ -629,7 +692,7 @@ HE_TEST(scribe, layout_engine, feature_flags_enable_numeric_forms)
         };
 
         StyledTextLayoutDesc desc{};
-        desc.fontFaces = Span<const FontFaceResourceReader>(faces, 1);
+        desc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
         desc.text = text;
         desc.styles = Span<const TextStyle>(styles, HE_LENGTH_OF(styles));
         desc.styleSpans = Span<const TextStyleSpan>(spans, HE_LENGTH_OF(spans));

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "he/scribe/context.h"
 #include "he/scribe/packed_data.h"
 #include "he/scribe/schema_types.h"
 
@@ -107,20 +108,12 @@ namespace he::scribe
         Renderer& operator=(const Renderer&) = delete;
         Renderer& operator=(Renderer&&) = delete;
 
-        bool Initialize(rhi::Device& device, rhi::Format targetFormat);
+        bool Initialize(ScribeContext& context, rhi::Format targetFormat);
         void Terminate();
 
-        bool IsInitialized() const { return m_device != nullptr; }
+        bool IsInitialized() const { return m_context != nullptr; }
 
         bool CreateGlyphResource(GlyphResource& out, const GlyphResourceCreateInfo& desc);
-        bool CreateCompiledGlyphResource(
-            GlyphResource& out,
-            const FontFaceResourceReader& fontFace,
-            uint32_t glyphIndex);
-        bool CreateCompiledVectorShapeResource(
-            GlyphResource& out,
-            const VectorImageResourceReader& image,
-            uint32_t shapeIndex);
         bool CreateDebugGlyphResource(GlyphResource& out);
         void DestroyGlyphResource(GlyphResource& resource);
 
@@ -151,28 +144,7 @@ namespace he::scribe
             uint32_t size{ 0 };
         };
 
-        struct CachedCompiledGlyphResource
-        {
-            GlyphResource resource{};
-        };
-
-        struct CachedCompiledFontGlyphSet
-        {
-            uint64_t fontFaceHash{ 0 };
-            Vector<int32_t> glyphIndices{};
-        };
-
-        struct CachedCompiledVectorShapeSet
-        {
-            uint64_t imageHash{ 0 };
-            Vector<int32_t> shapeIndices{};
-        };
-
         bool CreateDedicatedAtlas(
-            GlyphAtlas*& out,
-            const TextureDataDesc& curveTexture,
-            const TextureDataDesc& bandTexture);
-        bool CreateCachedAtlas(
             GlyphAtlas*& out,
             const TextureDataDesc& curveTexture,
             const TextureDataDesc& bandTexture);
@@ -181,18 +153,9 @@ namespace he::scribe
         bool CreateDeviceResources();
         void DestroyDeviceResources();
         void AppendDrawVertices(const DrawGlyphDesc& draw);
-        bool EnsureRetainedGlyphResource(
-            const FontFaceResourceReader& fontFace,
-            uint64_t fontFaceHash,
-            uint32_t glyphIndex,
-            const GlyphResource*& out);
-        bool EnsureRetainedVectorShapeResource(
-            const VectorImageResourceReader& image,
-            uint64_t imageHash,
-            uint32_t shapeIndex,
-            const GlyphResource*& out);
 
     private:
+        ScribeContext* m_context{ nullptr };
         rhi::Device* m_device{ nullptr };
         rhi::RootSignature* m_rootSignature{ nullptr };
         rhi::VertexBufferFormat* m_vertexBufferFormat{ nullptr };
@@ -205,11 +168,6 @@ namespace he::scribe
         StreamBuffer m_streamBuffers[rhi::MaxFrameCount]{};
         StreamBuffer m_quadStreamBuffers[rhi::MaxFrameCount]{};
         uint32_t m_streamBufferIndex{ 0 };
-        Vector<GlyphAtlas*> m_cachedAtlases{};
-        Vector<CachedCompiledFontGlyphSet> m_cachedFontGlyphSets{};
-        Vector<CachedCompiledGlyphResource> m_cachedFontGlyphResources{};
-        Vector<CachedCompiledVectorShapeSet> m_cachedVectorShapeSets{};
-        Vector<CachedCompiledGlyphResource> m_cachedVectorShapeResources{};
         Vector<StreamBatch> m_batches{};
         Vector<PackedGlyphVertex> m_streamVertices{};
         Vector<PackedQuadVertex> m_quadVertices{};

@@ -18,6 +18,7 @@
 #include "he/core/macros.h"
 #include "he/core/math.h"
 #include "he/core/result_fmt.h"
+#include "he/core/string_ops.h"
 #include "he/core/string_fmt.h"
 #include "he/core/utils.h"
 #include "he/rhi/cmd_list.h"
@@ -361,7 +362,7 @@ namespace he
             const char* searchEnd = text.Data() + text.Size();
             for (uint32_t i = 0; i <= occurrence; ++i)
             {
-                const char* match = std::strstr(search, needle.Data());
+                const char* match = StrFindN(search, static_cast<uint32_t>(Len(search, searchEnd)), needle.Data(), needle.Size());
                 if (!match || (match >= searchEnd))
                 {
                     return false;

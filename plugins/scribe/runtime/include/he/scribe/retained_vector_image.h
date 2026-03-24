@@ -40,11 +40,14 @@ namespace he::scribe
         Span<const RetainedVectorImageDraw> GetDraws() const { return m_draws; }
         const VectorImageResourceReader* GetImage() const;
         Vec2f GetViewBoxSize() const { return m_viewBoxSize; }
+        uint64_t GetImageHash() const { return m_imageHash; }
 
     private:
+        Vector<schema::Word> m_imageStorage{};
         VectorImageResourceReader m_image{};
         Vector<RetainedVectorImageDraw> m_draws{};
         Vec2f m_viewBoxSize{ 0.0f, 0.0f };
+        uint64_t m_imageHash{ 0 };
         uint32_t m_estimatedVertexCount{ 0 };
     };
 }

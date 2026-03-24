@@ -1606,6 +1606,7 @@ HE_TEST(scribe, retained_text, prepares_with_renderer_after_temporary_face_span_
     {
         HE_EXPECT_NE_PTR(retainedText.GetFontFace(draw.fontFaceIndex), nullptr);
     }
+    storage.Clear();
 
     NullRendererHarness harness;
     HE_ASSERT(harness.Initialize());
@@ -1663,6 +1664,8 @@ HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_fac
 
     HE_EXPECT(sawFallbackFaceDraw);
     HE_EXPECT(sawPaletteColorDraw);
+    repoStorage.Clear();
+    colorStorage.Clear();
 
     NullRendererHarness harness;
     HE_ASSERT(harness.Initialize());

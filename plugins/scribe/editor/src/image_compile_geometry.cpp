@@ -7,12 +7,11 @@
 #include "he/core/log.h"
 #include "he/core/math.h"
 #include "he/core/string.h"
+#include "he/core/string_ops.h"
 #include "he/core/string_view.h"
 #include "he/core/utils.h"
 
 #include <algorithm>
-#include <charconv>
-#include <cstdlib>
 
 namespace he::scribe::editor
 {
@@ -388,8 +387,8 @@ namespace he::scribe::editor
         {
             const char* begin = text.Data();
             const char* end = text.Data() + text.Size();
-            const std::from_chars_result result = std::from_chars(begin, end, out);
-            return (result.ptr != begin) && (result.ptr == end) && (result.ec == std::errc{});
+            const char* parseEnd = end;
+            return StrToFloat(out, begin, &parseEnd) && (parseEnd == end);
         }
 
         bool ParseNumberList(Vector<float>& out, StringView text)
@@ -411,14 +410,14 @@ namespace he::scribe::editor
                 }
 
                 float value = 0.0f;
-                const std::from_chars_result result = std::from_chars(cur, endText, value);
-                if (result.ptr == cur || result.ec != std::errc{})
+                const char* parseEnd = endText;
+                if (!StrToFloat(value, cur, &parseEnd) || (parseEnd == cur))
                 {
                     return false;
                 }
 
                 out.PushBack(value);
-                cur = result.ptr;
+                cur = parseEnd;
             }
 
             return true;
@@ -1118,7 +1117,7 @@ namespace he::scribe::editor
             }
 
             ParsedShape shape{};
-            shape.curves = std::move(curves);
+            shape.curves = Move(curves);
             shape.fillRule = state.style.fillRule;
             shape.color = state.style.fill;
             RecomputeShapeBounds(shape);
@@ -1129,7 +1128,7 @@ namespace he::scribe::editor
                 {
                     ParsedDefinition& definition = m_definitions.EmplaceBack();
                     definition.id = String(id);
-                    definition.shape = std::move(shape);
+                    definition.shape = Move(shape);
                 }
 
                 return true;
@@ -1141,7 +1140,7 @@ namespace he::scribe::editor
             }
 
             ParsedShape& outShape = out.shapes.EmplaceBack();
-            outShape = std::move(shape);
+            outShape = Move(shape);
             if (out.shapes.Size() == 1)
             {
                 out.boundsMinX = outShape.minX;
@@ -1258,9 +1257,8 @@ namespace he::scribe::editor
                     return false;
                 }
 
-                char* parseEnd = nullptr;
-                value = std::strtof(cur, &parseEnd);
-                if (parseEnd == cur)
+                const char* parseEnd = end;
+                if (!StrToFloat(value, cur, &parseEnd) || (parseEnd == cur))
                 {
                     return false;
                 }

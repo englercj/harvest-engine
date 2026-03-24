@@ -293,6 +293,7 @@ HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_im
     HE_ASSERT(BuildRetainedVectorImageFromTemporaryCopy(retainedImage, image));
     HE_EXPECT_GT(retainedImage.GetDrawCount(), 0u);
     HE_EXPECT_NE_PTR(retainedImage.GetImage(), nullptr);
+    storage.Clear();
 
     NullRendererHarness harness;
     HE_ASSERT(harness.Initialize());

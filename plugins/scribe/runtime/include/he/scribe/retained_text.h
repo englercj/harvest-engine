@@ -65,9 +65,12 @@ namespace he::scribe
         Span<const RetainedTextDraw> GetDraws() const { return m_draws; }
         Span<const RetainedTextQuad> GetQuads() const { return m_quads; }
         const FontFaceResourceReader* GetFontFace(uint32_t fontFaceIndex) const;
+        uint64_t GetFontFaceHash(uint32_t fontFaceIndex) const;
 
     private:
+        Vector<Vector<schema::Word>> m_fontFaceStorage{};
         Vector<FontFaceResourceReader> m_fontFaces{};
+        Vector<uint64_t> m_fontFaceHashes{};
         Vector<RetainedTextDraw> m_draws{};
         Vector<RetainedTextQuad> m_quads{};
         uint32_t m_estimatedVertexCount{ 0 };

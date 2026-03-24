@@ -7,11 +7,14 @@
 #include "he/scribe/retained_text.h"
 #include "he/scribe/retained_vector_image.h"
 
+#include "resource_key_utils.h"
+
 #include "shaders/scribe.shaders.h"
 #include "shaders/solid.shaders.h"
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
+#include "he/core/hash.h"
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
 #include "he/core/result_fmt.h"
@@ -33,10 +36,10 @@ namespace he::scribe
         rhi::Texture* bandTexture{ nullptr };
         rhi::TextureView* bandView{ nullptr };
         rhi::DescriptorTable* descriptorTable{ nullptr };
-        const void* curveData{ nullptr };
+        uint64_t curveHash{ 0 };
         Vec2u curveSize{ 0, 0 };
         uint32_t curveRowPitch{ 0 };
-        const void* bandData{ nullptr };
+        uint64_t bandHash{ 0 };
         Vec2u bandSize{ 0, 0 };
         uint32_t bandRowPitch{ 0 };
         uint32_t refCount{ 0 };
@@ -71,62 +74,98 @@ namespace he::scribe
             return true;
         }
 
-        bool UploadTexture2D(
+        bool UploadTexturePair2D(
             rhi::Device& device,
-            rhi::Texture*& outTexture,
-            rhi::TextureView*& outView,
-            const TextureDataDesc& textureData,
-            rhi::Format format,
-            const char* textureName,
-            const char* uploadBufferName)
+            rhi::Texture*& outTexture0,
+            rhi::TextureView*& outView0,
+            const TextureDataDesc& textureData0,
+            rhi::Format format0,
+            const char* textureName0,
+            const char* uploadBufferName0,
+            rhi::Texture*& outTexture1,
+            rhi::TextureView*& outView1,
+            const TextureDataDesc& textureData1,
+            rhi::Format format1,
+            const char* textureName1,
+            const char* uploadBufferName1)
         {
-            const Vec3u textureSize{ textureData.size.x, textureData.size.y, 1 };
-
+            struct PendingTextureUpload
             {
-                rhi::TextureDesc desc{};
-                desc.type = rhi::TextureType::_2D;
-                desc.format = format;
-                desc.size = textureSize;
-                desc.initialState = rhi::TextureState::CopyDst;
-                HE_RHI_SET_NAME(desc, textureName);
+                rhi::Texture** texture{ nullptr };
+                rhi::TextureView** view{ nullptr };
+                TextureDataDesc data{};
+                rhi::Format format{ rhi::Format::Invalid };
+                const char* textureName{ nullptr };
+                const char* uploadBufferName{ nullptr };
+                rhi::Buffer* uploadBuffer{ nullptr };
+                uint32_t uploadPitch{ 0 };
+            };
 
-                Result r = device.CreateTexture(desc, outTexture);
-                if (!r)
+            PendingTextureUpload uploads[2]{};
+            uploads[0].texture = &outTexture0;
+            uploads[0].view = &outView0;
+            uploads[0].data = textureData0;
+            uploads[0].format = format0;
+            uploads[0].textureName = textureName0;
+            uploads[0].uploadBufferName = uploadBufferName0;
+            uploads[1].texture = &outTexture1;
+            uploads[1].view = &outView1;
+            uploads[1].data = textureData1;
+            uploads[1].format = format1;
+            uploads[1].textureName = textureName1;
+            uploads[1].uploadBufferName = uploadBufferName1;
+
+            HE_AT_SCOPE_EXIT([&]()
+            {
+                for (PendingTextureUpload& upload : uploads)
                 {
-                    HE_LOGF_ERROR(scribe_render, "Failed to create texture '{}'. Error: {}", textureName, r);
-                    return false;
+                    device.SafeDestroy(upload.uploadBuffer);
                 }
-            }
+            });
 
             const uint32_t alignment = device.GetDeviceInfo().uploadDataPitchAlignment;
-            const uint32_t uploadPitch = AlignUp<uint32_t>(textureData.rowPitch, alignment);
-            const uint32_t uploadSize = textureData.size.y * uploadPitch;
-
-            rhi::Buffer* uploadBuffer = nullptr;
-            HE_AT_SCOPE_EXIT([&]() { device.SafeDestroy(uploadBuffer); });
-
+            for (PendingTextureUpload& upload : uploads)
             {
-                rhi::BufferDesc desc{};
-                desc.heapType = rhi::HeapType::Upload;
-                desc.usage = rhi::BufferUsage::CopySrc;
-                desc.size = uploadSize;
-                HE_RHI_SET_NAME(desc, uploadBufferName);
+                const Vec3u textureSize{ upload.data.size.x, upload.data.size.y, 1 };
 
-                Result r = device.CreateBuffer(desc, uploadBuffer);
+                rhi::TextureDesc textureDesc{};
+                textureDesc.type = rhi::TextureType::_2D;
+                textureDesc.format = upload.format;
+                textureDesc.size = textureSize;
+                textureDesc.initialState = rhi::TextureState::CopyDst;
+                HE_RHI_SET_NAME(textureDesc, upload.textureName);
+
+                Result r = device.CreateTexture(textureDesc, *upload.texture);
                 if (!r)
                 {
-                    HE_LOGF_ERROR(scribe_render, "Failed to create upload buffer '{}'. Error: {}", uploadBufferName, r);
+                    HE_LOGF_ERROR(scribe_render, "Failed to create texture '{}'. Error: {}", upload.textureName, r);
                     return false;
                 }
-            }
 
-            uint8_t* uploadMem = static_cast<uint8_t*>(device.Map(uploadBuffer));
-            const uint8_t* src = static_cast<const uint8_t*>(textureData.data);
-            for (uint32_t y = 0; y < textureData.size.y; ++y)
-            {
-                MemCopy(uploadMem + (y * uploadPitch), src + (y * textureData.rowPitch), textureData.rowPitch);
+                upload.uploadPitch = AlignUp<uint32_t>(upload.data.rowPitch, alignment);
+                const uint32_t uploadSize = upload.data.size.y * upload.uploadPitch;
+
+                rhi::BufferDesc bufferDesc{};
+                bufferDesc.heapType = rhi::HeapType::Upload;
+                bufferDesc.usage = rhi::BufferUsage::CopySrc;
+                bufferDesc.size = uploadSize;
+                HE_RHI_SET_NAME(bufferDesc, upload.uploadBufferName);
+
+                r = device.CreateBuffer(bufferDesc, upload.uploadBuffer);
+                if (!r)
+                {
+                    HE_LOGF_ERROR(scribe_render, "Failed to create upload buffer '{}'. Error: {}", upload.uploadBufferName, r);
+                    return false;
+                }
+
+                uint8_t* uploadMem = static_cast<uint8_t*>(device.Map(upload.uploadBuffer));
+                const uint8_t* src = static_cast<const uint8_t*>(upload.data.data);
+                for (uint32_t y = 0; y < upload.data.size.y; ++y)
+                {
+                    MemCopy(uploadMem + (y * upload.uploadPitch), src + (y * upload.data.rowPitch), upload.data.rowPitch);
+                }
+                device.Unmap(upload.uploadBuffer);
             }
-            device.Unmap(uploadBuffer);
 
             rhi::CmdAllocator* cmdAllocator = nullptr;
             rhi::RenderCmdList* cmdList = nullptr;
@@ -162,10 +201,6 @@ namespace he::scribe
                 }
             }
 
-            rhi::BufferTextureCopy copyRegion{};
-            copyRegion.bufferRowPitch = uploadPitch;
-            copyRegion.textureSize = textureSize;
-
             Result r = cmdList->Begin(cmdAllocator);
             if (!r)
             {
@@ -173,8 +208,15 @@ namespace he::scribe
                 return false;
             }
 
-            cmdList->Copy(uploadBuffer, outTexture, copyRegion);
-            cmdList->TransitionBarrier(outTexture, rhi::TextureState::CopyDst, rhi::TextureState::PixelShaderRead);
+            for (PendingTextureUpload& upload : uploads)
+            {
+                rhi::BufferTextureCopy copyRegion{};
+                copyRegion.bufferRowPitch = upload.uploadPitch;
+                copyRegion.textureSize = { upload.data.size.x, upload.data.size.y, 1 };
+                cmdList->Copy(upload.uploadBuffer, *upload.texture, copyRegion);
+                cmdList->TransitionBarrier(*upload.texture, rhi::TextureState::CopyDst, rhi::TextureState::PixelShaderRead);
+            }
+
             r = cmdList->End();
             if (!r)
             {
@@ -186,14 +228,15 @@ namespace he::scribe
             cmdQueue.Submit(cmdList);
             cmdQueue.WaitForFlush();
 
+            for (PendingTextureUpload& upload : uploads)
             {
-                rhi::TextureViewDesc desc{};
-                desc.texture = outTexture;
+                rhi::TextureViewDesc viewDesc{};
+                viewDesc.texture = *upload.texture;
 
-                Result viewResult = device.CreateTextureView(desc, outView);
+                Result viewResult = device.CreateTextureView(viewDesc, *upload.view);
                 if (!viewResult)
                 {
-                    HE_LOGF_ERROR(scribe_render, "Failed to create texture view '{}'. Error: {}", textureName, viewResult);
+                    HE_LOGF_ERROR(scribe_render, "Failed to create texture view '{}'. Error: {}", upload.textureName, viewResult);
                     return false;
                 }
             }
@@ -214,6 +257,22 @@ namespace he::scribe
                 a.z * b.z,
                 a.w * b.w
             };
+        }
+
+        uint64_t HashTextureDataDesc(const TextureDataDesc& textureData)
+        {
+            Hash<WyHash> hash{};
+            hash.Update(textureData.size.x);
+            hash.Update(textureData.size.y);
+            hash.Update(textureData.rowPitch);
+
+            const uint8_t* src = static_cast<const uint8_t*>(textureData.data);
+            for (uint32_t y = 0; y < textureData.size.y; ++y)
+            {
+                hash.Update(src + (y * textureData.rowPitch), textureData.rowPitch);
+            }
+
+            return hash.Final();
         }
 
         void BuildFrameConstants(
@@ -347,7 +406,7 @@ namespace he::scribe
         }
         m_cachedVectorShapeResources.Clear();
         m_cachedVectorShapeSets.Clear();
-        Vector<GlyphAtlas*> cachedAtlases = std::move(m_cachedAtlases);
+        Vector<GlyphAtlas*> cachedAtlases = Move(m_cachedAtlases);
         m_cachedAtlases.Clear();
         for (GlyphAtlas*& atlas : cachedAtlases)
         {
@@ -379,21 +438,14 @@ namespace he::scribe
         GlyphAtlas* atlas = Allocator::GetDefault().New<GlyphAtlas>();
         atlas->refCount = 1;
 
-        if (!UploadTexture2D(
+        if (!UploadTexturePair2D(
             *m_device,
             atlas->curveTexture,
             atlas->curveView,
             curveTexture,
             rhi::Format::RGBA16Float,
             "Scribe Curve Texture",
-            "Scribe Curve Upload Buffer"))
-        {
-            ReleaseAtlas(atlas);
-            return false;
-        }
-
-        if (!UploadTexture2D(
-            *m_device,
+            "Scribe Curve Upload Buffer",
             atlas->bandTexture,
             atlas->bandView,
             bandTexture,
@@ -443,15 +495,17 @@ namespace he::scribe
         const TextureDataDesc& bandTexture)
     {
         out = nullptr;
+        const uint64_t curveHash = HashTextureDataDesc(curveTexture);
+        const uint64_t bandHash = HashTextureDataDesc(bandTexture);
         for (GlyphAtlas* atlas : m_cachedAtlases)
         {
             if (atlas
                 && atlas->cached
-                && (atlas->curveData == curveTexture.data)
+                && (atlas->curveHash == curveHash)
                 && (atlas->curveSize.x == curveTexture.size.x)
                 && (atlas->curveSize.y == curveTexture.size.y)
                 && (atlas->curveRowPitch == curveTexture.rowPitch)
-                && (atlas->bandData == bandTexture.data)
+                && (atlas->bandHash == bandHash)
                 && (atlas->bandSize.x == bandTexture.size.x)
                 && (atlas->bandSize.y == bandTexture.size.y)
                 && (atlas->bandRowPitch == bandTexture.rowPitch))
@@ -469,10 +523,10 @@ namespace he::scribe
         }
 
         atlas->cached = true;
-        atlas->curveData = curveTexture.data;
+        atlas->curveHash = curveHash;
         atlas->curveSize = curveTexture.size;
         atlas->curveRowPitch = curveTexture.rowPitch;
-        atlas->bandData = bandTexture.data;
+        atlas->bandHash = bandHash;
         atlas->bandSize = bandTexture.size;
         atlas->bandRowPitch = bandTexture.rowPitch;
         m_cachedAtlases.PushBack(atlas);
@@ -716,7 +770,7 @@ namespace he::scribe
             }
 
             const GlyphResource* glyphResource = nullptr;
-            if (!EnsureRetainedGlyphResource(*fontFace, draw.glyphIndex, glyphResource))
+            if (!EnsureRetainedGlyphResource(*fontFace, text.GetFontFaceHash(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
             {
                 continue;
             }
@@ -736,7 +790,7 @@ namespace he::scribe
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
-            if (!EnsureRetainedVectorShapeResource(*loadedImage, draw.shapeIndex, shapeResource))
+            if (!EnsureRetainedVectorShapeResource(*loadedImage, image.GetImageHash(), draw.shapeIndex, shapeResource))
             {
                 continue;
             }
@@ -796,7 +850,7 @@ namespace he::scribe
             }
 
             const GlyphResource* glyphResource = nullptr;
-            if (!EnsureRetainedGlyphResource(*fontFace, draw.glyphIndex, glyphResource))
+            if (!EnsureRetainedGlyphResource(*fontFace, text.GetFontFaceHash(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
             {
                 continue;
             }
@@ -854,7 +908,7 @@ namespace he::scribe
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
-            if (!EnsureRetainedVectorShapeResource(*loadedImage, draw.shapeIndex, shapeResource))
+            if (!EnsureRetainedVectorShapeResource(*loadedImage, image.GetImageHash(), draw.shapeIndex, shapeResource))
             {
                 continue;
             }
@@ -1055,16 +1109,16 @@ namespace he::scribe
 
     bool Renderer::EnsureRetainedGlyphResource(
         const FontFaceResourceReader& fontFace,
+        uint64_t fontFaceHash,
         uint32_t glyphIndex,
         const GlyphResource*& out)
     {
         out = nullptr;
 
         CachedCompiledFontGlyphSet* glyphSet = nullptr;
-        const schema::Word* fontFaceData = fontFace.Data();
         for (CachedCompiledFontGlyphSet& cachedSet : m_cachedFontGlyphSets)
         {
-            if (cachedSet.fontFaceData == fontFaceData)
+            if (cachedSet.fontFaceHash == fontFaceHash)
             {
                 glyphSet = &cachedSet;
                 break;
@@ -1074,7 +1128,7 @@ namespace he::scribe
         if (!glyphSet)
         {
             glyphSet = &m_cachedFontGlyphSets.EmplaceBack();
-            glyphSet->fontFaceData = fontFaceData;
+            glyphSet->fontFaceHash = fontFaceHash;
             glyphSet->glyphIndices.Resize(fontFace.GetMetadata().GetGlyphCount(), int32_t(-1));
         }
 
@@ -1107,16 +1161,16 @@ namespace he::scribe
 
     bool Renderer::EnsureRetainedVectorShapeResource(
         const VectorImageResourceReader& image,
+        uint64_t imageHash,
         uint32_t shapeIndex,
         const GlyphResource*& out)
     {
         out = nullptr;
 
         CachedCompiledVectorShapeSet* shapeSet = nullptr;
-        const schema::Word* imageData = image.Data();
         for (CachedCompiledVectorShapeSet& cachedSet : m_cachedVectorShapeSets)
         {
-            if (cachedSet.imageData == imageData)
+            if (cachedSet.imageHash == imageHash)
             {
                 shapeSet = &cachedSet;
                 break;
@@ -1126,7 +1180,7 @@ namespace he::scribe
         if (!shapeSet)
         {
             shapeSet = &m_cachedVectorShapeSets.EmplaceBack();
-            shapeSet->imageData = imageData;
+            shapeSet->imageHash = imageHash;
             shapeSet->shapeIndices.Resize(image.GetRender().GetShapes().Size(), int32_t(-1));
         }
 

@@ -158,13 +158,13 @@ namespace he::scribe
 
         struct CachedCompiledFontGlyphSet
         {
-            const schema::Word* fontFaceData{ nullptr };
+            uint64_t fontFaceHash{ 0 };
             Vector<int32_t> glyphIndices{};
         };
 
         struct CachedCompiledVectorShapeSet
         {
-            const schema::Word* imageData{ nullptr };
+            uint64_t imageHash{ 0 };
             Vector<int32_t> shapeIndices{};
         };
 
@@ -183,10 +183,12 @@ namespace he::scribe
         void AppendDrawVertices(const DrawGlyphDesc& draw);
         bool EnsureRetainedGlyphResource(
             const FontFaceResourceReader& fontFace,
+            uint64_t fontFaceHash,
             uint32_t glyphIndex,
             const GlyphResource*& out);
         bool EnsureRetainedVectorShapeResource(
             const VectorImageResourceReader& image,
+            uint64_t imageHash,
             uint32_t shapeIndex,
             const GlyphResource*& out);
 

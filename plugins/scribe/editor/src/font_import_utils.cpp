@@ -6,6 +6,7 @@
 #include "he/core/log.h"
 #include "he/core/path.h"
 #include "he/core/result_fmt.h"
+#include "he/core/string_ops.h"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -90,12 +91,12 @@ namespace he::scribe::editor
                 return fallback;
             }
 
-            if (std::strcmp(fontFormat, "CFF") == 0)
+            if (StrEqual(fontFormat, "CFF"))
             {
                 return FontSourceFormat::OpenTypeCff;
             }
 
-            if (std::strcmp(fontFormat, "TrueType") == 0)
+            if (StrEqual(fontFormat, "TrueType"))
             {
                 return FontSourceFormat::TrueType;
             }

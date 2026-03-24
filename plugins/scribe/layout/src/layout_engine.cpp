@@ -22,6 +22,8 @@ namespace he::scribe
 
         struct FontContext
         {
+            hb_blob_t* blob{ nullptr };
+            hb_face_t* face{ nullptr };
             hb_font_t* font{ nullptr };
             float fontSize{ 0.0f };
             float unitScale{ 0.0f };
@@ -29,15 +31,6 @@ namespace he::scribe
             float descent{ 0.0f };
             float lineHeight{ 0.0f };
             bool hasColorGlyphs{ false };
-            bool hasSourceBytes{ false };
-        };
-
-        struct CachedFontContext
-        {
-            const schema::Word* fontFaceData{ nullptr };
-            hb_blob_t* blob{ nullptr };
-            hb_face_t* face{ nullptr };
-            hb_font_t* font{ nullptr };
             bool hasSourceBytes{ false };
         };
 
@@ -260,52 +253,52 @@ namespace he::scribe
             return 0;
         }
 
-        bool GetOrCreateCachedFontContext(CachedFontContext*& out, const FontFaceResourceReader& face)
+        bool AreStyleSpansOrdered(Span<const TextStyleSpan> spans)
         {
-            static Vector<CachedFontContext> CachedContexts{};
-
-            const schema::Word* fontFaceData = face.Data();
-            for (CachedFontContext& cached : CachedContexts)
+            uint32_t previousStart = 0;
+            uint32_t previousEnd = 0;
+            bool havePrevious = false;
+            for (const TextStyleSpan& span : spans)
             {
-                if (cached.fontFaceData == fontFaceData)
+                if (havePrevious
+                    && ((span.textByteStart < previousStart)
+                        || ((span.textByteStart == previousStart) && (span.textByteEnd < previousEnd))))
                 {
-                    out = &cached;
-                    return true;
+                    return false;
                 }
+
+                previousStart = span.textByteStart;
+                previousEnd = span.textByteEnd;
+                havePrevious = true;
             }
 
-            CachedFontContext& cached = CachedContexts.EmplaceBack();
-            cached.fontFaceData = fontFaceData;
-
-            const FontFaceShapingData::Reader shaping = face.GetShaping();
-            const schema::Blob::Reader sourceBytes = shaping.GetSourceBytes();
-            if (sourceBytes.IsEmpty())
-            {
-                out = &cached;
-                return true;
-            }
-
-            cached.blob = hb_blob_create(
-                reinterpret_cast<const char*>(sourceBytes.Data()),
-                static_cast<unsigned int>(sourceBytes.Size()),
-                HB_MEMORY_MODE_READONLY,
-                nullptr,
-                nullptr);
-            if (!cached.blob)
-            {
-                CachedContexts.PopBack();
-                return false;
-            }
-
-            cached.face = hb_face_create(cached.blob, shaping.GetFaceIndex());
-            cached.font = hb_font_create(cached.face);
-            hb_ot_font_set_funcs(cached.font);
-            const FontFaceRuntimeMetadata::Reader metadata = face.GetMetadata();
-            const uint32_t unitsPerEm = Max(metadata.GetUnitsPerEm(), 1u);
-            hb_font_set_scale(cached.font, static_cast<int32_t>(unitsPerEm), static_cast<int32_t>(unitsPerEm));
-            cached.hasSourceBytes = true;
-            out = &cached;
             return true;
+        }
+
+        uint32_t ResolveStyleIndexOrdered(
+            Span<const TextStyleSpan> spans,
+            uint32_t& spanCursor,
+            uint32_t clusterByteStart,
+            uint32_t clusterByteEnd)
+        {
+            while (spanCursor < spans.Size())
+            {
+                const TextStyleSpan& span = spans[spanCursor];
+                if (clusterByteStart >= span.textByteEnd)
+                {
+                    ++spanCursor;
+                    continue;
+                }
+
+                if (clusterByteEnd <= span.textByteStart)
+                {
+                    return 0;
+                }
+
+                return span.styleIndex;
+            }
+
+            return 0;
         }
 
         bool BuildFontContexts(Vector<FontContext>& out, Span<const FontFaceResourceReader> faces, const LayoutOptions& options)
@@ -331,17 +324,28 @@ namespace he::scribe
                     ctx.lineHeight = ctx.ascent + ctx.descent;
                 }
 
-                CachedFontContext* cachedContext = nullptr;
-                if (!GetOrCreateCachedFontContext(cachedContext, faces[i]))
+                const schema::Blob::Reader sourceBytes = shaping.GetSourceBytes();
+                if (sourceBytes.IsEmpty())
+                {
+                    continue;
+                }
+
+                ctx.blob = hb_blob_create(
+                    reinterpret_cast<const char*>(sourceBytes.Data()),
+                    static_cast<unsigned int>(sourceBytes.Size()),
+                    HB_MEMORY_MODE_DUPLICATE,
+                    nullptr,
+                    nullptr);
+                if (!ctx.blob)
                 {
                     return false;
                 }
 
-                if (cachedContext)
-                {
-                    ctx.font = cachedContext->font;
-                    ctx.hasSourceBytes = cachedContext->hasSourceBytes;
-                }
+                ctx.face = hb_face_create(ctx.blob, shaping.GetFaceIndex());
+                ctx.font = hb_font_create(ctx.face);
+                hb_ot_font_set_funcs(ctx.font);
+                hb_font_set_scale(ctx.font, static_cast<int32_t>(unitsPerEm), static_cast<int32_t>(unitsPerEm));
+                ctx.hasSourceBytes = true;
             }
 
             return true;
@@ -351,6 +355,21 @@ namespace he::scribe
         {
             for (FontContext& ctx : contexts)
             {
+                if (ctx.font)
+                {
+                    hb_font_destroy(ctx.font);
+                }
+
+                if (ctx.face)
+                {
+                    hb_face_destroy(ctx.face);
+                }
+
+                if (ctx.blob)
+                {
+                    hb_blob_destroy(ctx.blob);
+                }
+
                 ctx = {};
             }
         }
@@ -492,6 +511,8 @@ namespace he::scribe
             const char* cursor = paragraphText.Data();
             const char* end = paragraphText.End();
             bool previousWasJoiner = false;
+            const bool styleSpansOrdered = AreStyleSpansOrdered(styleSpans);
+            uint32_t styleSpanCursor = 0;
 
             while (cursor != end)
             {
@@ -534,7 +555,9 @@ namespace he::scribe
                         : ClusterDirection::LeftToRight;
                 }
 
-                out.Back().styleIndex = ResolveStyleIndex(styleSpans, out.Back().textByteStart, out.Back().textByteEnd);
+                out.Back().styleIndex = styleSpansOrdered
+                    ? ResolveStyleIndexOrdered(styleSpans, styleSpanCursor, out.Back().textByteStart, out.Back().textByteEnd)
+                    : ResolveStyleIndex(styleSpans, out.Back().textByteStart, out.Back().textByteEnd);
 
                 previousWasJoiner = (codePoint == 0x200Du);
                 cursor += byteCount;

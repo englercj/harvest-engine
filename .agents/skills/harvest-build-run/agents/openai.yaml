@@ -1,0 +1,4 @@
+interface:
+  display_name: "Harvest Build Run"
+  short_description: "Build and run Harvest Engine targets on Windows."
+  default_prompt: "Use $harvest-build-run to generate projects, build Harvest Engine targets, and run binaries or tests from the .build output tree."

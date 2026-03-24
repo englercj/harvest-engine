@@ -1,0 +1,4 @@
+interface:
+  display_name: "Harvest Schema Authoring"
+  short_description: "Write and evolve Harvest Schema .hsc files."
+  default_prompt: "Use $harvest-schema-authoring to write or review a Harvest Schema .hsc file, including asset type layout and schema evolution decisions."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Harvest Project KDL"
+  short_description: "Edit HE Make project, plugin, and module KDL."
+  default_prompt: "Use $harvest-project-kdl to create or modify Harvest Engine project KDL, including plugins, modules, contrib package definitions, and regeneration-aware changes."

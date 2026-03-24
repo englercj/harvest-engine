@@ -74,6 +74,7 @@ namespace he::scribe::editor
 
         const uint32_t faceCount = firstFace.faceCount > 0 ? firstFace.faceCount : 1;
         const StringView sourceFileName = GetBaseName(ctx.file);
+        schema::Uuid::Reader sourceOwnerAssetUuid{};
 
         for (uint32_t faceIndex = 0; faceIndex < faceCount; ++faceIndex)
         {
@@ -84,7 +85,6 @@ namespace he::scribe::editor
             }
 
             assets::Asset::Builder asset;
-            bool preserveSourceBytesForShaping = true;
 
             for (const assets::Asset::Reader existing : ctx.assetFile.GetAssets())
             {
@@ -99,7 +99,6 @@ namespace he::scribe::editor
                     continue;
                 }
 
-                preserveSourceBytesForShaping = existingData.GetPreserveSourceBytesForShaping();
                 asset = result.UpdateAsset(existing.GetUuid());
                 break;
             }
@@ -115,13 +114,26 @@ namespace he::scribe::editor
 
             schema::Builder* assetBuilder = asset.GetData().GetBuilder();
             ScribeFontFace::Builder assetData = assetBuilder->AddStruct<ScribeFontFace>();
-            FillFontFaceAssetData(assetData, faceInfo, preserveSourceBytesForShaping);
+            FillFontFaceAssetData(assetData, faceInfo);
             asset.GetData().Set(assetData.AsReader());
+
+            if (faceIndex == 0)
+            {
+                sourceOwnerAssetUuid = asset.GetUuid();
+            }
 
             schema::Builder sourceBuilder;
             ScribeFontFace::ImportSourceResource::Builder sourceResource = sourceBuilder.AddStruct<ScribeFontFace::ImportSourceResource>();
             sourceResource.SetSourceFormat(sourceFormat);
-            sourceResource.SetSourceBytes(sourceBuilder.AddBlob(Span<const uint8_t>(sourceBytes)));
+            sourceResource.SetSourceOwnerAsset(sourceOwnerAssetUuid);
+            if (faceIndex == 0)
+            {
+                sourceResource.SetSourceBytes(sourceBuilder.AddBlob(Span<const uint8_t>(sourceBytes)));
+            }
+            else
+            {
+                sourceResource.SetSourceBytes(sourceBuilder.AddBlob({}));
+            }
             sourceResource.InitSourceFileName(sourceFileName);
             sourceResource.SetFaceCount(faceCount);
             sourceBuilder.SetRoot(sourceResource);

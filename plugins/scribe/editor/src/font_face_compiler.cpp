@@ -17,6 +17,45 @@
 
 namespace he::scribe::editor
 {
+    namespace
+    {
+        bool ResolveImportSource(
+            Vector<schema::Word>& sourceStorage,
+            schema::Blob::Reader& outSourceBlob,
+            const assets::CompileContext& ctx,
+            assets::ResourceId importSourceId,
+            ScribeFontFace::ImportSourceResource::Reader importSource)
+        {
+            outSourceBlob = importSource.GetSourceBytes();
+            if (!outSourceBlob.IsEmpty())
+            {
+                return true;
+            }
+
+            const assets::AssetUuid ownerAssetUuid(importSource.GetSourceOwnerAsset());
+            if (ownerAssetUuid == ctx.asset.GetUuid())
+            {
+                return false;
+            }
+
+            Result ownerResult = ctx.db.GetResource(sourceStorage, ownerAssetUuid, importSourceId);
+            if (!ownerResult)
+            {
+                return false;
+            }
+
+            const ScribeFontFace::ImportSourceResource::Reader ownerImportSource =
+                schema::ReadRoot<ScribeFontFace::ImportSourceResource>(sourceStorage.Data());
+            if (!ownerImportSource.IsValid())
+            {
+                return false;
+            }
+
+            outSourceBlob = ownerImportSource.GetSourceBytes();
+            return !outSourceBlob.IsEmpty();
+        }
+    }
+
     bool FontFaceCompiler::Compile(const assets::CompileContext& ctx, [[maybe_unused]] assets::CompileResult& result)
     {
         constexpr assets::ResourceId ImportSourceId{ ScribeFontFace::ImportSourceResourceName };
@@ -72,10 +111,21 @@ namespace he::scribe::editor
             return false;
         }
 
+        Vector<schema::Word> sharedImportSourceBytes{};
+        schema::Blob::Reader sourceBlob{};
+        if (!ResolveImportSource(sharedImportSourceBytes, sourceBlob, ctx, ImportSourceId, importSource))
+        {
+            HE_LOG_ERROR(he_scribe,
+                HE_MSG("Failed to resolve scribe font source bytes for compile/shaping."),
+                HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
+                HE_KV(asset_name, ctx.asset.GetName()),
+                HE_KV(source_owner_asset_uuid, assets::AssetUuid(importSource.GetSourceOwnerAsset())));
+            return false;
+        }
+
         CompiledFontRenderData renderData{};
         Stopwatch timer;
         {
-            const schema::Blob::Reader sourceBlob = importSource.GetSourceBytes();
             if (!BuildCompiledFontRenderData(renderData, { sourceBlob.Data(), sourceBlob.Size() }, asset.GetFaceIndex()))
             {
                 HE_LOG_ERROR(he_scribe,
@@ -104,15 +154,7 @@ namespace he::scribe::editor
         FontFaceShapingData::Builder shaping = blob.InitShaping();
         shaping.SetFaceIndex(asset.GetFaceIndex());
         shaping.SetSourceFormat(importSource.GetSourceFormat());
-        if (asset.GetPreserveSourceBytesForShaping())
-        {
-            const schema::Blob::Reader sourceBlob = importSource.GetSourceBytes();
-            shaping.SetSourceBytes(blobBuilder.AddBlob({ sourceBlob.Data(), sourceBlob.Size() }));
-        }
-        else
-        {
-            shaping.SetSourceBytes(blobBuilder.AddBlob({}));
-        }
+        shaping.SetSourceBytes(blobBuilder.AddBlob({ sourceBlob.Data(), sourceBlob.Size() }));
 
         FontFaceImportMetadata::Builder metadata = blob.InitMetadata();
         FillFontFaceImportMetadata(metadata, {

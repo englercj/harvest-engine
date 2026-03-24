@@ -38,5 +38,5 @@ namespace he::scribe::editor
 
     void FillFontFaceMetrics(FontFaceMetrics::Builder metrics, const FontFaceInfo& info);
     void FillFontFaceImportMetadata(FontFaceImportMetadata::Builder metadata, const FontFaceInfo& info);
-    void FillFontFaceAssetData(ScribeFontFace::Builder assetData, const FontFaceInfo& info, bool preserveSourceBytesForShaping);
+    void FillFontFaceAssetData(ScribeFontFace::Builder assetData, const FontFaceInfo& info);
 }

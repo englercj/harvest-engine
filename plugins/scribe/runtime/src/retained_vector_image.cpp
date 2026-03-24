@@ -21,9 +21,9 @@ namespace he::scribe
             metadata.GetSourceViewBoxWidth(),
             metadata.GetSourceViewBoxHeight()
         };
-
-        Vector<CompiledVectorImageLayer> layers{};
-        if (!GetCompiledVectorImageLayers(layers, *desc.image))
+        const VectorImagePaintData::Reader paint = desc.image->GetPaint();
+        const schema::List<VectorImageLayer>::Reader layers = paint.GetLayers();
+        if (layers.IsEmpty())
         {
             return false;
         }
@@ -34,11 +34,17 @@ namespace he::scribe
         };
 
         m_draws.Reserve(layers.Size());
-        for (const CompiledVectorImageLayer& layer : layers)
+        for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
         {
+            const VectorImageLayer::Reader layer = layers[layerIndex];
             RetainedVectorImageDraw& draw = m_draws.EmplaceBack();
-            draw.shapeIndex = layer.shapeIndex;
-            draw.color = layer.color;
+            draw.shapeIndex = layer.GetShapeIndex();
+            draw.color = {
+                layer.GetRed(),
+                layer.GetGreen(),
+                layer.GetBlue(),
+                layer.GetAlpha()
+            };
             draw.offset = drawOffset;
             m_estimatedVertexCount += ScribeGlyphVertexCount;
         }

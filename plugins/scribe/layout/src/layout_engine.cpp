@@ -22,8 +22,6 @@ namespace he::scribe
 
         struct FontContext
         {
-            hb_blob_t* blob{ nullptr };
-            hb_face_t* face{ nullptr };
             hb_font_t* font{ nullptr };
             float fontSize{ 0.0f };
             float unitScale{ 0.0f };
@@ -31,6 +29,15 @@ namespace he::scribe
             float descent{ 0.0f };
             float lineHeight{ 0.0f };
             bool hasColorGlyphs{ false };
+            bool hasSourceBytes{ false };
+        };
+
+        struct CachedFontContext
+        {
+            const schema::Word* fontFaceData{ nullptr };
+            hb_blob_t* blob{ nullptr };
+            hb_face_t* face{ nullptr };
+            hb_font_t* font{ nullptr };
             bool hasSourceBytes{ false };
         };
 
@@ -253,6 +260,54 @@ namespace he::scribe
             return 0;
         }
 
+        bool GetOrCreateCachedFontContext(CachedFontContext*& out, const FontFaceResourceReader& face)
+        {
+            static Vector<CachedFontContext> CachedContexts{};
+
+            const schema::Word* fontFaceData = face.Data();
+            for (CachedFontContext& cached : CachedContexts)
+            {
+                if (cached.fontFaceData == fontFaceData)
+                {
+                    out = &cached;
+                    return true;
+                }
+            }
+
+            CachedFontContext& cached = CachedContexts.EmplaceBack();
+            cached.fontFaceData = fontFaceData;
+
+            const FontFaceShapingData::Reader shaping = face.GetShaping();
+            const schema::Blob::Reader sourceBytes = shaping.GetSourceBytes();
+            if (sourceBytes.IsEmpty())
+            {
+                out = &cached;
+                return true;
+            }
+
+            cached.blob = hb_blob_create(
+                reinterpret_cast<const char*>(sourceBytes.Data()),
+                static_cast<unsigned int>(sourceBytes.Size()),
+                HB_MEMORY_MODE_READONLY,
+                nullptr,
+                nullptr);
+            if (!cached.blob)
+            {
+                CachedContexts.PopBack();
+                return false;
+            }
+
+            cached.face = hb_face_create(cached.blob, shaping.GetFaceIndex());
+            cached.font = hb_font_create(cached.face);
+            hb_ot_font_set_funcs(cached.font);
+            const FontFaceImportMetadata::Reader metadata = face.GetMetadata();
+            const uint32_t unitsPerEm = Max(metadata.GetMetrics().GetUnitsPerEm(), 1u);
+            hb_font_set_scale(cached.font, static_cast<int32_t>(unitsPerEm), static_cast<int32_t>(unitsPerEm));
+            cached.hasSourceBytes = true;
+            out = &cached;
+            return true;
+        }
+
         bool BuildFontContexts(Vector<FontContext>& out, Span<const FontFaceResourceReader> faces, const LayoutOptions& options)
         {
             out.Clear();
@@ -263,7 +318,6 @@ namespace he::scribe
                 FontContext& ctx = out[i];
                 const FontFaceShapingData::Reader shaping = faces[i].GetShaping();
                 const FontFaceImportMetadata::Reader metadata = faces[i].GetMetadata();
-                const schema::Blob::Reader sourceBytes = shaping.GetSourceBytes();
                 const uint32_t unitsPerEm = Max(metadata.GetMetrics().GetUnitsPerEm(), 1u);
 
                 ctx.fontSize = options.fontSize;
@@ -277,27 +331,17 @@ namespace he::scribe
                     ctx.lineHeight = ctx.ascent + ctx.descent;
                 }
 
-                if (sourceBytes.IsEmpty())
-                {
-                    continue;
-                }
-
-                ctx.blob = hb_blob_create(
-                    reinterpret_cast<const char*>(sourceBytes.Data()),
-                    static_cast<unsigned int>(sourceBytes.Size()),
-                    HB_MEMORY_MODE_READONLY,
-                    nullptr,
-                    nullptr);
-                if (!ctx.blob)
+                CachedFontContext* cachedContext = nullptr;
+                if (!GetOrCreateCachedFontContext(cachedContext, faces[i]))
                 {
                     return false;
                 }
 
-                ctx.face = hb_face_create(ctx.blob, shaping.GetFaceIndex());
-                ctx.font = hb_font_create(ctx.face);
-                hb_ot_font_set_funcs(ctx.font);
-                hb_font_set_scale(ctx.font, static_cast<int32_t>(unitsPerEm), static_cast<int32_t>(unitsPerEm));
-                ctx.hasSourceBytes = true;
+                if (cachedContext)
+                {
+                    ctx.font = cachedContext->font;
+                    ctx.hasSourceBytes = cachedContext->hasSourceBytes;
+                }
             }
 
             return true;
@@ -307,21 +351,6 @@ namespace he::scribe
         {
             for (FontContext& ctx : contexts)
             {
-                if (ctx.font)
-                {
-                    hb_font_destroy(ctx.font);
-                }
-
-                if (ctx.face)
-                {
-                    hb_face_destroy(ctx.face);
-                }
-
-                if (ctx.blob)
-                {
-                    hb_blob_destroy(ctx.blob);
-                }
-
                 ctx = {};
             }
         }

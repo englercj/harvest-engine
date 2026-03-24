@@ -8,36 +8,6 @@
 
 namespace he::scribe
 {
-    namespace
-    {
-        Vec4f GetShapeVertexColor(const VectorImageResourceReader& image, uint32_t shapeIndex)
-        {
-            const VectorImagePaintData::Reader paint = image.GetPaint();
-            if (!paint.IsValid())
-            {
-                return { 1.0f, 1.0f, 1.0f, 1.0f };
-            }
-
-            const schema::List<VectorImageLayer>::Reader layers = paint.GetLayers();
-            for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
-            {
-                const VectorImageLayer::Reader layer = layers[layerIndex];
-                if (layer.GetShapeIndex() == shapeIndex)
-                {
-                    return {
-                        layer.GetRed(),
-                        layer.GetGreen(),
-                        layer.GetBlue(),
-                        layer.GetAlpha()
-                    };
-                }
-            }
-
-            return { 1.0f, 1.0f, 1.0f, 1.0f };
-        }
-
-    }
-
     bool BuildCompiledVectorShapeResourceData(
         CompiledVectorShapeResourceData& out,
         const VectorImageResourceReader& image,
@@ -88,7 +58,7 @@ namespace he::scribe
             shape.GetBandOffsetX(),
             shape.GetBandOffsetY()
         };
-        const Vec4f color = GetShapeVertexColor(image, shapeIndex);
+        const Vec4f color{ 1.0f, 1.0f, 1.0f, 1.0f };
 
         out.vertices[0] = MakeCompiledShapeVertex(minX, minY, -1.0f, -1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
         out.vertices[1] = MakeCompiledShapeVertex(maxX, minY, 1.0f, -1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
@@ -109,35 +79,6 @@ namespace he::scribe
             render.GetBandTextureWidth(),
             render.GetBandTextureHeight());
         out.shape = shape;
-        return true;
-    }
-
-    bool GetCompiledVectorImageLayers(
-        Vector<CompiledVectorImageLayer>& out,
-        const VectorImageResourceReader& image)
-    {
-        out.Clear();
-        const VectorImagePaintData::Reader paint = image.GetPaint();
-        if (!paint.IsValid())
-        {
-            return false;
-        }
-
-        const schema::List<VectorImageLayer>::Reader layers = paint.GetLayers();
-        out.Reserve(layers.Size());
-        for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
-        {
-            const VectorImageLayer::Reader layer = layers[layerIndex];
-            CompiledVectorImageLayer& resolved = out.EmplaceBack();
-            resolved.shapeIndex = layer.GetShapeIndex();
-            resolved.color = {
-                layer.GetRed(),
-                layer.GetGreen(),
-                layer.GetBlue(),
-                layer.GetAlpha()
-            };
-        }
-
         return true;
     }
 }

@@ -7,12 +7,6 @@
 
 namespace he::scribe
 {
-    struct CompiledVectorImageLayer
-    {
-        uint32_t shapeIndex{ 0 };
-        Vec4f color{ 1.0f, 1.0f, 1.0f, 1.0f };
-    };
-
     struct CompiledVectorShapeResourceData
     {
         PackedGlyphVertex vertices[ScribeGlyphVertexCount]{};
@@ -24,8 +18,4 @@ namespace he::scribe
         CompiledVectorShapeResourceData& out,
         const VectorImageResourceReader& image,
         uint32_t shapeIndex);
-
-    bool GetCompiledVectorImageLayers(
-        Vector<CompiledVectorImageLayer>& out,
-        const VectorImageResourceReader& image);
 }

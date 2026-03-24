@@ -169,8 +169,9 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
     {
         sourceFormat @0 :SourceFormat;
         sourceBytes @1 :Blob;
-        sourceFileName @2 :String;
-        faceCount @3 :uint32;
+        sourceOwnerAsset @2 :he.schema.Uuid $he.assets.AssetRef(ScribeFontFace.AssetTypeName);
+        sourceFileName @3 :String;
+        faceCount @4 :uint32;
     }
 
     struct ImportMetadataResource
@@ -179,18 +180,17 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
     }
 
     faceIndex @0 :uint32 = 0;
-    preserveSourceBytesForShaping @1 :bool = true;
-    familyName @2 :String;
-    styleName @3 :String;
-    postscriptName @4 :String;
-    sourceFormat @5 :SourceFormat = SourceFormat.Unknown;
-    glyphCount @6 :uint32 = 0;
-    metrics @7 :Metrics;
-    isScalable @8 :bool = true;
-    hasColorGlyphs @9 :bool = false;
-    hasKerning @10 :bool = false;
-    hasHorizontalLayout @11 :bool = true;
-    hasVerticalLayout @12 :bool = false;
+    familyName @1 :String;
+    styleName @2 :String;
+    postscriptName @3 :String;
+    sourceFormat @4 :SourceFormat = SourceFormat.Unknown;
+    glyphCount @5 :uint32 = 0;
+    metrics @6 :Metrics;
+    isScalable @7 :bool = true;
+    hasColorGlyphs @8 :bool = false;
+    hasKerning @9 :bool = false;
+    hasHorizontalLayout @10 :bool = true;
+    hasVerticalLayout @11 :bool = false;
 }
 
 struct ScribeFontFamily $he.assets.AssetType $Display.Description("A collection of Scribe font face assets.")
@@ -299,5 +299,4 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
     }
 
     flatteningTolerance @0 :float32 = 0.25;
-    preserveStrokes @1 :bool = true;
 }

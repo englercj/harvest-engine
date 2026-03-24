@@ -248,22 +248,21 @@ HE_TEST(scribe, vector_image_pipeline, resolves_layers_and_shape_resources)
     VectorImageResourceReader image{};
     HE_ASSERT(BuildLoadedVectorImage(storage, image));
 
-    Vector<CompiledVectorImageLayer> layers{};
-    HE_EXPECT(GetCompiledVectorImageLayers(layers, image));
+    const schema::List<VectorImageLayer>::Reader layers = image.GetPaint().GetLayers();
     HE_EXPECT_EQ(layers.Size(), 3u);
-    HE_EXPECT_EQ(layers[0].shapeIndex, 0u);
-    HE_EXPECT_EQ(layers[1].shapeIndex, 1u);
-    HE_EXPECT_GT(layers[0].color.w, 0.0f);
+    HE_EXPECT_EQ(layers[0].GetShapeIndex(), 0u);
+    HE_EXPECT_EQ(layers[1].GetShapeIndex(), 1u);
+    HE_EXPECT_GT(layers[0].GetAlpha(), 0.0f);
 
     CompiledVectorShapeResourceData shape{};
     HE_EXPECT(BuildCompiledVectorShapeResourceData(shape, image, 1));
     HE_EXPECT_EQ(shape.createInfo.vertexCount, ScribeGlyphVertexCount);
     HE_EXPECT_EQ(shape.createInfo.bandTexture.size.x, ScribeBandTextureWidth);
     HE_EXPECT_EQ(shape.shape.GetFillRule(), FillRule::EvenOdd);
-    HE_EXPECT_EQ(shape.vertices[0].col.x, layers[1].color.x);
-    HE_EXPECT_EQ(shape.vertices[0].col.y, layers[1].color.y);
-    HE_EXPECT_EQ(shape.vertices[0].col.z, layers[1].color.z);
-    HE_EXPECT_EQ(shape.vertices[0].col.w, layers[1].color.w);
+    HE_EXPECT_EQ(shape.vertices[0].col.x, 1.0f);
+    HE_EXPECT_EQ(shape.vertices[0].col.y, 1.0f);
+    HE_EXPECT_EQ(shape.vertices[0].col.z, 1.0f);
+    HE_EXPECT_EQ(shape.vertices[0].col.w, 1.0f);
 }
 
 HE_TEST(scribe, retained_vector_image, builds_layered_draws_from_runtime_resource)

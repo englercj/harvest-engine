@@ -2,8 +2,7 @@
 
 #include "image_compile_geometry.h"
 
-#include "band_pack_utils.h"
-#include "line_curve_utils.h"
+#include "curve_compile_utils.h"
 
 #include "he/core/log.h"
 #include "he/core/math.h"
@@ -12,54 +11,23 @@
 #include "he/core/utils.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cstdlib>
 
 namespace he::scribe::editor
 {
     namespace
     {
-        constexpr uint32_t CurveTextureWidth = 4096;
-        constexpr uint32_t MaxBandCount = 8;
-        constexpr uint32_t MaxCubicSubdivisionDepth = 8;
+        constexpr uint32_t CurveTextureWidth = curve_compile::CurveTextureWidth;
+        constexpr uint32_t MaxBandCount = curve_compile::MaxBandCount;
+        constexpr uint32_t MaxCubicSubdivisionDepth = curve_compile::MaxCubicSubdivisionDepth;
         constexpr float DefaultBandOverlapEpsilon = 1.0f / 1024.0f;
-        constexpr float DegenerateLineLengthSq = 1.0e-6f;
-        constexpr float DegenerateCurveExtent = 1.0e-4f;
-
-        struct Point2
-        {
-            float x{ 0.0f };
-            float y{ 0.0f };
-        };
-
-        struct Affine2D
-        {
-            float m00{ 1.0f };
-            float m01{ 0.0f };
-            float m10{ 0.0f };
-            float m11{ 1.0f };
-            float tx{ 0.0f };
-            float ty{ 0.0f };
-        };
-
-        struct CurveData
-        {
-            Point2 p1{};
-            Point2 p2{};
-            Point2 p3{};
-            float minX{ 0.0f };
-            float minY{ 0.0f };
-            float maxX{ 0.0f };
-            float maxY{ 0.0f };
-            uint32_t curveTexelIndex{ 0 };
-            bool isLineLike{ false };
-        };
-
-        struct CurveRef
-        {
-            uint16_t x{ 0 };
-            uint16_t y{ 0 };
-            float sortKey{ 0.0f };
-        };
+        constexpr float DegenerateLineLengthSq = curve_compile::DegenerateLineLengthSq;
+        constexpr float DegenerateCurveExtent = curve_compile::DegenerateCurveExtent;
+        using curve_compile::Affine2D;
+        using curve_compile::CurveData;
+        using curve_compile::CurveRef;
+        using curve_compile::Point2;
 
         struct ParsedShape
         {
@@ -116,22 +84,6 @@ namespace he::scribe::editor
         float DegreesToRadians(float degrees)
         {
             return degrees * 0.017453292519943295769f;
-        }
-
-        Point2 MidPoint(const Point2& a, const Point2& b)
-        {
-            return {
-                (a.x + b.x) * 0.5f,
-                (a.y + b.y) * 0.5f
-            };
-        }
-
-        Point2 TransformPoint(const Affine2D& transform, const Point2& point)
-        {
-            return {
-                (transform.m00 * point.x) + (transform.m01 * point.y) + transform.tx,
-                (transform.m10 * point.x) + (transform.m11 * point.y) + transform.ty
-            };
         }
 
         void RecomputeShapeBounds(ParsedShape& shape)
@@ -272,138 +224,51 @@ namespace he::scribe::editor
             return result;
         }
 
-        float DistanceToLineSq(const Point2& point, const Point2& a, const Point2& b)
+        [[maybe_unused]] float SvgDistanceToLineSq(const Point2& point, const Point2& a, const Point2& b)
         {
-            const float dx = b.x - a.x;
-            const float dy = b.y - a.y;
-            const float lenSq = (dx * dx) + (dy * dy);
-            if (lenSq <= 1.0e-8f)
-            {
-                const float px = point.x - a.x;
-                const float py = point.y - a.y;
-                return (px * px) + (py * py);
-            }
-
-            const float area = ((point.x - a.x) * dy) - ((point.y - a.y) * dx);
-            return (area * area) / lenSq;
+            return curve_compile::DistanceToLineSq(point, a, b);
         }
 
-        void AppendCurveTexels(Vector<PackedCurveTexel>& out, const CurveData& curve)
+        void SvgAppendCurveTexels(Vector<PackedCurveTexel>& out, const CurveData& curve)
         {
-            out.PushBack(PackCurveTexel(curve.p1.x, curve.p1.y, curve.p2.x, curve.p2.y));
-            out.PushBack(PackCurveTexel(curve.p3.x, curve.p3.y, 0.0f, 0.0f));
+            curve_compile::AppendCurveTexels(out, curve);
         }
 
         class CurveBuilder final
         {
         public:
             explicit CurveBuilder(float flatteningTolerance)
-                : m_cubicToleranceSq(flatteningTolerance * flatteningTolerance)
+                : m_builder(flatteningTolerance)
             {
             }
 
             void SetTransform(const Affine2D& transform)
             {
-                m_transform = transform;
+                m_builder.SetTransform(transform);
             }
 
             void AddLine(const Point2& from, const Point2& to)
             {
-                LineCurvePoint control{};
-                if (!TryComputeStableLineQuadraticControlPoint(
-                        control,
-                        { from.x, from.y },
-                        { to.x, to.y },
-                        DegenerateLineLengthSq))
-                {
-                    return;
-                }
-
-                AppendCurve(from, { control.x, control.y }, to, true);
+                m_builder.AddLine(from, to);
             }
 
             void AddQuadratic(const Point2& p1, const Point2& p2, const Point2& p3)
             {
-                AppendCurve(p1, p2, p3, false);
-            }
-
-            void AppendCurve(const Point2& p1, const Point2& p2, const Point2& p3, bool isLineLike)
-            {
-                const Point2 tp1 = TransformPoint(m_transform, p1);
-                const Point2 tp2 = TransformPoint(m_transform, p2);
-                const Point2 tp3 = TransformPoint(m_transform, p3);
-
-                float minX = 0.0f;
-                float minY = 0.0f;
-                float maxX = 0.0f;
-                float maxY = 0.0f;
-                if (isLineLike)
-                {
-                    minX = Min(tp1.x, tp3.x);
-                    minY = Min(tp1.y, tp3.y);
-                    maxX = Max(tp1.x, tp3.x);
-                    maxY = Max(tp1.y, tp3.y);
-                }
-                else
-                {
-                    minX = Min(tp1.x, tp2.x, tp3.x);
-                    minY = Min(tp1.y, tp2.y, tp3.y);
-                    maxX = Max(tp1.x, tp2.x, tp3.x);
-                    maxY = Max(tp1.y, tp2.y, tp3.y);
-                }
-
-                if (((maxX - minX) <= DegenerateCurveExtent) && ((maxY - minY) <= DegenerateCurveExtent))
-                {
-                    return;
-                }
-
-                CurveData& curve = m_curves.EmplaceBack();
-                curve.p1 = tp1;
-                curve.p2 = tp2;
-                curve.p3 = tp3;
-                curve.minX = minX;
-                curve.minY = minY;
-                curve.maxX = maxX;
-                curve.maxY = maxY;
-                curve.isLineLike = isLineLike;
+                m_builder.AddQuadratic(p1, p2, p3);
             }
 
             void AddCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3)
             {
-                FlattenCubic(p0, p1, p2, p3, 0);
+                m_builder.AddCubic(p0, p1, p2, p3);
             }
 
-            Vector<CurveData>& Curves() { return m_curves; }
+            Vector<CurveData>& Curves() { return m_builder.Curves(); }
 
         private:
-            void FlattenCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3, uint32_t depth)
-            {
-                const float d1 = DistanceToLineSq(p1, p0, p3);
-                const float d2 = DistanceToLineSq(p2, p0, p3);
-                if ((depth >= MaxCubicSubdivisionDepth) || (Max(d1, d2) <= m_cubicToleranceSq))
-                {
-                    AddLine(p0, p3);
-                    return;
-                }
-
-                const Point2 p01 = MidPoint(p0, p1);
-                const Point2 p12 = MidPoint(p1, p2);
-                const Point2 p23 = MidPoint(p2, p3);
-                const Point2 p012 = MidPoint(p01, p12);
-                const Point2 p123 = MidPoint(p12, p23);
-                const Point2 p0123 = MidPoint(p012, p123);
-
-                FlattenCubic(p0, p01, p012, p0123, depth + 1);
-                FlattenCubic(p0123, p123, p23, p3, depth + 1);
-            }
-
-        private:
-            Vector<CurveData> m_curves{};
-            Affine2D m_transform{};
-            float m_cubicToleranceSq{ 0.0f };
+            curve_compile::CurveBuilder m_builder;
         };
 
-        void ZeroCounts(Vector<uint32_t>& counts)
+        [[maybe_unused]] void ZeroCounts(Vector<uint32_t>& counts)
         {
             for (uint32_t i = 0; i < counts.Size(); ++i)
             {
@@ -411,7 +276,7 @@ namespace he::scribe::editor
             }
         }
 
-        void GetBandRange(
+        [[maybe_unused]] void GetBandRange(
             int32_t& outStart,
             int32_t& outEnd,
             float curveMin,
@@ -435,67 +300,17 @@ namespace he::scribe::editor
             outEnd = Clamp(static_cast<int32_t>(endBand), 0, static_cast<int32_t>(bandCount - 1));
         }
 
-        uint32_t ChooseBandCount(
+        uint32_t SvgChooseBandCount(
             const Vector<CurveData>& curves,
             bool horizontalBands,
             float boundsMin,
             float boundsMax,
             float epsilon)
         {
-            const float span = boundsMax - boundsMin;
-            if (curves.IsEmpty() || (span <= epsilon))
-            {
-                return 1;
-            }
-
-            uint32_t bestBandCount = 1;
-            uint32_t bestMaxOccupancy = curves.Size();
-            Vector<uint32_t> counts{};
-
-            for (uint32_t bandCount = 1; bandCount <= MaxBandCount; ++bandCount)
-            {
-                counts.Resize(bandCount);
-                ZeroCounts(counts);
-
-                for (uint32_t curveIndex = 0; curveIndex < curves.Size(); ++curveIndex)
-                {
-                    const CurveData& curve = curves[curveIndex];
-                    int32_t startBand = 0;
-                    int32_t endBand = 0;
-                    GetBandRange(
-                        startBand,
-                        endBand,
-                        horizontalBands ? curve.minY : curve.minX,
-                        horizontalBands ? curve.maxY : curve.maxX,
-                        boundsMin,
-                        span,
-                        bandCount,
-                        epsilon);
-
-                    for (int32_t band = startBand; band <= endBand; ++band)
-                    {
-                        counts[static_cast<uint32_t>(band)] += 1;
-                    }
-                }
-
-                uint32_t maxOccupancy = 0;
-                for (uint32_t i = 0; i < counts.Size(); ++i)
-                {
-                    maxOccupancy = Max(maxOccupancy, counts[i]);
-                }
-
-                if ((maxOccupancy < bestMaxOccupancy)
-                    || ((maxOccupancy == bestMaxOccupancy) && (bandCount < bestBandCount)))
-                {
-                    bestBandCount = bandCount;
-                    bestMaxOccupancy = maxOccupancy;
-                }
-            }
-
-            return bestBandCount;
+            return curve_compile::ChooseBandCount(curves, horizontalBands, boundsMin, boundsMax, epsilon);
         }
 
-        void BuildBandRefs(
+        void SvgBuildBandRefs(
             Vector<Vector<CurveRef>>& outBands,
             const Vector<CurveData>& curves,
             bool horizontalBands,
@@ -504,47 +319,7 @@ namespace he::scribe::editor
             uint32_t bandCount,
             float epsilon)
         {
-            outBands.Clear();
-            outBands.Resize(bandCount);
-
-            const float span = boundsMax - boundsMin;
-            for (uint32_t curveIndex = 0; curveIndex < curves.Size(); ++curveIndex)
-            {
-                const CurveData& curve = curves[curveIndex];
-                int32_t startBand = 0;
-                int32_t endBand = 0;
-                GetBandRange(
-                    startBand,
-                    endBand,
-                    horizontalBands ? curve.minY : curve.minX,
-                    horizontalBands ? curve.maxY : curve.maxX,
-                    boundsMin,
-                    span,
-                    bandCount,
-                    epsilon);
-
-                CurveRef ref{};
-                ref.x = static_cast<uint16_t>(curve.curveTexelIndex & (CurveTextureWidth - 1));
-                ref.y = static_cast<uint16_t>(curve.curveTexelIndex / CurveTextureWidth);
-                ref.sortKey = horizontalBands ? curve.maxX : curve.maxY;
-
-                for (int32_t band = startBand; band <= endBand; ++band)
-                {
-                    outBands[static_cast<uint32_t>(band)].PushBack(ref);
-                }
-            }
-
-            for (uint32_t bandIndex = 0; bandIndex < outBands.Size(); ++bandIndex)
-            {
-                Vector<CurveRef>& band = outBands[bandIndex];
-                if (band.Size() > 1)
-                {
-                    std::sort(band.Data(), band.Data() + band.Size(), [](const CurveRef& a, const CurveRef& b)
-                    {
-                        return a.sortKey > b.sortKey;
-                    });
-                }
-            }
+            curve_compile::BuildBandRefs(outBands, curves, horizontalBands, boundsMin, boundsMax, bandCount, epsilon);
         }
 
         float ComputeBandScale(float minBound, float maxBound, uint32_t bandCount)
@@ -611,18 +386,17 @@ namespace he::scribe::editor
 
         bool ParseFloat(StringView text, float& out)
         {
-            String local(text);
-            char* end = nullptr;
-            out = std::strtof(local.Data(), &end);
-            return (end != local.Data()) && (*end == '\0');
+            const char* begin = text.Data();
+            const char* end = text.Data() + text.Size();
+            const std::from_chars_result result = std::from_chars(begin, end, out);
+            return (result.ptr != begin) && (result.ptr == end) && (result.ec == std::errc{});
         }
 
         bool ParseNumberList(Vector<float>& out, StringView text)
         {
             out.Clear();
-            String local(text);
-            char* cur = local.Data();
-            char* endText = local.Data() + local.Size();
+            const char* cur = text.Data();
+            const char* endText = text.Data() + text.Size();
 
             while (cur < endText)
             {
@@ -636,15 +410,15 @@ namespace he::scribe::editor
                     break;
                 }
 
-                char* end = nullptr;
-                const float value = std::strtof(cur, &end);
-                if (end == cur)
+                float value = 0.0f;
+                const std::from_chars_result result = std::from_chars(cur, endText, value);
+                if (result.ptr == cur || result.ec != std::errc{})
                 {
                     return false;
                 }
 
                 out.PushBack(value);
-                cur = end;
+                cur = result.ptr;
             }
 
             return true;
@@ -1770,16 +1544,16 @@ namespace he::scribe::editor
             {
                 CurveData& curve = curves[curveIndex];
                 curve.curveTexelIndex = outCurveTexels.Size();
-                AppendCurveTexels(outCurveTexels, curve);
+                SvgAppendCurveTexels(outCurveTexels, curve);
             }
 
-            const uint32_t bandCountX = ChooseBandCount(curves, false, shape.minX, shape.maxX, epsilon);
-            const uint32_t bandCountY = ChooseBandCount(curves, true, shape.minY, shape.maxY, epsilon);
+            const uint32_t bandCountX = SvgChooseBandCount(curves, false, shape.minX, shape.maxX, epsilon);
+            const uint32_t bandCountY = SvgChooseBandCount(curves, true, shape.minY, shape.maxY, epsilon);
 
             Vector<Vector<CurveRef>> xBands{};
             Vector<Vector<CurveRef>> yBands{};
-            BuildBandRefs(xBands, curves, false, shape.minX, shape.maxX, bandCountX, epsilon);
-            BuildBandRefs(yBands, curves, true, shape.minY, shape.maxY, bandCountY, epsilon);
+            SvgBuildBandRefs(xBands, curves, false, shape.minX, shape.maxX, bandCountX, epsilon);
+            SvgBuildBandRefs(yBands, curves, true, shape.minY, shape.maxY, bandCountY, epsilon);
 
             outShape.bandScaleX = ComputeBandScale(shape.minX, shape.maxX, bandCountX);
             outShape.bandScaleY = ComputeBandScale(shape.minY, shape.maxY, bandCountY);
@@ -1813,7 +1587,7 @@ namespace he::scribe::editor
             return false;
         }
 
-        const String sourceText(reinterpret_cast<const char*>(sourceBytes.Data()), sourceBytes.Size());
+        const StringView sourceText(reinterpret_cast<const char*>(sourceBytes.Data()), sourceBytes.Size());
         ParsedImage parsed{};
         SvgParser parser{};
         if (!parser.Parse(parsed, sourceText, flatteningTolerance))

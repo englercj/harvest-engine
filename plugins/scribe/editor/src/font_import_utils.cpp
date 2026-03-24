@@ -209,10 +209,9 @@ namespace he::scribe::editor
         metadata.SetHasVerticalLayout(info.hasVerticalLayout);
     }
 
-    void FillFontFaceAssetData(ScribeFontFace::Builder assetData, const FontFaceInfo& info, bool preserveSourceBytesForShaping)
+    void FillFontFaceAssetData(ScribeFontFace::Builder assetData, const FontFaceInfo& info)
     {
         assetData.SetFaceIndex(info.faceIndex);
-        assetData.SetPreserveSourceBytesForShaping(preserveSourceBytesForShaping);
         assetData.InitFamilyName(info.familyName);
         assetData.InitStyleName(info.styleName);
         assetData.InitPostscriptName(info.postscriptName);

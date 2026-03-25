@@ -159,8 +159,8 @@ namespace he
         window::View* m_view{ nullptr };
         RenderState m_render{};
         scribe::ScribeContext m_scribeContext{};
-        scribe::Renderer m_renderer{};
-        scribe::LayoutEngine m_layoutEngine{};
+        scribe::Renderer& m_renderer;
+        scribe::LayoutEngine& m_layoutEngine;
         scribe::GlyphResource m_caretGlyph{};
         Vector<LoadedDemoFont> m_fonts{};
         Vector<LoadedDemoImage> m_images{};

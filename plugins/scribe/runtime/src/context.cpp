@@ -4,6 +4,8 @@
 
 #include "he/scribe/compiled_font.h"
 #include "he/scribe/compiled_vector_image.h"
+#include "he/scribe/layout_engine.h"
+#include "he/scribe/renderer.h"
 
 #include "glyph_atlas.h"
 #include "glyph_atlas_utils.h"
@@ -12,6 +14,7 @@
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
 #include "he/core/hash.h"
+#include "he/core/hash_table.h"
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
 #include "he/core/result_fmt.h"
@@ -28,36 +31,96 @@ namespace he::scribe
 {
     namespace
     {
-        struct RegisteredFontFace
+        template <typename TReader>
+        bool EnsureRegisteredAtlas(rhi::Device& device, const TReader& reader, GlyphAtlas*& atlas)
         {
-            Vector<schema::Word> storage{};
-            FontFaceResourceReader reader{};
-            uint64_t hash{ 0 };
-            hb_blob_t* blob{ nullptr };
-            hb_face_t* face{ nullptr };
-            hb_font_t* font{ nullptr };
-            GlyphAtlas* atlas{ nullptr };
-            Vector<GlyphResource> glyphResources{};
-            Vector<uint8_t> glyphResourceStates{};
-        };
+            if (atlas)
+            {
+                return true;
+            }
 
-        struct RegisteredVectorImage
+            atlas = Allocator::GetDefault().New<GlyphAtlas>();
+            atlas->refCount = 1;
+
+            const auto render = reader.GetRender();
+            const schema::Blob::Reader curveData = reader.GetCurveData();
+            const schema::Blob::Reader bandData = reader.GetBandData();
+            TextureDataDesc curveTexture{};
+            curveTexture.data = curveData.Data();
+            curveTexture.size = { render.GetCurveTextureWidth(), render.GetCurveTextureHeight() };
+            curveTexture.rowPitch = render.GetCurveTextureWidth() * sizeof(PackedCurveTexel);
+            TextureDataDesc bandTexture{};
+            bandTexture.data = bandData.Data();
+            bandTexture.size = { render.GetBandTextureWidth(), render.GetBandTextureHeight() };
+            bandTexture.rowPitch = render.GetBandTextureWidth() * sizeof(PackedBandTexel);
+
+            if (!UploadTexturePair2D(
+                    device,
+                    atlas->curveTexture,
+                    atlas->curveView,
+                    curveTexture,
+                    rhi::Format::RGBA16Float,
+                    "Scribe Curve Texture",
+                    "Scribe Curve Upload Buffer",
+                    atlas->bandTexture,
+                    atlas->bandView,
+                    bandTexture,
+                    rhi::Format::RG16Uint,
+                    "Scribe Band Texture",
+                    "Scribe Band Upload Buffer")
+                || !CreateAtlasDescriptorTable(device, *atlas))
+            {
+                DestroyAtlas(device, atlas);
+                return false;
+            }
+
+            return true;
+        }
+
+        template <typename TRegistered, typename TBuildFn>
+        bool EnsureCachedResource(
+            rhi::Device& device,
+            TRegistered& registered,
+            uint32_t index,
+            const GlyphResource*& out,
+            TBuildFn&& buildFn)
         {
-            Vector<schema::Word> storage{};
-            VectorImageResourceReader reader{};
-            uint64_t hash{ 0 };
-            GlyphAtlas* atlas{ nullptr };
-            Vector<GlyphResource> shapeResources{};
-            Vector<uint8_t> shapeResourceStates{};
-        };
+            out = nullptr;
+
+            if (const GlyphResource* existing = registered.resources.Find(index))
+            {
+                out = existing;
+                return true;
+            }
+
+            if (registered.failedIndices.Contains(index))
+            {
+                return false;
+            }
+
+            if (!EnsureRegisteredAtlas(device, registered.reader, registered.atlas))
+            {
+                return false;
+            }
+
+            GlyphResource resource{};
+            if (!buildFn(resource))
+            {
+                registered.failedIndices.Insert(index);
+                return false;
+            }
+
+            resource.atlas = registered.atlas;
+            GlyphResource& cached = registered.resources.Emplace(index, Move(resource)).entry.value;
+            out = &cached;
+            return true;
+        }
     }
 
-    struct ScribeContext::Impl
+    ScribeContext::ScribeContext() noexcept
+        : m_impl(Allocator::GetDefault().New<Impl>(*this))
     {
-        rhi::Device* device{ nullptr };
-        Vector<RegisteredFontFace> fonts{};
-        Vector<RegisteredVectorImage> images{};
-    };
+    }
 
     ScribeContext::~ScribeContext() noexcept
     {
@@ -66,11 +129,6 @@ namespace he::scribe
 
     bool ScribeContext::Initialize(rhi::Device& device)
     {
-        if (!m_impl)
-        {
-            m_impl = Allocator::GetDefault().New<Impl>();
-        }
-
         if (m_impl->device && (m_impl->device != &device))
         {
             return false;
@@ -86,6 +144,8 @@ namespace he::scribe
         {
             return;
         }
+
+        m_impl->renderer.Terminate();
 
         if (m_impl->device)
         {
@@ -130,12 +190,32 @@ namespace he::scribe
 
     bool ScribeContext::IsInitialized() const
     {
-        return m_impl != nullptr;
+        return (m_impl != nullptr) && (m_impl->device != nullptr);
     }
 
     rhi::Device* ScribeContext::GetDevice() const
     {
         return m_impl ? m_impl->device : nullptr;
+    }
+
+    Renderer& ScribeContext::GetRenderer()
+    {
+        return m_impl->renderer;
+    }
+
+    const Renderer& ScribeContext::GetRenderer() const
+    {
+        return m_impl->renderer;
+    }
+
+    LayoutEngine& ScribeContext::GetLayoutEngine()
+    {
+        return m_impl->layoutEngine;
+    }
+
+    const LayoutEngine& ScribeContext::GetLayoutEngine() const
+    {
+        return m_impl->layoutEngine;
     }
 
     FontFaceHandle ScribeContext::RegisterFontFace(const FontFaceResourceReader& fontFace)
@@ -145,21 +225,18 @@ namespace he::scribe
             return {};
         }
 
-        if (!m_impl)
-        {
-            m_impl = Allocator::GetDefault().New<Impl>();
-        }
-
         const Span<const uint8_t> sourceBytes = GetResourceBytes(fontFace);
         const uint64_t hash = HashResourceBytes(sourceBytes);
-        for (uint32_t index = 0; index < m_impl->fonts.Size(); ++index)
+        if (const Vector<uint32_t>* handles = m_impl->fontHandlesByHash.Find(hash))
         {
-            const RegisteredFontFace& existing = m_impl->fonts[index];
-            if ((existing.hash == hash)
-                && (existing.storage.Size() == (sourceBytes.Size() / sizeof(schema::Word)))
-                && MemEqual(existing.storage.Data(), sourceBytes.Data(), sourceBytes.Size()))
+            for (uint32_t index : *handles)
             {
-                return { index + 1u };
+                const RegisteredFontFace& existing = m_impl->fonts[index];
+                if ((existing.storage.Size() == (sourceBytes.Size() / sizeof(schema::Word)))
+                    && MemEqual(existing.storage.Data(), sourceBytes.Data(), sourceBytes.Size()))
+                {
+                    return { index + 1u };
+                }
             }
         }
 
@@ -168,9 +245,7 @@ namespace he::scribe
         registered.reader = CopyOwnedResource<FontFaceResource>(storage, fontFace);
         registered.storage = Move(storage);
         registered.hash = hash;
-        const uint32_t glyphCount = registered.reader.GetMetadata().GetGlyphCount();
-        registered.glyphResources.Resize(glyphCount, DefaultInit);
-        registered.glyphResourceStates.Resize(glyphCount, DefaultInit);
+        m_impl->fontHandlesByHash[hash].EmplaceBack(m_impl->fonts.Size() - 1u);
         return { m_impl->fonts.Size() };
     }
 
@@ -181,21 +256,18 @@ namespace he::scribe
             return {};
         }
 
-        if (!m_impl)
-        {
-            m_impl = Allocator::GetDefault().New<Impl>();
-        }
-
         const Span<const uint8_t> sourceBytes = GetResourceBytes(image);
         const uint64_t hash = HashResourceBytes(sourceBytes);
-        for (uint32_t index = 0; index < m_impl->images.Size(); ++index)
+        if (const Vector<uint32_t>* handles = m_impl->imageHandlesByHash.Find(hash))
         {
-            const RegisteredVectorImage& existing = m_impl->images[index];
-            if ((existing.hash == hash)
-                && (existing.storage.Size() == (sourceBytes.Size() / sizeof(schema::Word)))
-                && MemEqual(existing.storage.Data(), sourceBytes.Data(), sourceBytes.Size()))
+            for (uint32_t index : *handles)
             {
-                return { index + 1u };
+                const RegisteredVectorImage& existing = m_impl->images[index];
+                if ((existing.storage.Size() == (sourceBytes.Size() / sizeof(schema::Word)))
+                    && MemEqual(existing.storage.Data(), sourceBytes.Data(), sourceBytes.Size()))
+                {
+                    return { index + 1u };
+                }
             }
         }
 
@@ -204,9 +276,7 @@ namespace he::scribe
         registered.reader = CopyOwnedResource<VectorImageResource>(storage, image);
         registered.storage = Move(storage);
         registered.hash = hash;
-        const uint32_t shapeCount = registered.reader.GetRender().GetShapes().Size();
-        registered.shapeResources.Resize(shapeCount, DefaultInit);
-        registered.shapeResourceStates.Resize(shapeCount, DefaultInit);
+        m_impl->imageHandlesByHash[hash].EmplaceBack(m_impl->images.Size() - 1u);
         return { m_impl->images.Size() };
     }
 
@@ -299,74 +369,28 @@ namespace he::scribe
         }
 
         RegisteredFontFace& font = m_impl->fonts[handle.value - 1u];
-        if (glyphIndex >= font.glyphResourceStates.Size())
+        if (glyphIndex >= font.reader.GetMetadata().GetGlyphCount())
         {
             return false;
         }
 
-        if (font.glyphResourceStates[glyphIndex] == 2)
-        {
-            return false;
-        }
-
-        if (font.glyphResourceStates[glyphIndex] == 1)
-        {
-            out = &font.glyphResources[glyphIndex];
-            return true;
-        }
-
-        if (!font.atlas)
-        {
-            font.atlas = Allocator::GetDefault().New<GlyphAtlas>();
-            font.atlas->refCount = 1;
-
-            const FontFaceRenderData::Reader render = font.reader.GetRender();
-            const schema::Blob::Reader curveData = font.reader.GetCurveData();
-            const schema::Blob::Reader bandData = font.reader.GetBandData();
-            TextureDataDesc curveTexture{};
-            curveTexture.data = curveData.Data();
-            curveTexture.size = { render.GetCurveTextureWidth(), render.GetCurveTextureHeight() };
-            curveTexture.rowPitch = render.GetCurveTextureWidth() * sizeof(PackedCurveTexel);
-            TextureDataDesc bandTexture{};
-            bandTexture.data = bandData.Data();
-            bandTexture.size = { render.GetBandTextureWidth(), render.GetBandTextureHeight() };
-            bandTexture.rowPitch = render.GetBandTextureWidth() * sizeof(PackedBandTexel);
-
-            if (!UploadTexturePair2D(
-                    *m_impl->device,
-                    font.atlas->curveTexture,
-                    font.atlas->curveView,
-                    curveTexture,
-                    rhi::Format::RGBA16Float,
-                    "Scribe Curve Texture",
-                    "Scribe Curve Upload Buffer",
-                    font.atlas->bandTexture,
-                    font.atlas->bandView,
-                    bandTexture,
-                    rhi::Format::RG16Uint,
-                    "Scribe Band Texture",
-                    "Scribe Band Upload Buffer")
-                || !CreateAtlasDescriptorTable(*m_impl->device, *font.atlas))
+        return EnsureCachedResource(
+            *m_impl->device,
+            font,
+            glyphIndex,
+            out,
+            [&](GlyphResource& resource) -> bool
             {
-                DestroyAtlas(*m_impl->device, font.atlas);
-                return false;
-            }
-        }
+                CompiledGlyphResourceData glyphData{};
+                if (!BuildCompiledGlyphResourceData(glyphData, font.reader, glyphIndex))
+                {
+                    return false;
+                }
 
-        CompiledGlyphResourceData glyphData{};
-        if (!BuildCompiledGlyphResourceData(glyphData, font.reader, glyphIndex))
-        {
-            font.glyphResourceStates[glyphIndex] = 2;
-            return false;
-        }
-
-        GlyphResource& glyphResource = font.glyphResources[glyphIndex];
-        MemCopy(glyphResource.vertices, glyphData.vertices, sizeof(glyphData.vertices));
-        glyphResource.vertexCount = glyphData.createInfo.vertexCount;
-        glyphResource.atlas = font.atlas;
-        font.glyphResourceStates[glyphIndex] = 1;
-        out = &glyphResource;
-        return true;
+                MemCopy(resource.vertices, glyphData.vertices, sizeof(glyphData.vertices));
+                resource.vertexCount = glyphData.createInfo.vertexCount;
+                return true;
+            });
     }
 
     bool ScribeContext::EnsureVectorShapeResource(VectorImageHandle handle, uint32_t shapeIndex, const GlyphResource*& out)
@@ -378,73 +402,27 @@ namespace he::scribe
         }
 
         RegisteredVectorImage& image = m_impl->images[handle.value - 1u];
-        if (shapeIndex >= image.shapeResourceStates.Size())
+        if (shapeIndex >= image.reader.GetRender().GetShapes().Size())
         {
             return false;
         }
 
-        if (image.shapeResourceStates[shapeIndex] == 2)
-        {
-            return false;
-        }
-
-        if (image.shapeResourceStates[shapeIndex] == 1)
-        {
-            out = &image.shapeResources[shapeIndex];
-            return true;
-        }
-
-        if (!image.atlas)
-        {
-            image.atlas = Allocator::GetDefault().New<GlyphAtlas>();
-            image.atlas->refCount = 1;
-
-            const VectorImageRenderData::Reader render = image.reader.GetRender();
-            const schema::Blob::Reader curveData = image.reader.GetCurveData();
-            const schema::Blob::Reader bandData = image.reader.GetBandData();
-            TextureDataDesc curveTexture{};
-            curveTexture.data = curveData.Data();
-            curveTexture.size = { render.GetCurveTextureWidth(), render.GetCurveTextureHeight() };
-            curveTexture.rowPitch = render.GetCurveTextureWidth() * sizeof(PackedCurveTexel);
-            TextureDataDesc bandTexture{};
-            bandTexture.data = bandData.Data();
-            bandTexture.size = { render.GetBandTextureWidth(), render.GetBandTextureHeight() };
-            bandTexture.rowPitch = render.GetBandTextureWidth() * sizeof(PackedBandTexel);
-
-            if (!UploadTexturePair2D(
-                    *m_impl->device,
-                    image.atlas->curveTexture,
-                    image.atlas->curveView,
-                    curveTexture,
-                    rhi::Format::RGBA16Float,
-                    "Scribe Curve Texture",
-                    "Scribe Curve Upload Buffer",
-                    image.atlas->bandTexture,
-                    image.atlas->bandView,
-                    bandTexture,
-                    rhi::Format::RG16Uint,
-                    "Scribe Band Texture",
-                    "Scribe Band Upload Buffer")
-                || !CreateAtlasDescriptorTable(*m_impl->device, *image.atlas))
+        return EnsureCachedResource(
+            *m_impl->device,
+            image,
+            shapeIndex,
+            out,
+            [&](GlyphResource& resource) -> bool
             {
-                DestroyAtlas(*m_impl->device, image.atlas);
-                return false;
-            }
-        }
+                CompiledVectorShapeResourceData shapeData{};
+                if (!BuildCompiledVectorShapeResourceData(shapeData, image.reader, shapeIndex))
+                {
+                    return false;
+                }
 
-        CompiledVectorShapeResourceData shapeData{};
-        if (!BuildCompiledVectorShapeResourceData(shapeData, image.reader, shapeIndex))
-        {
-            image.shapeResourceStates[shapeIndex] = 2;
-            return false;
-        }
-
-        GlyphResource& shapeResource = image.shapeResources[shapeIndex];
-        MemCopy(shapeResource.vertices, shapeData.vertices, sizeof(shapeData.vertices));
-        shapeResource.vertexCount = shapeData.createInfo.vertexCount;
-        shapeResource.atlas = image.atlas;
-        image.shapeResourceStates[shapeIndex] = 1;
-        out = &shapeResource;
-        return true;
+                MemCopy(resource.vertices, shapeData.vertices, sizeof(shapeData.vertices));
+                resource.vertexCount = shapeData.createInfo.vertexCount;
+                return true;
+            });
     }
 }

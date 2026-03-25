@@ -1001,7 +1001,7 @@ namespace he::scribe
     {
         out.Clear();
 
-        if ((m_context == nullptr) || desc.fontFaces.IsEmpty() || !UTF8Validate(desc.text.Data(), desc.text.Size()))
+        if (desc.fontFaces.IsEmpty() || !UTF8Validate(desc.text.Data(), desc.text.Size()))
         {
             return false;
         }
@@ -1014,7 +1014,7 @@ namespace he::scribe
         }
 
         Vector<FontContext> fontContexts{};
-        if (!BuildFontContexts(fontContexts, desc.fontFaces, desc.options, *m_context))
+        if (!BuildFontContexts(fontContexts, desc.fontFaces, desc.options, m_context))
         {
             DestroyFontContexts(fontContexts);
             return false;

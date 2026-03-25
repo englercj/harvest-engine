@@ -17,6 +17,8 @@ namespace he::rhi
 namespace he::scribe
 {
     struct GlyphResource;
+    class Renderer;
+    class LayoutEngine;
 
     struct FontFaceHandle
     {
@@ -37,7 +39,7 @@ namespace he::scribe
     class ScribeContext
     {
     public:
-        ScribeContext() noexcept = default;
+        ScribeContext() noexcept;
         ScribeContext(const ScribeContext&) = delete;
         ScribeContext(ScribeContext&&) = delete;
         ~ScribeContext() noexcept;
@@ -64,6 +66,12 @@ namespace he::scribe
         bool HasSourceBytes(FontFaceHandle handle) const;
         bool EnsureGlyphResource(FontFaceHandle handle, uint32_t glyphIndex, const GlyphResource*& out);
         bool EnsureVectorShapeResource(VectorImageHandle handle, uint32_t shapeIndex, const GlyphResource*& out);
+
+        Renderer& GetRenderer();
+        const Renderer& GetRenderer() const;
+
+        LayoutEngine& GetLayoutEngine();
+        const LayoutEngine& GetLayoutEngine() const;
 
     private:
         struct Impl;

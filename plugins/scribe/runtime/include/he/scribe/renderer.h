@@ -100,7 +100,9 @@ namespace he::scribe
     class Renderer
     {
     public:
-        Renderer() = default;
+        explicit Renderer(ScribeContext& context) noexcept
+            : m_context(context)
+        {}
         Renderer(const Renderer&) = delete;
         Renderer(Renderer&&) = delete;
         ~Renderer() noexcept;
@@ -108,10 +110,10 @@ namespace he::scribe
         Renderer& operator=(const Renderer&) = delete;
         Renderer& operator=(Renderer&&) = delete;
 
-        bool Initialize(ScribeContext& context, rhi::Format targetFormat);
+        bool Initialize(rhi::Format targetFormat);
         void Terminate();
 
-        bool IsInitialized() const { return m_context != nullptr; }
+        bool IsInitialized() const { return m_device != nullptr; }
 
         bool CreateGlyphResource(GlyphResource& out, const GlyphResourceCreateInfo& desc);
         bool CreateDebugGlyphResource(GlyphResource& out);
@@ -155,7 +157,7 @@ namespace he::scribe
         void AppendDrawVertices(const DrawGlyphDesc& draw);
 
     private:
-        ScribeContext* m_context{ nullptr };
+        ScribeContext& m_context;
         rhi::Device* m_device{ nullptr };
         rhi::RootSignature* m_rootSignature{ nullptr };
         rhi::VertexBufferFormat* m_vertexBufferFormat{ nullptr };

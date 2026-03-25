@@ -513,6 +513,8 @@ namespace he
 
     ScribeTestApp::ScribeTestApp(window::Device* device)
         : m_windowDevice(device)
+        , m_renderer(m_scribeContext.GetRenderer())
+        , m_layoutEngine(m_scribeContext.GetLayoutEngine())
     {}
 
     ScribeTestApp::~ScribeTestApp() noexcept
@@ -977,7 +979,7 @@ namespace he
         if (!InitializeView()
             || !InitializeRenderState()
             || !m_scribeContext.Initialize(*m_render.device)
-            || !m_renderer.Initialize(m_scribeContext, m_render.preferredSwapChainFormat.format)
+            || !m_renderer.Initialize(m_render.preferredSwapChainFormat.format)
             || !m_renderer.CreateDebugGlyphResource(m_caretGlyph)
             || !LoadDemoFonts()
             || !LoadDemoImages())
@@ -986,7 +988,6 @@ namespace he
         }
 
         m_renderer.SetGlyphBatchingEnabled(m_glyphBatchingEnabled);
-        m_layoutEngine.SetContext(m_scribeContext);
         m_gpuFrameHistory.Resize(120, 0.0f);
         m_gpuFrameHistoryHead = 0;
         m_gpuFrameHistoryFilled = false;

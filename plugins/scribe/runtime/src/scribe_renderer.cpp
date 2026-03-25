@@ -163,12 +163,9 @@ namespace he::scribe
         Terminate();
     }
 
-    bool Renderer::Initialize(ScribeContext& context, rhi::Format targetFormat)
+    bool Renderer::Initialize(rhi::Format targetFormat)
     {
-        HE_ASSERT(!m_context);
-
-        m_context = &context;
-        m_device = context.GetDevice();
+        m_device = m_context.GetDevice();
         HE_ASSERT(m_device);
         m_targetFormat = targetFormat;
 
@@ -183,7 +180,7 @@ namespace he::scribe
 
     void Renderer::Terminate()
     {
-        if (!m_context || !m_device)
+        if (!m_device)
         {
             return;
         }
@@ -205,7 +202,6 @@ namespace he::scribe
         }
         DestroyDeviceResources();
         m_targetFormat = rhi::Format::Invalid;
-        m_context = nullptr;
         m_device = nullptr;
     }
 
@@ -440,7 +436,7 @@ namespace he::scribe
         for (const RetainedTextDraw& draw : text.GetDraws())
         {
             const GlyphResource* glyphResource = nullptr;
-            if (!m_context || !m_context->EnsureGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
+            if (!m_context.EnsureGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
             {
                 continue;
             }
@@ -451,15 +447,10 @@ namespace he::scribe
 
     bool Renderer::PrepareRetainedVectorImage(const RetainedVectorImageModel& image)
     {
-        if (!m_context)
-        {
-            return false;
-        }
-
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
-            if (!m_context->EnsureVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource))
+            if (!m_context.EnsureVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource))
             {
                 continue;
             }
@@ -513,7 +504,7 @@ namespace he::scribe
         for (const RetainedTextDraw& draw : text.GetDraws())
         {
             const GlyphResource* glyphResource = nullptr;
-            if (!m_context || !m_context->EnsureGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
+            if (!m_context.EnsureGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
             {
                 continue;
             }
@@ -558,11 +549,6 @@ namespace he::scribe
 
     void Renderer::QueueRetainedVectorImage(const RetainedVectorImageModel& image, const RetainedVectorImageInstanceDesc& instance)
     {
-        if (!m_context)
-        {
-            return;
-        }
-
         ReserveQueuedVertexCapacity(
             m_streamVertices.Size() + image.GetEstimatedVertexCount(),
             m_batches.Size() + image.GetDrawCount());
@@ -570,7 +556,7 @@ namespace he::scribe
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
-            if (!m_context->EnsureVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource))
+            if (!m_context.EnsureVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource))
             {
                 continue;
             }

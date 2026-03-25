@@ -87,7 +87,12 @@ namespace
         rhi::Instance* instance{ nullptr };
         rhi::Device* device{ nullptr };
         ScribeContext context{};
-        Renderer renderer{};
+        Renderer& renderer;
+
+        NullRendererHarness() noexcept
+            : renderer(context.GetRenderer())
+        {
+        }
 
         ~NullRendererHarness() noexcept
         {
@@ -111,7 +116,7 @@ namespace
             }
 
             if (!context.Initialize(*device)
-                || !renderer.Initialize(context, rhi::Format::BGRA8Unorm_sRGB))
+                || !renderer.Initialize(rhi::Format::BGRA8Unorm_sRGB))
             {
                 Terminate();
                 return false;

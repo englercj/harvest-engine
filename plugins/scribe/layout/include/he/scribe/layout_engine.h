@@ -211,14 +211,11 @@ namespace he::scribe
     class LayoutEngine
     {
     public:
-        LayoutEngine() noexcept = default;
         explicit LayoutEngine(ScribeContext& context) noexcept
-            : m_context(&context)
+            : m_context(context)
         {}
 
         ~LayoutEngine() noexcept = default;
-
-        void SetContext(ScribeContext& context) { m_context = &context; }
 
         bool LayoutText(
             LayoutResult& out,
@@ -231,6 +228,6 @@ namespace he::scribe
         bool HitTest(const LayoutResult& layout, const Vec2f& point, HitTestResult& out) const;
 
     private:
-        ScribeContext* m_context{ nullptr };
+        ScribeContext& m_context;
     };
 }

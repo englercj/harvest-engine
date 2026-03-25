@@ -185,7 +185,12 @@ namespace
         rhi::Instance* instance{ nullptr };
         rhi::Device* device{ nullptr };
         ScribeContext context{};
-        Renderer renderer{};
+        Renderer& renderer;
+
+        NullRendererHarness() noexcept
+            : renderer(context.GetRenderer())
+        {
+        }
 
         ~NullRendererHarness() noexcept
         {
@@ -209,7 +214,7 @@ namespace
             }
 
             if (!context.Initialize(*device)
-                || !renderer.Initialize(context, rhi::Format::BGRA8Unorm_sRGB))
+                || !renderer.Initialize(rhi::Format::BGRA8Unorm_sRGB))
             {
                 Terminate();
                 return false;
@@ -783,7 +788,7 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_bounds_match_freetype_ou
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
     HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
-    LayoutEngine engine(context);
+        LayoutEngine& engine = context.GetLayoutEngine();
     LayoutResult layout;
     LayoutOptions options{};
     options.fontSize = 96.0f;
@@ -844,7 +849,7 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_has_no_detached_left_edg
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
     HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
-    LayoutEngine engine(context);
+    LayoutEngine& engine = context.GetLayoutEngine();
     LayoutResult layout;
     LayoutOptions options{};
     options.fontSize = 96.0f;

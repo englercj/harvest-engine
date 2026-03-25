@@ -225,14 +225,14 @@ namespace he
                 }
 
                 const scribe::RetainedTextDraw& draw = draws[glyphLayoutIndex];
-                const scribe::FontFaceResourceReader* fontFace =
-                    text.GetContext() ? text.GetContext()->GetFontFace(text.GetFontFaceHandle(draw.fontFaceIndex)) : nullptr;
-                if (!fontFace)
+                const scribe::FontFaceResourceReader fontFace =
+                    text.GetContext() ? text.GetContext()->GetFontFace(text.GetFontFaceHandle(draw.fontFaceIndex)) : scribe::FontFaceResourceReader{};
+                if (!fontFace.IsValid())
                 {
                     continue;
                 }
 
-                const scribe::FontFaceRenderData::Reader render = fontFace->GetRender();
+                const scribe::FontFaceRenderData::Reader render = fontFace.GetRender();
                 if (!render.IsValid())
                 {
                     continue;

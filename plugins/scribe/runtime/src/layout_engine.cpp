@@ -311,13 +311,13 @@ namespace he::scribe
             for (uint32_t i = 0; i < faces.Size(); ++i)
             {
                 FontContext& ctx = out[i];
-                const FontFaceResourceReader* fontFace = context.GetFontFace(faces[i]);
-                if (!fontFace)
+                const FontFaceResourceReader fontFace = context.GetFontFace(faces[i]);
+                if (!fontFace.IsValid())
                 {
                     continue;
                 }
 
-                const FontFaceRuntimeMetadata::Reader metadata = fontFace->GetMetadata();
+                const FontFaceRuntimeMetadata::Reader metadata = fontFace.GetMetadata();
                 const uint32_t unitsPerEm = Max(metadata.GetUnitsPerEm(), 1u);
 
                 ctx.fontSize = options.fontSize;

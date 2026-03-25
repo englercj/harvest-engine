@@ -28,6 +28,39 @@
 
 namespace he::scribe
 {
+    struct ScribeContext::RegisteredFontFace
+    {
+        RegisteredFontFace() noexcept
+            : builder()
+        {
+        }
+
+        schema::Builder builder;
+        ScribeFontFace::RuntimeResource::Builder resource;
+        uint64_t hash{ 0 };
+
+        ::hb_blob_t* blob{ nullptr };
+        ::hb_face_t* face{ nullptr };
+        ::hb_font_t* font{ nullptr };
+        GlyphAtlas* atlas{ nullptr };
+        HashMap<uint32_t, GlyphResource> resources{};
+    };
+
+    struct ScribeContext::RegisteredVectorImage
+    {
+        RegisteredVectorImage() noexcept
+            : builder()
+        {
+        }
+
+        schema::Builder builder;
+        ScribeImage::RuntimeResource::Builder resource;
+        uint64_t hash{ 0 };
+
+        GlyphAtlas* atlas{ nullptr };
+        HashMap<uint32_t, GlyphResource> resources{};
+    };
+
     namespace
     {
         template <typename TReader>
@@ -86,7 +119,7 @@ namespace he::scribe
                 return true;
             }
 
-            if (!EnsureRegisteredAtlas(device, registered.reader, registered.atlas))
+            if (!EnsureRegisteredAtlas(device, registered.resource.AsReader(), registered.atlas))
             {
                 return false;
             }
@@ -105,13 +138,18 @@ namespace he::scribe
     }
 
     ScribeContext::ScribeContext() noexcept
-        : m_renderer(*this)
-        , m_layoutEngine(*this)
-    {}
+        : m_renderer(Allocator::GetDefault().New<Renderer>(*this))
+        , m_layoutEngine(Allocator::GetDefault().New<LayoutEngine>(*this))
+    {
+    }
 
     ScribeContext::~ScribeContext() noexcept
     {
         Terminate();
+        Allocator::GetDefault().Delete(m_layoutEngine);
+        Allocator::GetDefault().Delete(m_renderer);
+        m_layoutEngine = nullptr;
+        m_renderer = nullptr;
     }
 
     bool ScribeContext::Initialize(rhi::Device& device)
@@ -127,13 +165,16 @@ namespace he::scribe
 
     void ScribeContext::Terminate()
     {
-        m_renderer.Terminate();
+        if (m_renderer)
+        {
+            m_renderer->Terminate();
+        }
 
         if (m_device)
         {
-            for (HashMapEntry<uint64_t, RegisteredFontFace>& hashAndFont : m_fonts)
+            for (HashMapEntry<uint64_t, RegisteredFontFace*>& hashAndFont : m_fonts)
             {
-                RegisteredFontFace& font = hashAndFont.value;
+                RegisteredFontFace& font = *hashAndFont.value;
 
                 if (font.font)
                 {
@@ -160,9 +201,9 @@ namespace he::scribe
                 }
             }
 
-            for (HashMapEntry<uint64_t, RegisteredVectorImage>& hashAndImage : m_images)
+            for (HashMapEntry<uint64_t, RegisteredVectorImage*>& hashAndImage : m_images)
             {
-                RegisteredVectorImage& image = hashAndImage.value;
+                RegisteredVectorImage& image = *hashAndImage.value;
                 for (HashMapEntry<uint32_t, GlyphResource>& indexAndResource : image.resources)
                 {
                     GlyphResource& resource = indexAndResource.value;
@@ -173,6 +214,40 @@ namespace he::scribe
                 }
             }
         }
+
+        for (HashMapEntry<uint64_t, RegisteredFontFace*>& hashAndFont : m_fonts)
+        {
+            Allocator::GetDefault().Delete(hashAndFont.value);
+        }
+
+        for (HashMapEntry<uint64_t, RegisteredVectorImage*>& hashAndImage : m_images)
+        {
+            Allocator::GetDefault().Delete(hashAndImage.value);
+        }
+
+        m_fonts.Clear();
+        m_images.Clear();
+        m_device = nullptr;
+    }
+
+    Renderer& ScribeContext::GetRenderer()
+    {
+        return *m_renderer;
+    }
+
+    const Renderer& ScribeContext::GetRenderer() const
+    {
+        return *m_renderer;
+    }
+
+    LayoutEngine& ScribeContext::GetLayoutEngine()
+    {
+        return *m_layoutEngine;
+    }
+
+    const LayoutEngine& ScribeContext::GetLayoutEngine() const
+    {
+        return *m_layoutEngine;
     }
 
     FontFaceHandle ScribeContext::RegisterFontFace(const ScribeFontFace::RuntimeResource::Reader& fontFace)
@@ -185,14 +260,15 @@ namespace he::scribe
         Hash<WyHash> hasher;
         CalculateHash(hasher, fontFace);
         const uint64_t hash = hasher.Final();
-        const auto result = m_fonts.Emplace(hash);
+        auto result = m_fonts.Emplace(hash);
 
         if (result.inserted)
         {
-            RegisteredFontFace& registered = result.entry.value;
-            registered.resource = registered.builder.AddStruct<ScribeFontFace::RuntimeResource>();
-            registered.resource.Copy(fontFace);
-            registered.hash = hash;
+            RegisteredFontFace* registered = Allocator::GetDefault().New<RegisteredFontFace>();
+            result.entry.value = registered;
+            registered->resource = registered->builder.AddStruct<ScribeFontFace::RuntimeResource>();
+            registered->resource.Copy(fontFace);
+            registered->hash = hash;
         }
 
         return { hash };
@@ -208,14 +284,15 @@ namespace he::scribe
         Hash<WyHash> hasher;
         CalculateHash(hasher, image);
         const uint64_t hash = hasher.Final();
-        const auto result = m_images.Emplace(hash);
+        auto result = m_images.Emplace(hash);
 
         if (result.inserted)
         {
-            RegisteredVectorImage& registered = result.entry.value;
-            registered.resource = registered.builder.AddStruct<ScribeImage::RuntimeResource>();
-            registered.resource.Copy(image);
-            registered.hash = hash;
+            RegisteredVectorImage* registered = Allocator::GetDefault().New<RegisteredVectorImage>();
+            result.entry.value = registered;
+            registered->resource = registered->builder.AddStruct<ScribeImage::RuntimeResource>();
+            registered->resource.Copy(image);
+            registered->hash = hash;
         }
 
         return { hash };
@@ -228,8 +305,8 @@ namespace he::scribe
             return {};
         }
 
-        const RegisteredFontFace* fontFace = m_fonts.Find(handle.value);
-        return fontFace ? fontFace->resource : ScribeFontFace::RuntimeResource::Reader{};
+        const RegisteredFontFace* const* fontFace = m_fonts.Find(handle.value);
+        return fontFace ? (*fontFace)->resource : ScribeFontFace::RuntimeResource::Reader{};
     }
 
     ScribeImage::RuntimeResource::Reader ScribeContext::GetVectorImage(VectorImageHandle handle) const
@@ -239,8 +316,8 @@ namespace he::scribe
             return {};
         }
 
-        const RegisteredVectorImage* image = m_images.Find(handle.value);
-        return image ? image->resource : ScribeImage::RuntimeResource::Reader{};
+        const RegisteredVectorImage* const* image = m_images.Find(handle.value);
+        return image ? (*image)->resource : ScribeImage::RuntimeResource::Reader{};
     }
 
     hb_font_t* ScribeContext::GetHbFont(FontFaceHandle handle)
@@ -250,18 +327,18 @@ namespace he::scribe
             return nullptr;
         }
 
-        RegisteredFontFace* fontFace = m_fonts.Find(handle.value);
+        RegisteredFontFace** fontFace = m_fonts.Find(handle.value);
         if (!fontFace)
         {
             return nullptr;
         }
 
-        if (fontFace->font)
+        if ((*fontFace)->font)
         {
-            return fontFace->font;
+            return (*fontFace)->font;
         }
 
-        const schema::Blob::Reader sourceBytes = fontFace->resource.GetShaping().GetSourceBytes();
+        const schema::Blob::Reader sourceBytes = (*fontFace)->resource.GetShaping().GetSourceBytes();
         if (sourceBytes.IsEmpty())
         {
             return nullptr;
@@ -278,7 +355,7 @@ namespace he::scribe
             return nullptr;
         }
 
-        hb_face_t* face = hb_face_create(blob, fontFace->resource.GetShaping().GetFaceIndex());
+        hb_face_t* face = hb_face_create(blob, (*fontFace)->resource.GetShaping().GetFaceIndex());
         if (!face)
         {
             hb_blob_destroy(blob);
@@ -294,12 +371,12 @@ namespace he::scribe
         }
 
         hb_ot_font_set_funcs(hbFont);
-        const uint32_t unitsPerEm = Max(fontFace->resource.GetMetadata().GetUnitsPerEm(), 1u);
+        const uint32_t unitsPerEm = Max((*fontFace)->resource.GetMetadata().GetUnitsPerEm(), 1u);
         hb_font_set_scale(hbFont, static_cast<int>(unitsPerEm), static_cast<int>(unitsPerEm));
-        fontFace->blob = blob;
-        fontFace->face = face;
-        fontFace->font = hbFont;
-        return fontFace->font;
+        (*fontFace)->blob = blob;
+        (*fontFace)->face = face;
+        (*fontFace)->font = hbFont;
+        return (*fontFace)->font;
     }
 
     bool ScribeContext::HasSourceBytes(FontFaceHandle handle) const
@@ -316,21 +393,21 @@ namespace he::scribe
             return false;
         }
 
-        const RegisteredFontFace* fontFace = m_fonts.Find(handle.value);
+        RegisteredFontFace** fontFace = m_fonts.Find(handle.value);
         if (!fontFace)
         {
             return false;
         }
 
-        if (glyphIndex >= fontFace->resource.GetMetadata().GetGlyphCount())
+        if (glyphIndex >= (*fontFace)->resource.GetMetadata().GetGlyphCount())
         {
             return false;
         }
 
-        return EnsureCachedResource(*m_device, *fontFace, glyphIndex, out, [&](GlyphResource& resource) -> bool
+        return EnsureCachedResource(*m_device, **fontFace, glyphIndex, out, [&](GlyphResource& resource) -> bool
         {
             CompiledGlyphResourceData glyphData{};
-            if (!BuildCompiledGlyphResourceData(glyphData, fontFace->resource, glyphIndex))
+            if (!BuildCompiledGlyphResourceData(glyphData, (*fontFace)->resource, glyphIndex))
             {
                 return false;
             }
@@ -349,21 +426,21 @@ namespace he::scribe
             return false;
         }
 
-        const RegisteredVectorImage* image = m_images.Find(handle.value);
+        RegisteredVectorImage** image = m_images.Find(handle.value);
         if (!image)
         {
             return false;
         }
 
-        if (shapeIndex >= image->resource.GetRender().GetShapes().Size())
+        if (shapeIndex >= (*image)->resource.GetRender().GetShapes().Size())
         {
             return false;
         }
 
-        return EnsureCachedResource(*m_device, *image, shapeIndex, out, [&](GlyphResource& resource) -> bool
+        return EnsureCachedResource(*m_device, **image, shapeIndex, out, [&](GlyphResource& resource) -> bool
         {
             CompiledVectorShapeResourceData shapeData{};
-            if (!BuildCompiledVectorShapeResourceData(shapeData, image->resource, shapeIndex))
+            if (!BuildCompiledVectorShapeResourceData(shapeData, (*image)->resource, shapeIndex))
             {
                 return false;
             }

@@ -7,13 +7,13 @@
 #include "he/core/hash_table.h"
 #include "he/core/span.h"
 #include "he/core/types.h"
-#include "he/scribe/layout_engine.h"
-#include "he/scribe/renderer.h"
 
 namespace he::rhi
 {
     class Device;
 }
+
+struct hb_font_t;
 
 namespace he::scribe
 {
@@ -69,43 +69,25 @@ namespace he::scribe
         [[nodiscard]] ScribeFontFace::RuntimeResource::Reader GetFontFace(FontFaceHandle handle) const;
         [[nodiscard]] ScribeImage::RuntimeResource::Reader GetVectorImage(VectorImageHandle handle) const;
 
-        [[nodiscard]] struct hb_font_t* GetHbFont(FontFaceHandle handle);
+        [[nodiscard]] ::hb_font_t* GetHbFont(FontFaceHandle handle);
         [[nodiscard]] bool HasSourceBytes(FontFaceHandle handle) const;
         bool TryGetGlyphResource(FontFaceHandle handle, uint32_t glyphIndex, const GlyphResource*& out);
         bool TryGetVectorShapeResource(VectorImageHandle handle, uint32_t shapeIndex, const GlyphResource*& out);
 
-        [[nodiscard]] Renderer& GetRenderer() { return m_renderer; }
-        [[nodiscard]] const Renderer& GetRenderer() const { return m_renderer; }
+        [[nodiscard]] Renderer& GetRenderer();
+        [[nodiscard]] const Renderer& GetRenderer() const;
 
-        [[nodiscard]] LayoutEngine& GetLayoutEngine() { return m_layoutEngine; }
-        [[nodiscard]] const LayoutEngine& GetLayoutEngine() const { return m_layoutEngine; }
+        [[nodiscard]] LayoutEngine& GetLayoutEngine();
+        [[nodiscard]] const LayoutEngine& GetLayoutEngine() const;
 
     private:
-        struct RegisteredFontFace
-        {
-            schema::Builder builder;
-            ScribeFontFace::RuntimeResource::Builder resource;
-            uint64_t hash{ 0 };
-
-            struct hb_blob_t* blob{ nullptr };
-            struct hb_face_t* face{ nullptr };
-            struct hb_font_t* font{ nullptr };
-            HashMap<uint32_t, GlyphResource> resources;
-        };
-
-        struct RegisteredVectorImage
-        {
-            schema::Builder builder;
-            ScribeImage::RuntimeResource::Builder resource;
-            uint64_t hash{ 0 };
-
-            HashMap<uint32_t, GlyphResource> resources;
-        };
+        struct RegisteredFontFace;
+        struct RegisteredVectorImage;
 
         rhi::Device* m_device{ nullptr };
-        HashMap<uint64_t, RegisteredFontFace> m_fonts;
-        HashMap<uint64_t, RegisteredVectorImage> m_images;
-        Renderer m_renderer;
-        LayoutEngine m_layoutEngine;
+        HashMap<uint64_t, RegisteredFontFace*> m_fonts;
+        HashMap<uint64_t, RegisteredVectorImage*> m_images;
+        Renderer* m_renderer{ nullptr };
+        LayoutEngine* m_layoutEngine{ nullptr };
     };
 }

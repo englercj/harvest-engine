@@ -15,8 +15,8 @@ namespace he::scribe
             return false;
         }
 
-        const VectorImageResourceReader* image = desc.context->GetVectorImage(desc.image);
-        if (!image || !image->IsValid() || !image->GetRender().IsValid() || !image->GetPaint().IsValid())
+        const VectorImageResourceReader image = desc.context->GetVectorImage(desc.image);
+        if (!image.IsValid() || !image.GetRender().IsValid() || !image.GetPaint().IsValid())
         {
             return false;
         }
@@ -24,13 +24,13 @@ namespace he::scribe
         m_context = desc.context;
         m_image = desc.image;
 
-        const VectorImageRuntimeMetadata::Reader metadata = image->GetMetadata();
+        const VectorImageRuntimeMetadata::Reader metadata = image.GetMetadata();
         m_viewBoxSize = {
             metadata.GetSourceViewBoxWidth(),
             metadata.GetSourceViewBoxHeight()
         };
 
-        const VectorImagePaintData::Reader paint = image->GetPaint();
+        const VectorImagePaintData::Reader paint = image.GetPaint();
         const schema::List<VectorImageLayer>::Reader layers = paint.GetLayers();
         if (layers.IsEmpty())
         {

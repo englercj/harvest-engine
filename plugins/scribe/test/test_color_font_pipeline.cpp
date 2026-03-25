@@ -1683,7 +1683,7 @@ HE_TEST(scribe, retained_text, prepares_with_renderer_after_temporary_face_span_
     HE_EXPECT_GT(retainedText.GetDrawCount(), 0u);
     for (const RetainedTextDraw& draw : retainedText.GetDraws())
     {
-        HE_EXPECT_NE_PTR(context.GetFontFace(retainedText.GetFontFaceHandle(draw.fontFaceIndex)), nullptr);
+        HE_EXPECT(context.GetFontFace(retainedText.GetFontFaceHandle(draw.fontFaceIndex)).IsValid());
     }
     storage.Clear();
 
@@ -1738,7 +1738,7 @@ HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_fac
     bool sawPaletteColorDraw = false;
     for (const RetainedTextDraw& draw : retainedText.GetDraws())
     {
-        HE_EXPECT_NE_PTR(context.GetFontFace(retainedText.GetFontFaceHandle(draw.fontFaceIndex)), nullptr);
+        HE_EXPECT(context.GetFontFace(retainedText.GetFontFaceHandle(draw.fontFaceIndex)).IsValid());
         sawFallbackFaceDraw |= draw.fontFaceIndex == 1u;
         sawPaletteColorDraw |= (draw.flags & RetainedTextDrawFlagUseForegroundColor) == 0;
     }

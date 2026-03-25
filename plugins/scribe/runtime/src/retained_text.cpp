@@ -212,14 +212,14 @@ namespace he::scribe
         m_fontFaces = desc.fontFaces;
         for (uint32_t fontIndex = 0; fontIndex < desc.fontFaces.Size(); ++fontIndex)
         {
-            const FontFaceResourceReader* fontFace = m_context->GetFontFace(desc.fontFaces[fontIndex]);
-            if (!fontFace)
+            const FontFaceResourceReader fontFace = m_context->GetFontFace(desc.fontFaces[fontIndex]);
+            if (!fontFace.IsValid())
             {
                 continue;
             }
 
-            const FontFaceRuntimeMetadata::Reader metadata = fontFace->GetMetadata();
-            const FontFacePaintData::Reader paint = fontFace->GetPaint();
+            const FontFaceRuntimeMetadata::Reader metadata = fontFace.GetMetadata();
+            const FontFacePaintData::Reader paint = fontFace.GetPaint();
             const uint32_t unitsPerEm = Max(metadata.GetUnitsPerEm(), 1u);
             FontBuildState& fontState = fontStates[fontIndex];
             fontState.scale = desc.fontSize / static_cast<float>(unitsPerEm);
@@ -230,7 +230,7 @@ namespace he::scribe
                 && !paint.GetPalettes().IsEmpty();
             if (fontState.hasColorGlyphs)
             {
-                fontState.paletteIndex = SelectCompiledFontPalette(*fontFace, desc.darkBackgroundPreferred);
+                fontState.paletteIndex = SelectCompiledFontPalette(fontFace, desc.darkBackgroundPreferred);
             }
         }
 
@@ -242,8 +242,8 @@ namespace he::scribe
                 continue;
             }
 
-            const FontFaceResourceReader* fontFace = m_context->GetFontFace(m_fontFaces[glyph.fontFaceIndex]);
-            if (!fontFace)
+            const FontFaceResourceReader fontFace = m_context->GetFontFace(m_fontFaces[glyph.fontFaceIndex]);
+            if (!fontFace.IsValid())
             {
                 continue;
             }
@@ -252,7 +252,7 @@ namespace he::scribe
             const TextStyle* style = GetStyle(styles, glyph.styleIndex);
             if (fontState.hasColorGlyphs)
             {
-                const FontFacePaintData::Reader paint = fontFace->GetPaint();
+                const FontFacePaintData::Reader paint = fontFace.GetPaint();
                 const schema::List<FontFaceColorGlyph>::Reader colorGlyphs = paint.GetColorGlyphs();
                 if (glyph.glyphIndex < colorGlyphs.Size())
                 {

@@ -22,10 +22,9 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
     module he_scribe kind=lib_static group="engine/libs" {
         files { "runtime/include/**"; "runtime/src/**" }
         include_dirs { "runtime/src"; "${module.gen_dir}/runtime/src"; }
-        dependencies { harfbuzz; }
 
         public {
-            dependencies { he_core; he_math; he_rhi; he_scribe_assets }
+            dependencies { harfbuzz; he_core; he_math; he_rhi; he_scribe_assets }
             include_dirs { "runtime/include" }
         }
 
@@ -73,7 +72,7 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
         include_dirs { "editor/src" }
 
         public {
-            dependencies { freetype; he_scribe; he_scribe_editor }
+            dependencies { freetype; harfbuzz; he_scribe; he_scribe_editor }
         }
     }
 
@@ -90,7 +89,7 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
         include_dirs { "test_app"; "editor/src" }
 
         public {
-            dependencies { freetype; he_core; he_math; he_rhi; he_scribe; he_window }
+            dependencies { freetype; harfbuzz; he_core; he_math; he_rhi; he_scribe; he_window }
         }
     }
 }

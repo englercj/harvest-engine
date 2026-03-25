@@ -4,10 +4,11 @@
 
 #include "he/scribe/schema_types.h"
 
+#include "he/core/hash_table.h"
 #include "he/core/span.h"
 #include "he/core/types.h"
-
-#include <hb.h>
+#include "he/scribe/layout_engine.h"
+#include "he/scribe/renderer.h"
 
 namespace he::rhi
 {
@@ -22,18 +23,24 @@ namespace he::scribe
 
     struct FontFaceHandle
     {
-        uint32_t value{ 0 };
+        uint64_t value{ 0 };
 
-        bool IsValid() const { return value != 0; }
+        [[nodiscard]] bool IsValid() const { return value != 0; }
+        [[nodiscard]] uint64_t HashCode() const { return value; }
+
         bool operator==(const FontFaceHandle& x) const = default;
+        bool operator<(const FontFaceHandle& x) const = default;
     };
 
     struct VectorImageHandle
     {
-        uint32_t value{ 0 };
+        uint64_t value{ 0 };
 
-        bool IsValid() const { return value != 0; }
+        [[nodiscard]] bool IsValid() const { return value != 0; }
+        [[nodiscard]] uint64_t HashCode() const { return value; }
+
         bool operator==(const VectorImageHandle& x) const = default;
+        bool operator<(const VectorImageHandle& x) const = default;
     };
 
     class ScribeContext
@@ -53,28 +60,52 @@ namespace he::scribe
         bool Initialize(rhi::Device& device);
         void Terminate();
 
-        bool IsInitialized() const;
-        rhi::Device* GetDevice() const;
+        bool IsInitialized() const { return m_device != nullptr; }
+        [[nodiscard]] rhi::Device* GetDevice() const { return m_device; }
 
-        FontFaceHandle RegisterFontFace(const FontFaceResourceReader& fontFace);
-        VectorImageHandle RegisterVectorImage(const VectorImageResourceReader& image);
+        FontFaceHandle RegisterFontFace(const ScribeFontFace::RuntimeResource::Reader& fontFace);
+        VectorImageHandle RegisterVectorImage(const ScribeImage::RuntimeResource::Reader& image);
 
-        const FontFaceResourceReader* GetFontFace(FontFaceHandle handle) const;
-        const VectorImageResourceReader* GetVectorImage(VectorImageHandle handle) const;
+        [[nodiscard]] ScribeFontFace::RuntimeResource::Reader GetFontFace(FontFaceHandle handle) const;
+        [[nodiscard]] ScribeImage::RuntimeResource::Reader GetVectorImage(VectorImageHandle handle) const;
 
-        ::hb_font_t* GetHbFont(FontFaceHandle handle);
-        bool HasSourceBytes(FontFaceHandle handle) const;
-        bool EnsureGlyphResource(FontFaceHandle handle, uint32_t glyphIndex, const GlyphResource*& out);
-        bool EnsureVectorShapeResource(VectorImageHandle handle, uint32_t shapeIndex, const GlyphResource*& out);
+        [[nodiscard]] struct hb_font_t* GetHbFont(FontFaceHandle handle);
+        [[nodiscard]] bool HasSourceBytes(FontFaceHandle handle) const;
+        bool TryGetGlyphResource(FontFaceHandle handle, uint32_t glyphIndex, const GlyphResource*& out);
+        bool TryGetVectorShapeResource(VectorImageHandle handle, uint32_t shapeIndex, const GlyphResource*& out);
 
-        Renderer& GetRenderer();
-        const Renderer& GetRenderer() const;
+        [[nodiscard]] Renderer& GetRenderer() { return m_renderer; }
+        [[nodiscard]] const Renderer& GetRenderer() const { return m_renderer; }
 
-        LayoutEngine& GetLayoutEngine();
-        const LayoutEngine& GetLayoutEngine() const;
+        [[nodiscard]] LayoutEngine& GetLayoutEngine() { return m_layoutEngine; }
+        [[nodiscard]] const LayoutEngine& GetLayoutEngine() const { return m_layoutEngine; }
 
     private:
-        struct Impl;
-        Impl* m_impl{ nullptr };
+        struct RegisteredFontFace
+        {
+            schema::Builder builder;
+            ScribeFontFace::RuntimeResource::Builder resource;
+            uint64_t hash{ 0 };
+
+            struct hb_blob_t* blob{ nullptr };
+            struct hb_face_t* face{ nullptr };
+            struct hb_font_t* font{ nullptr };
+            HashMap<uint32_t, GlyphResource> resources;
+        };
+
+        struct RegisteredVectorImage
+        {
+            schema::Builder builder;
+            ScribeImage::RuntimeResource::Builder resource;
+            uint64_t hash{ 0 };
+
+            HashMap<uint32_t, GlyphResource> resources;
+        };
+
+        rhi::Device* m_device{ nullptr };
+        HashMap<uint64_t, RegisteredFontFace> m_fonts;
+        HashMap<uint64_t, RegisteredVectorImage> m_images;
+        Renderer m_renderer;
+        LayoutEngine m_layoutEngine;
     };
 }

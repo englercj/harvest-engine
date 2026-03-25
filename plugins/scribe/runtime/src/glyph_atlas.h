@@ -13,6 +13,5 @@ namespace he::scribe
         rhi::Texture* bandTexture{ nullptr };
         rhi::TextureView* bandView{ nullptr };
         rhi::DescriptorTable* descriptorTable{ nullptr };
-        uint32_t refCount{ 0 };
     };
 }

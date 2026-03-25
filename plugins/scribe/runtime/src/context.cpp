@@ -9,7 +9,6 @@
 
 #include "glyph_atlas.h"
 #include "glyph_atlas_utils.h"
-#include "resource_copy_utils.h"
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
@@ -24,8 +23,8 @@
 #include "he/rhi/cmd_queue.h"
 #include "he/rhi/device.h"
 
-#include <hb-ot.h>
-#include <hb.h>
+#include "hb-ot.h"
+#include "hb.h"
 
 namespace he::scribe
 {
@@ -40,7 +39,6 @@ namespace he::scribe
             }
 
             atlas = Allocator::GetDefault().New<GlyphAtlas>();
-            atlas->refCount = 1;
 
             const auto render = reader.GetRender();
             const schema::Blob::Reader curveData = reader.GetCurveData();
@@ -78,12 +76,7 @@ namespace he::scribe
         }
 
         template <typename TRegistered, typename TBuildFn>
-        bool EnsureCachedResource(
-            rhi::Device& device,
-            TRegistered& registered,
-            uint32_t index,
-            const GlyphResource*& out,
-            TBuildFn&& buildFn)
+        bool EnsureCachedResource(rhi::Device& device, TRegistered& registered, uint32_t index, const GlyphResource*& out, TBuildFn&& buildFn)
         {
             out = nullptr;
 
@@ -91,11 +84,6 @@ namespace he::scribe
             {
                 out = existing;
                 return true;
-            }
-
-            if (registered.failedIndices.Contains(index))
-            {
-                return false;
             }
 
             if (!EnsureRegisteredAtlas(device, registered.reader, registered.atlas))
@@ -106,7 +94,6 @@ namespace he::scribe
             GlyphResource resource{};
             if (!buildFn(resource))
             {
-                registered.failedIndices.Insert(index);
                 return false;
             }
 
@@ -118,9 +105,9 @@ namespace he::scribe
     }
 
     ScribeContext::ScribeContext() noexcept
-        : m_impl(Allocator::GetDefault().New<Impl>(*this))
-    {
-    }
+        : m_renderer(*this)
+        , m_layoutEngine(*this)
+    {}
 
     ScribeContext::~ScribeContext() noexcept
     {
@@ -129,191 +116,152 @@ namespace he::scribe
 
     bool ScribeContext::Initialize(rhi::Device& device)
     {
-        if (m_impl->device && (m_impl->device != &device))
+        if (m_device && (m_device != &device))
         {
             return false;
         }
 
-        m_impl->device = &device;
+        m_device = &device;
         return true;
     }
 
     void ScribeContext::Terminate()
     {
-        if (!m_impl)
-        {
-            return;
-        }
+        m_renderer.Terminate();
 
-        m_impl->renderer.Terminate();
-
-        if (m_impl->device)
+        if (m_device)
         {
-            for (RegisteredFontFace& font : m_impl->fonts)
+            for (HashMapEntry<uint64_t, RegisteredFontFace>& hashAndFont : m_fonts)
             {
-                if (font.atlas)
+                RegisteredFontFace& font = hashAndFont.value;
+
+                if (font.font)
                 {
-                    DestroyAtlas(*m_impl->device, font.atlas);
+                    hb_font_destroy(font.font);
+                }
+
+                if (font.face)
+                {
+                    hb_face_destroy(font.face);
+                }
+
+                if (font.blob)
+                {
+                    hb_blob_destroy(font.blob);
+                }
+
+                for (HashMapEntry<uint32_t, GlyphResource>& indexAndResource : font.resources)
+                {
+                    GlyphResource& resource = indexAndResource.value;
+                    if (resource.atlas)
+                    {
+                        DestroyAtlas(*m_device, resource.atlas);
+                    }
                 }
             }
 
-            for (RegisteredVectorImage& image : m_impl->images)
+            for (HashMapEntry<uint64_t, RegisteredVectorImage>& hashAndImage : m_images)
             {
-                if (image.atlas)
+                RegisteredVectorImage& image = hashAndImage.value;
+                for (HashMapEntry<uint32_t, GlyphResource>& indexAndResource : image.resources)
                 {
-                    DestroyAtlas(*m_impl->device, image.atlas);
+                    GlyphResource& resource = indexAndResource.value;
+                    if (resource.atlas)
+                    {
+                        DestroyAtlas(*m_device, resource.atlas);
+                    }
                 }
             }
         }
-
-        for (RegisteredFontFace& font : m_impl->fonts)
-        {
-            if (font.font)
-            {
-                hb_font_destroy(font.font);
-            }
-
-            if (font.face)
-            {
-                hb_face_destroy(font.face);
-            }
-
-            if (font.blob)
-            {
-                hb_blob_destroy(font.blob);
-            }
-        }
-
-        Allocator::GetDefault().Delete(m_impl);
-        m_impl = nullptr;
     }
 
-    bool ScribeContext::IsInitialized() const
-    {
-        return (m_impl != nullptr) && (m_impl->device != nullptr);
-    }
-
-    rhi::Device* ScribeContext::GetDevice() const
-    {
-        return m_impl ? m_impl->device : nullptr;
-    }
-
-    Renderer& ScribeContext::GetRenderer()
-    {
-        return m_impl->renderer;
-    }
-
-    const Renderer& ScribeContext::GetRenderer() const
-    {
-        return m_impl->renderer;
-    }
-
-    LayoutEngine& ScribeContext::GetLayoutEngine()
-    {
-        return m_impl->layoutEngine;
-    }
-
-    const LayoutEngine& ScribeContext::GetLayoutEngine() const
-    {
-        return m_impl->layoutEngine;
-    }
-
-    FontFaceHandle ScribeContext::RegisterFontFace(const FontFaceResourceReader& fontFace)
+    FontFaceHandle ScribeContext::RegisterFontFace(const ScribeFontFace::RuntimeResource::Reader& fontFace)
     {
         if (!fontFace.IsValid())
         {
             return {};
         }
 
-        const Span<const uint8_t> sourceBytes = GetResourceBytes(fontFace);
-        const uint64_t hash = HashResourceBytes(sourceBytes);
-        if (const Vector<uint32_t>* handles = m_impl->fontHandlesByHash.Find(hash))
+        Hash<WyHash> hasher;
+        CalculateHash(hasher, fontFace);
+        const uint64_t hash = hasher.Final();
+        const auto result = m_fonts.Emplace(hash);
+
+        if (result.inserted)
         {
-            for (uint32_t index : *handles)
-            {
-                const RegisteredFontFace& existing = m_impl->fonts[index];
-                if ((existing.storage.Size() == (sourceBytes.Size() / sizeof(schema::Word)))
-                    && MemEqual(existing.storage.Data(), sourceBytes.Data(), sourceBytes.Size()))
-                {
-                    return { index + 1u };
-                }
-            }
+            RegisteredFontFace& registered = result.entry.value;
+            registered.resource = registered.builder.AddStruct<ScribeFontFace::RuntimeResource>();
+            registered.resource.Copy(fontFace);
+            registered.hash = hash;
         }
 
-        Vector<schema::Word> storage{};
-        RegisteredFontFace& registered = m_impl->fonts.EmplaceBack();
-        registered.reader = CopyOwnedResource<FontFaceResource>(storage, fontFace);
-        registered.storage = Move(storage);
-        registered.hash = hash;
-        m_impl->fontHandlesByHash[hash].EmplaceBack(m_impl->fonts.Size() - 1u);
-        return { m_impl->fonts.Size() };
+        return { hash };
     }
 
-    VectorImageHandle ScribeContext::RegisterVectorImage(const VectorImageResourceReader& image)
+    VectorImageHandle ScribeContext::RegisterVectorImage(const ScribeImage::RuntimeResource::Reader& image)
     {
         if (!image.IsValid())
         {
             return {};
         }
 
-        const Span<const uint8_t> sourceBytes = GetResourceBytes(image);
-        const uint64_t hash = HashResourceBytes(sourceBytes);
-        if (const Vector<uint32_t>* handles = m_impl->imageHandlesByHash.Find(hash))
+        Hash<WyHash> hasher;
+        CalculateHash(hasher, image);
+        const uint64_t hash = hasher.Final();
+        const auto result = m_images.Emplace(hash);
+
+        if (result.inserted)
         {
-            for (uint32_t index : *handles)
-            {
-                const RegisteredVectorImage& existing = m_impl->images[index];
-                if ((existing.storage.Size() == (sourceBytes.Size() / sizeof(schema::Word)))
-                    && MemEqual(existing.storage.Data(), sourceBytes.Data(), sourceBytes.Size()))
-                {
-                    return { index + 1u };
-                }
-            }
+            RegisteredVectorImage& registered = result.entry.value;
+            registered.resource = registered.builder.AddStruct<ScribeImage::RuntimeResource>();
+            registered.resource.Copy(image);
+            registered.hash = hash;
         }
 
-        Vector<schema::Word> storage{};
-        RegisteredVectorImage& registered = m_impl->images.EmplaceBack();
-        registered.reader = CopyOwnedResource<VectorImageResource>(storage, image);
-        registered.storage = Move(storage);
-        registered.hash = hash;
-        m_impl->imageHandlesByHash[hash].EmplaceBack(m_impl->images.Size() - 1u);
-        return { m_impl->images.Size() };
+        return { hash };
     }
 
-    const FontFaceResourceReader* ScribeContext::GetFontFace(FontFaceHandle handle) const
+    ScribeFontFace::RuntimeResource::Reader ScribeContext::GetFontFace(FontFaceHandle handle) const
     {
-        if (!m_impl || !handle.IsValid() || (handle.value > m_impl->fonts.Size()))
+        if (!handle.IsValid())
         {
-            return nullptr;
+            return {};
         }
 
-        return &m_impl->fonts[handle.value - 1u].reader;
+        const RegisteredFontFace* fontFace = m_fonts.Find(handle.value);
+        return fontFace ? fontFace->resource : ScribeFontFace::RuntimeResource::Reader{};
     }
 
-    const VectorImageResourceReader* ScribeContext::GetVectorImage(VectorImageHandle handle) const
+    ScribeImage::RuntimeResource::Reader ScribeContext::GetVectorImage(VectorImageHandle handle) const
     {
-        if (!m_impl || !handle.IsValid() || (handle.value > m_impl->images.Size()))
+        if (!handle.IsValid())
         {
-            return nullptr;
+            return {};
         }
 
-        return &m_impl->images[handle.value - 1u].reader;
+        const RegisteredVectorImage* image = m_images.Find(handle.value);
+        return image ? image->resource : ScribeImage::RuntimeResource::Reader{};
     }
 
     hb_font_t* ScribeContext::GetHbFont(FontFaceHandle handle)
     {
-        if (!m_impl || !handle.IsValid() || (handle.value > m_impl->fonts.Size()))
+        if (!handle.IsValid())
         {
             return nullptr;
         }
 
-        RegisteredFontFace& font = m_impl->fonts[handle.value - 1u];
-        if (font.font)
+        RegisteredFontFace* fontFace = m_fonts.Find(handle.value);
+        if (!fontFace)
         {
-            return font.font;
+            return nullptr;
         }
 
-        const schema::Blob::Reader sourceBytes = font.reader.GetShaping().GetSourceBytes();
+        if (fontFace->font)
+        {
+            return fontFace->font;
+        }
+
+        const schema::Blob::Reader sourceBytes = fontFace->resource.GetShaping().GetSourceBytes();
         if (sourceBytes.IsEmpty())
         {
             return nullptr;
@@ -330,7 +278,7 @@ namespace he::scribe
             return nullptr;
         }
 
-        hb_face_t* face = hb_face_create(blob, font.reader.GetShaping().GetFaceIndex());
+        hb_face_t* face = hb_face_create(blob, fontFace->resource.GetShaping().GetFaceIndex());
         if (!face)
         {
             hb_blob_destroy(blob);
@@ -346,83 +294,83 @@ namespace he::scribe
         }
 
         hb_ot_font_set_funcs(hbFont);
-        const uint32_t unitsPerEm = Max(font.reader.GetMetadata().GetUnitsPerEm(), 1u);
-        hb_font_set_scale(hbFont, static_cast<int32_t>(unitsPerEm), static_cast<int32_t>(unitsPerEm));
-        font.blob = blob;
-        font.face = face;
-        font.font = hbFont;
-        return font.font;
+        const uint32_t unitsPerEm = Max(fontFace->resource.GetMetadata().GetUnitsPerEm(), 1u);
+        hb_font_set_scale(hbFont, static_cast<int>(unitsPerEm), static_cast<int>(unitsPerEm));
+        fontFace->blob = blob;
+        fontFace->face = face;
+        fontFace->font = hbFont;
+        return fontFace->font;
     }
 
     bool ScribeContext::HasSourceBytes(FontFaceHandle handle) const
     {
-        const FontFaceResourceReader* fontFace = GetFontFace(handle);
-        return fontFace && !fontFace->GetShaping().GetSourceBytes().IsEmpty();
+        ScribeFontFace::RuntimeResource::Reader fontFace = GetFontFace(handle);
+        return fontFace.IsValid() && !fontFace.GetShaping().GetSourceBytes().IsEmpty();
     }
 
-    bool ScribeContext::EnsureGlyphResource(FontFaceHandle handle, uint32_t glyphIndex, const GlyphResource*& out)
+    bool ScribeContext::TryGetGlyphResource(FontFaceHandle handle, uint32_t glyphIndex, const GlyphResource*& out)
     {
         out = nullptr;
-        if (!m_impl || !m_impl->device || !handle.IsValid() || (handle.value > m_impl->fonts.Size()))
+        if (!m_device || !handle.IsValid())
         {
             return false;
         }
 
-        RegisteredFontFace& font = m_impl->fonts[handle.value - 1u];
-        if (glyphIndex >= font.reader.GetMetadata().GetGlyphCount())
+        const RegisteredFontFace* fontFace = m_fonts.Find(handle.value);
+        if (!fontFace)
         {
             return false;
         }
 
-        return EnsureCachedResource(
-            *m_impl->device,
-            font,
-            glyphIndex,
-            out,
-            [&](GlyphResource& resource) -> bool
+        if (glyphIndex >= fontFace->resource.GetMetadata().GetGlyphCount())
+        {
+            return false;
+        }
+
+        return EnsureCachedResource(*m_device, *fontFace, glyphIndex, out, [&](GlyphResource& resource) -> bool
+        {
+            CompiledGlyphResourceData glyphData{};
+            if (!BuildCompiledGlyphResourceData(glyphData, fontFace->resource, glyphIndex))
             {
-                CompiledGlyphResourceData glyphData{};
-                if (!BuildCompiledGlyphResourceData(glyphData, font.reader, glyphIndex))
-                {
-                    return false;
-                }
+                return false;
+            }
 
-                MemCopy(resource.vertices, glyphData.vertices, sizeof(glyphData.vertices));
-                resource.vertexCount = glyphData.createInfo.vertexCount;
-                return true;
-            });
+            MemCopy(resource.vertices, glyphData.vertices, sizeof(glyphData.vertices));
+            resource.vertexCount = glyphData.createInfo.vertexCount;
+            return true;
+        });
     }
 
-    bool ScribeContext::EnsureVectorShapeResource(VectorImageHandle handle, uint32_t shapeIndex, const GlyphResource*& out)
+    bool ScribeContext::TryGetVectorShapeResource(VectorImageHandle handle, uint32_t shapeIndex, const GlyphResource*& out)
     {
         out = nullptr;
-        if (!m_impl || !m_impl->device || !handle.IsValid() || (handle.value > m_impl->images.Size()))
+        if (!m_device || !handle.IsValid())
         {
             return false;
         }
 
-        RegisteredVectorImage& image = m_impl->images[handle.value - 1u];
-        if (shapeIndex >= image.reader.GetRender().GetShapes().Size())
+        const RegisteredVectorImage* image = m_images.Find(handle.value);
+        if (!image)
         {
             return false;
         }
 
-        return EnsureCachedResource(
-            *m_impl->device,
-            image,
-            shapeIndex,
-            out,
-            [&](GlyphResource& resource) -> bool
+        if (shapeIndex >= image->resource.GetRender().GetShapes().Size())
+        {
+            return false;
+        }
+
+        return EnsureCachedResource(*m_device, *image, shapeIndex, out, [&](GlyphResource& resource) -> bool
+        {
+            CompiledVectorShapeResourceData shapeData{};
+            if (!BuildCompiledVectorShapeResourceData(shapeData, image->resource, shapeIndex))
             {
-                CompiledVectorShapeResourceData shapeData{};
-                if (!BuildCompiledVectorShapeResourceData(shapeData, image.reader, shapeIndex))
-                {
-                    return false;
-                }
+                return false;
+            }
 
-                MemCopy(resource.vertices, shapeData.vertices, sizeof(shapeData.vertices));
-                resource.vertexCount = shapeData.createInfo.vertexCount;
-                return true;
-            });
+            MemCopy(resource.vertices, shapeData.vertices, sizeof(shapeData.vertices));
+            resource.vertexCount = shapeData.createInfo.vertexCount;
+            return true;
+        });
     }
 }

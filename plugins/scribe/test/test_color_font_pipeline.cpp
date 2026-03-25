@@ -102,6 +102,7 @@ namespace
             faceInfo.hasColorGlyphs);
 
         FillFontFaceResourceRenderData(root.GetRender(), renderData);
+        FillFontFaceResourceOutlineData(root.GetOutline(), renderData);
         FillFontFaceResourcePaintData(root.GetPaint(), renderData.paint);
         root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
         root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
@@ -1520,7 +1521,7 @@ HE_TEST(scribe, retained_text, emits_decoration_quads_for_styled_runs)
     HE_EXPECT(sawStrikeColor);
 }
 
-HE_TEST(scribe, retained_text, expands_shadow_and_outline_effects_into_extra_draws)
+HE_TEST(scribe, retained_text, emits_runtime_stroke_draws_for_outline_effects)
 {
     String repoFontPath;
     HE_ASSERT(ResolveRepoFontPath(repoFontPath, "NotoSans-Regular.ttf"));
@@ -1573,14 +1574,21 @@ HE_TEST(scribe, retained_text, expands_shadow_and_outline_effects_into_extra_dra
     HE_ASSERT(retainedText.Build(retainedDesc));
 
     const uint32_t glyphCount = layout.glyphs.Size();
-    HE_EXPECT_EQ(retainedText.GetDrawCount(), glyphCount * 10u);
+    HE_EXPECT_EQ(retainedText.GetDrawCount(), glyphCount * 3u);
 
-    uint32_t outlineLikeDraws = 0;
+    uint32_t strokeDraws = 0;
     uint32_t shadowLikeDraws = 0;
     uint32_t fillDraws = 0;
     for (const RetainedTextDraw& draw : retainedText.GetDraws())
     {
-        if ((draw.color.x == styles[1].color.x)
+        if ((draw.flags & RetainedTextDrawFlagStroke) != 0)
+        {
+            ++strokeDraws;
+            HE_EXPECT_EQ(draw.color.x, styles[1].outlineColor.x);
+            HE_EXPECT_GT(draw.strokeStyle.width, 0.0f);
+            HE_EXPECT_EQ(draw.strokeStyle.joinStyle, styles[1].outlineJoinStyle);
+        }
+        else if ((draw.color.x == styles[1].color.x)
             && (draw.color.y == styles[1].color.y)
             && (draw.color.z == styles[1].color.z))
         {
@@ -1593,13 +1601,13 @@ HE_TEST(scribe, retained_text, expands_shadow_and_outline_effects_into_extra_dra
         }
         else
         {
-            ++outlineLikeDraws;
+            HE_EXPECT(false);
         }
     }
 
     HE_EXPECT_EQ(fillDraws, glyphCount);
     HE_EXPECT_EQ(shadowLikeDraws, glyphCount);
-    HE_EXPECT_EQ(outlineLikeDraws, glyphCount * 8u);
+    HE_EXPECT_EQ(strokeDraws, glyphCount);
 }
 
 HE_TEST(scribe, retained_text, expands_color_glyphs_into_layered_draws)

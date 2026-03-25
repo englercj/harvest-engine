@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "outline_compile_data.h"
+
 #include "he/scribe/packed_data.h"
 #include "he/scribe/schema_types.h"
 
@@ -26,6 +28,8 @@ namespace he::scribe::editor
         uint32_t bandMaxX{ 0 };
         uint32_t bandMaxY{ 0 };
         FillRule fillRule{ FillRule::NonZero };
+        uint32_t firstOutlineCommand{ 0 };
+        uint32_t outlineCommandCount{ 0 };
     };
 
     struct CompiledVectorImageLayerEntry
@@ -41,6 +45,8 @@ namespace he::scribe::editor
     {
         Vector<PackedCurveTexel> curveTexels{};
         Vector<PackedBandTexel> bandTexels{};
+        Vector<CompiledOutlinePoint> outlinePoints{};
+        Vector<CompiledOutlineCommand> outlineCommands{};
         Vector<CompiledVectorShapeRenderEntry> shapes{};
         Vector<CompiledVectorImageLayerEntry> layers{};
         uint32_t curveTextureWidth{ 0 };

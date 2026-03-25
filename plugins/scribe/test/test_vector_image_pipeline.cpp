@@ -55,6 +55,7 @@ namespace
 
         FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
         FillVectorImageResourceRenderData(root.GetRender(), imageData);
+        FillVectorImageResourceOutlineData(root.GetOutline(), imageData);
         FillVectorImageResourcePaintData(root.GetPaint(), imageData);
         root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
         root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
@@ -253,6 +254,8 @@ HE_TEST(scribe, vector_image_pipeline, loads_compiled_vector_blob)
     HE_EXPECT(metadata.IsValid());
     HE_EXPECT(render.IsValid());
     HE_EXPECT(paint.IsValid());
+    HE_EXPECT_GT(image.GetOutline().GetCommands().Size(), 0u);
+    HE_EXPECT_GT(image.GetOutline().GetPoints().Size(), 0u);
     HE_EXPECT_EQ(metadata.GetSourceViewBoxWidth(), 180.0f);
     HE_EXPECT_EQ(render.GetShapes().Size(), 3u);
     HE_EXPECT_EQ(paint.GetLayers().Size(), 3u);
@@ -301,6 +304,41 @@ HE_TEST(scribe, retained_vector_image, builds_layered_draws_from_runtime_resourc
     HE_EXPECT_EQ(retainedImage.GetViewBoxSize().x, 180.0f);
     HE_EXPECT_EQ(retainedImage.GetViewBoxSize().y, 180.0f);
     HE_EXPECT(retainedImage.GetImageHandle().IsValid());
+}
+
+HE_TEST(scribe, retained_vector_image, builds_runtime_stroke_draws_from_runtime_resource)
+{
+    Vector<schema::Word> storage;
+    VectorImageResourceReader image{};
+    HE_ASSERT(BuildLoadedVectorImage(storage, image));
+
+    RetainedVectorImageModel retainedImage;
+    ScribeContext context{};
+    const VectorImageHandle handle = context.RegisterVectorImage(image);
+    HE_ASSERT(handle.IsValid());
+
+    RetainedVectorImageBuildDesc desc{};
+    desc.context = &context;
+    desc.image = handle;
+    desc.strokeColor = { 0.1f, 0.2f, 0.3f, 1.0f };
+    desc.strokeStyle.width = 6.0f;
+    desc.strokeStyle.joinStyle = StrokeJoinStyle::Round;
+    desc.strokeStyle.capStyle = StrokeCapStyle::Round;
+    HE_ASSERT(retainedImage.Build(desc));
+
+    HE_EXPECT_EQ(retainedImage.GetDrawCount(), image.GetPaint().GetLayers().Size() * 2u);
+    uint32_t strokeDrawCount = 0;
+    for (const RetainedVectorImageDraw& draw : retainedImage.GetDraws())
+    {
+        if ((draw.flags & RetainedVectorImageDrawFlagStroke) != 0)
+        {
+            ++strokeDrawCount;
+            HE_EXPECT_EQ(draw.color.x, desc.strokeColor.x);
+            HE_EXPECT_GT(draw.strokeStyle.width, 0.0f);
+        }
+    }
+
+    HE_EXPECT_EQ(strokeDrawCount, image.GetPaint().GetLayers().Size());
 }
 
 HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_image_copy_expires)

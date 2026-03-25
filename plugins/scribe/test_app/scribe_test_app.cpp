@@ -458,6 +458,7 @@ namespace he
                 faceInfo.hasColorGlyphs);
 
             scribe::editor::FillFontFaceResourceRenderData(root.GetRender(), renderData);
+            scribe::editor::FillFontFaceResourceOutlineData(root.GetOutline(), renderData);
             scribe::editor::FillFontFaceResourcePaintData(root.GetPaint(), renderData.paint);
             root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
             root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
@@ -500,6 +501,7 @@ namespace he
             scribe::VectorImageResource::Builder root = rootBuilder.AddStruct<scribe::VectorImageResource>();
             scribe::editor::FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
             scribe::editor::FillVectorImageResourceRenderData(root.GetRender(), imageData);
+            scribe::editor::FillVectorImageResourceOutlineData(root.GetOutline(), imageData);
             scribe::editor::FillVectorImageResourcePaintData(root.GetPaint(), imageData);
             root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
             root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));

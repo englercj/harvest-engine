@@ -14,8 +14,21 @@ namespace he::scribe
         VectorImageShapeRenderData::Reader shape{};
     };
 
+    struct CompiledStrokedVectorShapeResourceData
+    {
+        PackedGlyphVertex vertices[ScribeGlyphVertexCount]{};
+        Vector<PackedCurveTexel> curveTexels{};
+        Vector<PackedBandTexel> bandTexels{};
+        GlyphResourceCreateInfo createInfo{};
+    };
+
     bool BuildCompiledVectorShapeResourceData(
         CompiledVectorShapeResourceData& out,
         const VectorImageResourceReader& image,
         uint32_t shapeIndex);
+    bool BuildCompiledStrokedVectorShapeResourceData(
+        CompiledStrokedVectorShapeResourceData& out,
+        const VectorImageResourceReader& image,
+        uint32_t shapeIndex,
+        const StrokeStyle& style);
 }

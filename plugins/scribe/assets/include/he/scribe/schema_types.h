@@ -7,10 +7,10 @@
 namespace he::scribe
 {
     using FontSourceFormat = ScribeFontFace::SourceFormat;
-
     using FontFaceMetrics = ScribeFontFace::Metrics;
     using FontFaceShapingData = ScribeFontFace::RuntimeResource::Shaping;
     using FontFaceRuntimeMetadata = ScribeFontFace::RuntimeResource::Metadata;
+    using FontFaceOutlineData = ScribeFontFace::RuntimeResource::Outline;
     using FontFaceGlyphRenderData = ScribeFontFace::GlyphRenderData;
     using FontFacePaletteBackground = ScribeFontFace::PaletteBackground;
     using FontFacePaletteColor = ScribeFontFace::PaletteColor;
@@ -27,6 +27,7 @@ namespace he::scribe
     using FontFamilyResourceReader = ScribeFontFamily::RuntimeResource::Reader;
 
     using VectorImageRuntimeMetadata = ScribeImage::RuntimeResource::Metadata;
+    using VectorImageOutlineData = ScribeImage::RuntimeResource::Outline;
     using VectorImageShapeRenderData = ScribeImage::ShapeRenderData;
     using VectorImageRenderData = ScribeImage::RuntimeResource::Render;
     using VectorImageLayer = ScribeImage::Layer;

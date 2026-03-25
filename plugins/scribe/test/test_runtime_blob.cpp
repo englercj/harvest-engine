@@ -57,6 +57,8 @@ namespace
             glyph.SetFillRule(FillRule::NonZero);
             glyph.SetHasGeometry(true);
             glyph.SetHasColorLayers(false);
+            glyph.SetFirstOutlineCommand(0);
+            glyph.SetOutlineCommandCount(5);
         }
 
         {
@@ -78,7 +80,34 @@ namespace
             glyph.SetFillRule(FillRule::NonZero);
             glyph.SetHasGeometry(false);
             glyph.SetHasColorLayers(false);
+            glyph.SetFirstOutlineCommand(5);
+            glyph.SetOutlineCommandCount(0);
         }
+    }
+
+    void FillFontFaceOutlineData(FontFaceOutlineData::Builder outline)
+    {
+        schema::List<OutlinePoint>::Builder points = outline.InitPoints(4);
+        points[0].SetX(0.0f);
+        points[0].SetY(0.0f);
+        points[1].SetX(1.0f);
+        points[1].SetY(0.0f);
+        points[2].SetX(1.0f);
+        points[2].SetY(1.0f);
+        points[3].SetX(0.0f);
+        points[3].SetY(1.0f);
+
+        schema::List<OutlineCommand>::Builder commands = outline.InitCommands(5);
+        commands[0].SetType(OutlineCommandType::MoveTo);
+        commands[0].SetFirstPoint(0);
+        commands[1].SetType(OutlineCommandType::LineTo);
+        commands[1].SetFirstPoint(1);
+        commands[2].SetType(OutlineCommandType::LineTo);
+        commands[2].SetFirstPoint(2);
+        commands[3].SetType(OutlineCommandType::LineTo);
+        commands[3].SetFirstPoint(3);
+        commands[4].SetType(OutlineCommandType::Close);
+        commands[4].SetFirstPoint(4);
     }
 
     void FillFontFacePaintData(FontFacePaintData::Builder paint)
@@ -181,6 +210,7 @@ HE_TEST(scribe, runtime_resource, load_compiled_font_face_success)
     FillFontFacePaintData(root.GetPaint());
     FillFontFaceMetadata(root.GetMetadata());
     FillFontFaceRenderData(root.GetRender());
+    FillFontFaceOutlineData(root.GetOutline());
     rootBuilder.SetRoot(root);
 
     const FontFaceResourceReader loaded = schema::ReadRoot<FontFaceResource>(Span<const schema::Word>(rootBuilder).Data());
@@ -198,8 +228,11 @@ HE_TEST(scribe, runtime_resource, load_compiled_font_face_success)
     HE_EXPECT_EQ(shaping.GetFaceIndex(), 2u);
     HE_EXPECT_EQ(shaping.GetSourceBytes().Size(), 3u);
     HE_EXPECT_EQ(render.GetGlyphs().Size(), 2u);
+    HE_EXPECT_EQ(render.GetGlyphs()[0].GetOutlineCommandCount(), 5u);
     HE_EXPECT_EQ(render.GetCurveTextureWidth(), 8u);
     HE_EXPECT_EQ(render.GetBandTextureWidth(), ScribeBandTextureWidth);
+    HE_EXPECT_EQ(loaded.GetOutline().GetPoints().Size(), 4u);
+    HE_EXPECT_EQ(loaded.GetOutline().GetCommands().Size(), 5u);
     HE_EXPECT(paint.IsValid());
     HE_EXPECT_EQ(paint.GetPalettes().Size(), 1u);
     HE_EXPECT_EQ(paint.GetColorGlyphs().Size(), 2u);
@@ -216,6 +249,7 @@ HE_TEST(scribe, runtime_resource, reject_font_face_with_mismatched_render_payloa
     FillFontFacePaintData(root.GetPaint());
     FillFontFaceMetadata(root.GetMetadata());
     FillFontFaceRenderData(root.GetRender());
+    FillFontFaceOutlineData(root.GetOutline());
     rootBuilder.SetRoot(root);
 
     const FontFaceResourceReader loaded = schema::ReadRoot<FontFaceResource>(Span<const schema::Word>(rootBuilder).Data());
@@ -233,6 +267,7 @@ HE_TEST(scribe, runtime_resource, build_compiled_glyph_resource_data)
     FillFontFacePaintData(root.GetPaint());
     FillFontFaceMetadata(root.GetMetadata());
     FillFontFaceRenderData(root.GetRender());
+    FillFontFaceOutlineData(root.GetOutline());
     rootBuilder.SetRoot(root);
 
     const FontFaceResourceReader loaded = schema::ReadRoot<FontFaceResource>(Span<const schema::Word>(rootBuilder).Data());
@@ -248,6 +283,40 @@ HE_TEST(scribe, runtime_resource, build_compiled_glyph_resource_data)
     HE_EXPECT_EQ(glyph.vertices[0].pos.x, 0.0f);
     HE_EXPECT_EQ(glyph.vertices[2].pos.y, 0.0f);
     HE_EXPECT(!BuildCompiledGlyphResourceData(glyph, loaded, 1));
+}
+
+HE_TEST(scribe, runtime_resource, build_compiled_stroked_glyph_resource_data)
+{
+    schema::Builder rootBuilder;
+    FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
+
+    FillFontFaceShapingData(root.GetShaping(), rootBuilder);
+    root.SetCurveData(rootBuilder.AddBlob(BuildCurveBytes()));
+    root.SetBandData(rootBuilder.AddBlob(BuildBandBytes()));
+    FillFontFacePaintData(root.GetPaint());
+    FillFontFaceMetadata(root.GetMetadata());
+    FillFontFaceRenderData(root.GetRender());
+    FillFontFaceOutlineData(root.GetOutline());
+    rootBuilder.SetRoot(root);
+
+    const FontFaceResourceReader loaded = schema::ReadRoot<FontFaceResource>(Span<const schema::Word>(rootBuilder).Data());
+    HE_ASSERT(loaded.IsValid());
+
+    CompiledStrokedGlyphResourceData glyph{};
+    StrokeStyle stroke{};
+    stroke.width = 0.5f;
+    stroke.joinStyle = StrokeJoinStyle::Round;
+    stroke.capStyle = StrokeCapStyle::Round;
+    stroke.miterLimit = 4.0f;
+
+    HE_EXPECT(BuildCompiledStrokedGlyphResourceData(glyph, loaded, 0, stroke));
+    HE_EXPECT_EQ(glyph.createInfo.vertexCount, ScribeGlyphVertexCount);
+    HE_EXPECT_GT(glyph.createInfo.curveTexture.size.x, 0u);
+    HE_EXPECT_GT(glyph.createInfo.curveTexture.size.y, 0u);
+    HE_EXPECT_EQ(glyph.createInfo.bandTexture.size.x, ScribeBandTextureWidth);
+    HE_EXPECT_GT(glyph.createInfo.bandTexture.size.y, 0u);
+    HE_EXPECT_LT(glyph.vertices[0].pos.x, 0.0f);
+    HE_EXPECT_GT(glyph.vertices[2].pos.x, 1.0f);
 }
 
 HE_TEST(scribe, runtime_resource, resolve_compiled_color_glyph_layers)

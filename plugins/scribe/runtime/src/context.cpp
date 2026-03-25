@@ -26,8 +26,51 @@
 #include "hb-ot.h"
 #include "hb.h"
 
+namespace he
+{
+    const char* EnumTraits<scribe::StrokeJoinStyle>::ToString(scribe::StrokeJoinStyle x) noexcept
+    {
+        switch (x)
+        {
+            case scribe::StrokeJoinStyle::Miter: return "Miter";
+            case scribe::StrokeJoinStyle::Bevel: return "Bevel";
+            case scribe::StrokeJoinStyle::Round: return "Round";
+        }
+
+        return "<unknown>";
+    }
+
+    const char* EnumTraits<scribe::StrokeCapStyle>::ToString(scribe::StrokeCapStyle x) noexcept
+    {
+        switch (x)
+        {
+            case scribe::StrokeCapStyle::Butt: return "Butt";
+            case scribe::StrokeCapStyle::Square: return "Square";
+            case scribe::StrokeCapStyle::Round: return "Round";
+        }
+
+        return "<unknown>";
+    }
+}
+
 namespace he::scribe
 {
+    namespace
+    {
+        struct StrokeResourceKey
+        {
+            uint32_t index{ 0 };
+            StrokeStyle style{};
+
+            [[nodiscard]] uint64_t HashCode() const
+            {
+                return CombineHash64(GetHashCode(index), style.HashCode());
+            }
+
+            bool operator==(const StrokeResourceKey& x) const = default;
+        };
+    }
+
     struct ScribeContext::RegisteredFontFace
     {
         RegisteredFontFace() noexcept
@@ -44,6 +87,7 @@ namespace he::scribe
         ::hb_font_t* font{ nullptr };
         GlyphAtlas* atlas{ nullptr };
         HashMap<uint32_t, GlyphResource> resources{};
+        HashMap<StrokeResourceKey, GlyphResource> strokeResources{};
     };
 
     struct ScribeContext::RegisteredVectorImage
@@ -59,10 +103,12 @@ namespace he::scribe
 
         GlyphAtlas* atlas{ nullptr };
         HashMap<uint32_t, GlyphResource> resources{};
+        HashMap<StrokeResourceKey, GlyphResource> strokeResources{};
     };
 
     namespace
     {
+
         template <typename TReader>
         bool EnsureRegisteredAtlas(rhi::Device& device, const TReader& reader, GlyphAtlas*& atlas)
         {
@@ -108,6 +154,47 @@ namespace he::scribe
             return true;
         }
 
+        bool CreateDedicatedResource(
+            rhi::Device& device,
+            GlyphResource& out,
+            const GlyphResourceCreateInfo& createInfo)
+        {
+            out = {};
+            if ((createInfo.vertices == nullptr)
+                || (createInfo.vertexCount == 0)
+                || (createInfo.curveTexture.data == nullptr)
+                || (createInfo.bandTexture.data == nullptr))
+            {
+                return false;
+            }
+
+            MemCopy(out.vertices, createInfo.vertices, createInfo.vertexCount * sizeof(PackedGlyphVertex));
+            out.vertexCount = createInfo.vertexCount;
+            out.atlas = Allocator::GetDefault().New<GlyphAtlas>();
+            if (!UploadTexturePair2D(
+                    device,
+                    out.atlas->curveTexture,
+                    out.atlas->curveView,
+                    createInfo.curveTexture,
+                    rhi::Format::RGBA16Float,
+                    "Scribe Curve Texture",
+                    "Scribe Curve Upload Buffer",
+                    out.atlas->bandTexture,
+                    out.atlas->bandView,
+                    createInfo.bandTexture,
+                    rhi::Format::RG16Uint,
+                    "Scribe Band Texture",
+                    "Scribe Band Upload Buffer")
+                || !CreateAtlasDescriptorTable(device, *out.atlas))
+            {
+                DestroyAtlas(device, out.atlas);
+                out = {};
+                return false;
+            }
+
+            return true;
+        }
+
         template <typename TRegistered, typename TBuildFn>
         bool EnsureCachedResource(rhi::Device& device, TRegistered& registered, uint32_t index, const GlyphResource*& out, TBuildFn&& buildFn)
         {
@@ -132,6 +219,36 @@ namespace he::scribe
 
             resource.atlas = registered.atlas;
             GlyphResource& cached = registered.resources.Emplace(index, Move(resource)).entry.value;
+            out = &cached;
+            return true;
+        }
+
+        template <typename TRegistered, typename TBuildFn>
+        bool EnsureCachedStrokeResource(
+            TRegistered& registered,
+            uint32_t index,
+            const StrokeStyle& style,
+            const GlyphResource*& out,
+            TBuildFn&& buildFn)
+        {
+            out = nullptr;
+
+            StrokeResourceKey key{};
+            key.index = index;
+            key.style = style;
+            if (const GlyphResource* existing = registered.strokeResources.Find(key))
+            {
+                out = existing;
+                return true;
+            }
+
+            GlyphResource resource{};
+            if (!buildFn(resource))
+            {
+                return false;
+            }
+
+            GlyphResource& cached = registered.strokeResources.Emplace(Move(key), Move(resource)).entry.value;
             out = &cached;
             return true;
         }
@@ -191,26 +308,22 @@ namespace he::scribe
                     hb_blob_destroy(font.blob);
                 }
 
-                for (HashMapEntry<uint32_t, GlyphResource>& indexAndResource : font.resources)
+                DestroyAtlas(*m_device, font.atlas);
+                for (HashMapEntry<StrokeResourceKey, GlyphResource>& indexAndResource : font.strokeResources)
                 {
                     GlyphResource& resource = indexAndResource.value;
-                    if (resource.atlas)
-                    {
-                        DestroyAtlas(*m_device, resource.atlas);
-                    }
+                    DestroyAtlas(*m_device, resource.atlas);
                 }
             }
 
             for (HashMapEntry<uint64_t, RegisteredVectorImage*>& hashAndImage : m_images)
             {
                 RegisteredVectorImage& image = *hashAndImage.value;
-                for (HashMapEntry<uint32_t, GlyphResource>& indexAndResource : image.resources)
+                DestroyAtlas(*m_device, image.atlas);
+                for (HashMapEntry<StrokeResourceKey, GlyphResource>& indexAndResource : image.strokeResources)
                 {
                     GlyphResource& resource = indexAndResource.value;
-                    if (resource.atlas)
-                    {
-                        DestroyAtlas(*m_device, resource.atlas);
-                    }
+                    DestroyAtlas(*m_device, resource.atlas);
                 }
             }
         }
@@ -418,6 +531,41 @@ namespace he::scribe
         });
     }
 
+    bool ScribeContext::TryGetStrokedGlyphResource(
+        FontFaceHandle handle,
+        uint32_t glyphIndex,
+        const StrokeStyle& style,
+        const GlyphResource*& out)
+    {
+        out = nullptr;
+        if (!m_device || !handle.IsValid() || !style.IsVisible())
+        {
+            return false;
+        }
+
+        RegisteredFontFace** fontFace = m_fonts.Find(handle.value);
+        if (!fontFace)
+        {
+            return false;
+        }
+
+        if (glyphIndex >= (*fontFace)->resource.GetMetadata().GetGlyphCount())
+        {
+            return false;
+        }
+
+        return EnsureCachedStrokeResource(**fontFace, glyphIndex, style, out, [&](GlyphResource& resource) -> bool
+        {
+            CompiledStrokedGlyphResourceData glyphData{};
+            if (!BuildCompiledStrokedGlyphResourceData(glyphData, (*fontFace)->resource, glyphIndex, style))
+            {
+                return false;
+            }
+
+            return CreateDedicatedResource(*m_device, resource, glyphData.createInfo);
+        });
+    }
+
     bool ScribeContext::TryGetVectorShapeResource(VectorImageHandle handle, uint32_t shapeIndex, const GlyphResource*& out)
     {
         out = nullptr;
@@ -448,6 +596,41 @@ namespace he::scribe
             MemCopy(resource.vertices, shapeData.vertices, sizeof(shapeData.vertices));
             resource.vertexCount = shapeData.createInfo.vertexCount;
             return true;
+        });
+    }
+
+    bool ScribeContext::TryGetStrokedVectorShapeResource(
+        VectorImageHandle handle,
+        uint32_t shapeIndex,
+        const StrokeStyle& style,
+        const GlyphResource*& out)
+    {
+        out = nullptr;
+        if (!m_device || !handle.IsValid() || !style.IsVisible())
+        {
+            return false;
+        }
+
+        RegisteredVectorImage** image = m_images.Find(handle.value);
+        if (!image)
+        {
+            return false;
+        }
+
+        if (shapeIndex >= (*image)->resource.GetRender().GetShapes().Size())
+        {
+            return false;
+        }
+
+        return EnsureCachedStrokeResource(**image, shapeIndex, style, out, [&](GlyphResource& resource) -> bool
+        {
+            CompiledStrokedVectorShapeResourceData shapeData{};
+            if (!BuildCompiledStrokedVectorShapeResourceData(shapeData, (*image)->resource, shapeIndex, style))
+            {
+                return false;
+            }
+
+            return CreateDedicatedResource(*m_device, resource, shapeData.createInfo);
         });
     }
 }

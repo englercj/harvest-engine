@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "outline_compile_data.h"
+
 #include "he/scribe/packed_data.h"
 #include "he/scribe/schema_types.h"
 
@@ -71,12 +73,16 @@ namespace he::scribe::editor
         FillRule fillRule{ FillRule::NonZero };
         bool hasGeometry{ false };
         bool hasColorLayers{ false };
+        uint32_t firstOutlineCommand{ 0 };
+        uint32_t outlineCommandCount{ 0 };
     };
 
     struct CompiledFontRenderData
     {
         Vector<PackedCurveTexel> curveTexels{};
         Vector<PackedBandTexel> bandTexels{};
+        Vector<CompiledOutlinePoint> outlinePoints{};
+        Vector<CompiledOutlineCommand> outlineCommands{};
         Vector<CompiledGlyphRenderEntry> glyphs{};
         CompiledFontPaintData paint{};
         uint32_t curveTextureWidth{ 0 };

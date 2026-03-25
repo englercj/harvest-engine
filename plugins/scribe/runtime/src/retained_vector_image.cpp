@@ -42,20 +42,35 @@ namespace he::scribe
             metadata.GetSourceViewBoxMinY()
         };
 
-        m_draws.Reserve(layers.Size());
+        const bool addStroke = desc.strokeStyle.IsVisible() && (desc.strokeColor.w > 0.0f);
+        m_draws.Reserve((desc.includeFill ? layers.Size() : 0u) + (addStroke ? layers.Size() : 0u));
         for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
         {
             const VectorImageLayer::Reader layer = layers[layerIndex];
-            RetainedVectorImageDraw& draw = m_draws.EmplaceBack();
-            draw.shapeIndex = layer.GetShapeIndex();
-            draw.color = {
-                layer.GetRed(),
-                layer.GetGreen(),
-                layer.GetBlue(),
-                layer.GetAlpha()
-            };
-            draw.offset = drawOffset;
-            m_estimatedVertexCount += ScribeGlyphVertexCount;
+            if (addStroke)
+            {
+                RetainedVectorImageDraw& stroke = m_draws.EmplaceBack();
+                stroke.shapeIndex = layer.GetShapeIndex();
+                stroke.flags = RetainedVectorImageDrawFlagStroke;
+                stroke.color = desc.strokeColor;
+                stroke.offset = drawOffset;
+                stroke.strokeStyle = desc.strokeStyle;
+                m_estimatedVertexCount += ScribeGlyphVertexCount;
+            }
+
+            if (desc.includeFill)
+            {
+                RetainedVectorImageDraw& draw = m_draws.EmplaceBack();
+                draw.shapeIndex = layer.GetShapeIndex();
+                draw.color = {
+                    layer.GetRed(),
+                    layer.GetGreen(),
+                    layer.GetBlue(),
+                    layer.GetAlpha()
+                };
+                draw.offset = drawOffset;
+                m_estimatedVertexCount += ScribeGlyphVertexCount;
+            }
         }
 
         return !m_draws.IsEmpty();

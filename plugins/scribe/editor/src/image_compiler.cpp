@@ -86,6 +86,7 @@ namespace he::scribe::editor
 
         FillVectorImageResourceMetadata(blob.GetMetadata(), imageData);
         FillVectorImageResourceRenderData(blob.GetRender(), imageData);
+        FillVectorImageResourceOutlineData(blob.GetOutline(), imageData);
         FillVectorImageResourcePaintData(blob.GetPaint(), imageData);
         blob.SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
         blob.SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));

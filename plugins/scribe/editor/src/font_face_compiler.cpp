@@ -111,6 +111,7 @@ namespace he::scribe::editor
             asset.GetHasColorGlyphs());
 
         FillFontFaceResourceRenderData(blob.GetRender(), renderData);
+        FillFontFaceResourceOutlineData(blob.GetOutline(), renderData);
         FillFontFaceResourcePaintData(blob.GetPaint(), renderData.paint);
         blob.SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
         blob.SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));

@@ -12,6 +12,7 @@ namespace he::scribe
     enum RetainedTextDrawFlags : uint32_t
     {
         RetainedTextDrawFlagUseForegroundColor = 0x01u,
+        RetainedTextDrawFlagStroke = 0x02u,
     };
 
     struct RetainedTextDraw
@@ -25,6 +26,7 @@ namespace he::scribe
         Vec2f basisX{ 1.0f, 0.0f };
         Vec2f basisY{ 0.0f, 1.0f };
         Vec2f offset{ 0.0f, 0.0f };
+        StrokeStyle strokeStyle{};
     };
 
     struct RetainedTextQuad

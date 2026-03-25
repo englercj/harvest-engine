@@ -23,10 +23,23 @@ namespace he::scribe
         FontFaceGlyphRenderData::Reader glyph{};
     };
 
+    struct CompiledStrokedGlyphResourceData
+    {
+        PackedGlyphVertex vertices[ScribeGlyphVertexCount]{};
+        Vector<PackedCurveTexel> curveTexels{};
+        Vector<PackedBandTexel> bandTexels{};
+        GlyphResourceCreateInfo createInfo{};
+    };
+
     bool BuildCompiledGlyphResourceData(
         CompiledGlyphResourceData& out,
         const FontFaceResourceReader& fontFace,
         uint32_t glyphIndex);
+    bool BuildCompiledStrokedGlyphResourceData(
+        CompiledStrokedGlyphResourceData& out,
+        const FontFaceResourceReader& fontFace,
+        uint32_t glyphIndex,
+        const StrokeStyle& style);
 
     uint32_t SelectCompiledFontPalette(const FontFaceResourceReader& fontFace, bool darkBackgroundPreferred);
     bool GetCompiledColorGlyphLayers(

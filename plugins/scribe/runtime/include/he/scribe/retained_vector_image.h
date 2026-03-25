@@ -10,17 +10,27 @@
 
 namespace he::scribe
 {
+    enum RetainedVectorImageDrawFlags : uint32_t
+    {
+        RetainedVectorImageDrawFlagStroke = 0x01u,
+    };
+
     struct RetainedVectorImageDraw
     {
         uint32_t shapeIndex{ 0 };
+        uint32_t flags{ 0 };
         Vec4f color{ 1.0f, 1.0f, 1.0f, 1.0f };
         Vec2f offset{ 0.0f, 0.0f };
+        StrokeStyle strokeStyle{};
     };
 
     struct RetainedVectorImageBuildDesc
     {
         ScribeContext* context{ nullptr };
         VectorImageHandle image{};
+        bool includeFill{ true };
+        Vec4f strokeColor{ 0.0f, 0.0f, 0.0f, 0.0f };
+        StrokeStyle strokeStyle{};
     };
 
     struct RetainedVectorImageInstanceDesc

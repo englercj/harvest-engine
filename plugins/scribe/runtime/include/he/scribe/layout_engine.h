@@ -103,6 +103,9 @@ namespace he::scribe
         float baselineShiftEm{ 0.0f };
         float glyphScale{ 1.0f };
         float outlineWidthEm{ 0.0f };
+        StrokeJoinStyle outlineJoinStyle{ StrokeJoinStyle::Round };
+        StrokeCapStyle outlineCapStyle{ StrokeCapStyle::Round };
+        float outlineMiterLimit{ 4.0f };
         float decorationThicknessEm{ 0.06f };
         float underlineOffsetEm{ 0.12f };
         float strikethroughOffsetEm{ 0.32f };

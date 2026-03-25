@@ -23,6 +23,29 @@ namespace he::scribe::editor
         dstShape.SetBandMaxX(srcShape.bandMaxX);
         dstShape.SetBandMaxY(srcShape.bandMaxY);
         dstShape.SetFillRule(srcShape.fillRule);
+        dstShape.SetFirstOutlineCommand(srcShape.firstOutlineCommand);
+        dstShape.SetOutlineCommandCount(srcShape.outlineCommandCount);
+    }
+
+    template <typename TBuilder>
+    void FillCompiledOutlineData(
+        TBuilder outline,
+        Span<const CompiledOutlinePoint> points,
+        Span<const CompiledOutlineCommand> commands)
+    {
+        schema::List<OutlinePoint>::Builder dstPoints = outline.InitPoints(points.Size());
+        for (uint32_t pointIndex = 0; pointIndex < points.Size(); ++pointIndex)
+        {
+            dstPoints[pointIndex].SetX(points[pointIndex].x);
+            dstPoints[pointIndex].SetY(points[pointIndex].y);
+        }
+
+        schema::List<OutlineCommand>::Builder dstCommands = outline.InitCommands(commands.Size());
+        for (uint32_t commandIndex = 0; commandIndex < commands.Size(); ++commandIndex)
+        {
+            dstCommands[commandIndex].SetType(commands[commandIndex].type);
+            dstCommands[commandIndex].SetFirstPoint(commands[commandIndex].firstPoint);
+        }
     }
 
     inline void FillFontFaceRuntimeMetadata(
@@ -63,6 +86,14 @@ namespace he::scribe::editor
             dstGlyph.SetHasGeometry(srcGlyph.hasGeometry);
             dstGlyph.SetHasColorLayers(srcGlyph.hasColorLayers);
         }
+    }
+
+    inline void FillFontFaceResourceOutlineData(FontFaceOutlineData::Builder outline, const CompiledFontRenderData& renderData)
+    {
+        FillCompiledOutlineData(
+            outline,
+            Span<const CompiledOutlinePoint>(renderData.outlinePoints.Data(), renderData.outlinePoints.Size()),
+            Span<const CompiledOutlineCommand>(renderData.outlineCommands.Data(), renderData.outlineCommands.Size()));
     }
 
     inline void FillFontFaceResourcePaintData(FontFacePaintData::Builder paint, const CompiledFontPaintData& paintData)
@@ -142,6 +173,14 @@ namespace he::scribe::editor
             VectorImageShapeRenderData::Builder dstShape = shapes[shapeIndex];
             FillCommonShapeRenderData(dstShape, srcShape);
         }
+    }
+
+    inline void FillVectorImageResourceOutlineData(VectorImageOutlineData::Builder outline, const CompiledVectorImageData& imageData)
+    {
+        FillCompiledOutlineData(
+            outline,
+            Span<const CompiledOutlinePoint>(imageData.outlinePoints.Data(), imageData.outlinePoints.Size()),
+            Span<const CompiledOutlineCommand>(imageData.outlineCommands.Data(), imageData.outlineCommands.Size()));
     }
 
     inline void FillVectorImageResourcePaintData(VectorImagePaintData::Builder paint, const CompiledVectorImageData& imageData)

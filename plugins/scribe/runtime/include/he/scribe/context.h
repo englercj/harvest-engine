@@ -17,6 +17,44 @@ struct hb_font_t;
 
 namespace he::scribe
 {
+    enum class StrokeJoinStyle : uint8_t
+    {
+        Miter,
+        Bevel,
+        Round,
+    };
+
+    enum class StrokeCapStyle : uint8_t
+    {
+        Butt,
+        Square,
+        Round,
+    };
+
+    struct StrokeStyle
+    {
+        float width{ 0.0f };
+        StrokeJoinStyle joinStyle{ StrokeJoinStyle::Miter };
+        StrokeCapStyle capStyle{ StrokeCapStyle::Butt };
+        float miterLimit{ 4.0f };
+
+        [[nodiscard]] bool IsVisible() const
+        {
+            return (width > 0.0f) && (miterLimit > 0.0f);
+        }
+
+        [[nodiscard]] uint64_t HashCode() const
+        {
+            return CombineHash64(
+                CombineHash64(
+                    CombineHash64(GetHashCode(width), GetHashCode(joinStyle)),
+                    GetHashCode(capStyle)),
+                GetHashCode(miterLimit));
+        }
+
+        bool operator==(const StrokeStyle& x) const = default;
+    };
+
     struct GlyphResource;
     class Renderer;
     class LayoutEngine;
@@ -72,7 +110,17 @@ namespace he::scribe
         [[nodiscard]] ::hb_font_t* GetHbFont(FontFaceHandle handle);
         [[nodiscard]] bool HasSourceBytes(FontFaceHandle handle) const;
         bool TryGetGlyphResource(FontFaceHandle handle, uint32_t glyphIndex, const GlyphResource*& out);
+        bool TryGetStrokedGlyphResource(
+            FontFaceHandle handle,
+            uint32_t glyphIndex,
+            const StrokeStyle& style,
+            const GlyphResource*& out);
         bool TryGetVectorShapeResource(VectorImageHandle handle, uint32_t shapeIndex, const GlyphResource*& out);
+        bool TryGetStrokedVectorShapeResource(
+            VectorImageHandle handle,
+            uint32_t shapeIndex,
+            const StrokeStyle& style,
+            const GlyphResource*& out);
 
         [[nodiscard]] Renderer& GetRenderer();
         [[nodiscard]] const Renderer& GetRenderer() const;

@@ -430,7 +430,10 @@ namespace he::scribe
         for (const RetainedTextDraw& draw : text.GetDraws())
         {
             const GlyphResource* glyphResource = nullptr;
-            if (!m_context.TryGetGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
+            const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
+                ? m_context.TryGetStrokedGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
+                : m_context.TryGetGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
+            if (!ok)
             {
                 continue;
             }
@@ -444,7 +447,10 @@ namespace he::scribe
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
-            if (!m_context.TryGetVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource))
+            const bool ok = (draw.flags & RetainedVectorImageDrawFlagStroke) != 0
+                ? m_context.TryGetStrokedVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, draw.strokeStyle, shapeResource)
+                : m_context.TryGetVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource);
+            if (!ok)
             {
                 continue;
             }
@@ -498,7 +504,10 @@ namespace he::scribe
         for (const RetainedTextDraw& draw : text.GetDraws())
         {
             const GlyphResource* glyphResource = nullptr;
-            if (!m_context.TryGetGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource))
+            const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
+                ? m_context.TryGetStrokedGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
+                : m_context.TryGetGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
+            if (!ok)
             {
                 continue;
             }
@@ -550,7 +559,10 @@ namespace he::scribe
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
-            if (!m_context.TryGetVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource))
+            const bool ok = (draw.flags & RetainedVectorImageDrawFlagStroke) != 0
+                ? m_context.TryGetStrokedVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, draw.strokeStyle, shapeResource)
+                : m_context.TryGetVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource);
+            if (!ok)
             {
                 continue;
             }

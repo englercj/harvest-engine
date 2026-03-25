@@ -3,6 +3,7 @@
 #include "he/scribe/compiled_font.h"
 
 #include "compiled_shape_utils.h"
+#include "stroke_geometry.h"
 
 #include "he/core/math.h"
 
@@ -109,6 +110,93 @@ namespace he::scribe
             render.GetBandTextureWidth(),
             render.GetBandTextureHeight());
         out.glyph = glyph;
+        return true;
+    }
+
+    bool BuildCompiledStrokedGlyphResourceData(
+        CompiledStrokedGlyphResourceData& out,
+        const FontFaceResourceReader& fontFace,
+        uint32_t glyphIndex,
+        const StrokeStyle& style)
+    {
+        out = {};
+
+        const FontFaceRenderData::Reader render = fontFace.GetRender();
+        const FontFaceOutlineData::Reader outline = fontFace.GetOutline();
+        if (!render.IsValid() || !outline.IsValid())
+        {
+            return false;
+        }
+
+        const schema::List<FontFaceGlyphRenderData>::Reader glyphs = render.GetGlyphs();
+        if (glyphIndex >= glyphs.Size())
+        {
+            return false;
+        }
+
+        const FontFaceGlyphRenderData::Reader glyph = glyphs[glyphIndex];
+        if (!glyph.IsValid() || (glyph.GetOutlineCommandCount() == 0))
+        {
+            return false;
+        }
+
+        StrokedShapeData shape{};
+        if (!BuildStrokedShapeData(
+                shape,
+                outline.GetPoints(),
+                outline.GetCommands(),
+                glyph.GetFirstOutlineCommand(),
+                glyph.GetOutlineCommandCount(),
+                style))
+        {
+            return false;
+        }
+
+        float minX = shape.boundsMinX;
+        float minY = shape.boundsMinY;
+        float maxX = shape.boundsMaxX;
+        float maxY = shape.boundsMaxY;
+        if (maxX <= minX)
+        {
+            maxX = minX + 1.0f;
+        }
+
+        if (maxY <= minY)
+        {
+            maxY = minY + 1.0f;
+        }
+
+        const uint32_t bandInfo = BuildCompiledShapeBandInfo(shape.fillRule, shape.bandMaxX, shape.bandMaxY);
+        const float glyphLocBits = PackCompiledShapeBits(0);
+        const float bandInfoBits = PackCompiledShapeBits(bandInfo);
+        const Vec4f jacobian{ 1.0f, 0.0f, 0.0f, -1.0f };
+        const Vec4f banding{
+            shape.bandScaleX,
+            shape.bandScaleY,
+            shape.bandOffsetX,
+            shape.bandOffsetY
+        };
+        const float objectMinY = -maxY;
+        const float objectMaxY = -minY;
+        const Vec4f color = GetVertexColor();
+
+        out.vertices[0] = MakeCompiledShapeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[1] = MakeCompiledShapeVertex(maxX, objectMinY, 1.0f, -1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[2] = MakeCompiledShapeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[3] = MakeCompiledShapeVertex(minX, objectMinY, -1.0f, -1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[4] = MakeCompiledShapeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+        out.vertices[5] = MakeCompiledShapeVertex(minX, objectMaxY, -1.0f, 1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
+
+        out.curveTexels = Move(shape.curveTexels);
+        out.bandTexels = Move(shape.bandTexels);
+        out.createInfo.vertices = out.vertices;
+        out.createInfo.vertexCount = ScribeGlyphVertexCount;
+        out.createInfo.curveTexture.data = out.curveTexels.Data();
+        out.createInfo.curveTexture.size = { shape.curveTextureWidth, shape.curveTextureHeight };
+        out.createInfo.curveTexture.rowPitch = shape.curveTextureWidth * sizeof(PackedCurveTexel);
+        out.createInfo.bandTexture.data = out.bandTexels.Data();
+        out.createInfo.bandTexture.size = { shape.bandTextureWidth, shape.bandTextureHeight };
+        out.createInfo.bandTexture.rowPitch = shape.bandTextureWidth * sizeof(PackedBandTexel);
         return true;
     }
 

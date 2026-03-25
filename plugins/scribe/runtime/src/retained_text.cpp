@@ -155,29 +155,14 @@ namespace he::scribe
                 && (style->outlineWidthEm > 0.0f)
                 && (style->outlineColor.w > 0.0f))
             {
-                const float outlineRadius = style->outlineWidthEm * fontSize;
-                static const Vec2f Offsets[] =
-                {
-                    { -1.0f, 0.0f },
-                    { 1.0f, 0.0f },
-                    { 0.0f, -1.0f },
-                    { 0.0f, 1.0f },
-                    { -0.70710678f, -0.70710678f },
-                    { 0.70710678f, -0.70710678f },
-                    { -0.70710678f, 0.70710678f },
-                    { 0.70710678f, 0.70710678f },
-                };
-
-                out.Reserve(out.Size() + HE_LENGTH_OF(Offsets));
-                for (const Vec2f& offset : Offsets)
-                {
-                    RetainedTextDraw& outline = out.EmplaceBack(source);
-                    outline.flags = 0;
-                    outline.color = style->outlineColor;
-                    outline.position.x += offset.x * outlineRadius;
-                    outline.position.y += offset.y * outlineRadius;
-                    estimatedVertexCount += ScribeGlyphVertexCount;
-                }
+                RetainedTextDraw& outline = out.EmplaceBack(source);
+                outline.flags = RetainedTextDrawFlagStroke;
+                outline.color = style->outlineColor;
+                outline.strokeStyle.width = style->outlineWidthEm * fontSize * 2.0f;
+                outline.strokeStyle.joinStyle = style->outlineJoinStyle;
+                outline.strokeStyle.capStyle = style->outlineCapStyle;
+                outline.strokeStyle.miterLimit = style->outlineMiterLimit;
+                estimatedVertexCount += ScribeGlyphVertexCount;
             }
         }
     }

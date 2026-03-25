@@ -16,6 +16,27 @@ enum FillRule
     EvenOdd @1;
 }
 
+enum OutlineCommandType
+{
+    MoveTo @0;
+    LineTo @1;
+    QuadraticTo @2;
+    CubicTo @3;
+    Close @4;
+}
+
+struct OutlinePoint
+{
+    x @0 :float32;
+    y @1 :float32;
+}
+
+struct OutlineCommand
+{
+    type @0 :OutlineCommandType;
+    firstPoint @1 :uint32;
+}
+
 struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Description("A compiled font face used by Scribe.")
 {
     const AssetTypeName :String = "he.scribe.font_face";
@@ -73,6 +94,8 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
         fillRule @14 :FillRule;
         hasGeometry @15 :bool;
         hasColorLayers @16 :bool;
+        firstOutlineCommand @17 :uint32;
+        outlineCommandCount @18 :uint32;
     }
 
     struct PaletteColor
@@ -150,6 +173,12 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
             bandOverlapEpsilon @19 :float32;
             glyphs @20 :GlyphRenderData[];
         }
+
+        outline :group
+        {
+            points @21 :OutlinePoint[];
+            commands @22 :OutlineCommand[];
+        }
     }
 
     struct ImportSourceResource
@@ -198,6 +227,8 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
         bandMaxX @10 :uint32;
         bandMaxY @11 :uint32;
         fillRule @12 :FillRule;
+        firstOutlineCommand @13 :uint32;
+        outlineCommandCount @14 :uint32;
     }
 
     struct Layer
@@ -241,6 +272,12 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
             bandTextureHeight @14 :uint32;
             bandOverlapEpsilon @15 :float32;
             shapes @16 :ShapeRenderData[];
+        }
+
+        outline :group
+        {
+            points @17 :OutlinePoint[];
+            commands @18 :OutlineCommand[];
         }
     }
 

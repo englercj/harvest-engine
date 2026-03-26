@@ -322,13 +322,15 @@ HE_TEST(scribe, vector_image_pipeline, emits_authored_stroke_layers)
         0.25f);
 
     HE_EXPECT(ok);
-    HE_EXPECT_EQ(imageData.shapes.Size(), 2u);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 3u);
     HE_EXPECT_EQ(imageData.layers.Size(), 3u);
     HE_EXPECT_EQ(imageData.layers[0].kind, VectorLayerKind::Stroke);
     HE_EXPECT_EQ(imageData.layers[0].strokeJoin, StrokeJoinKind::Round);
     HE_EXPECT_EQ(imageData.layers[0].strokeWidth, 6.0f);
     HE_EXPECT_EQ(imageData.layers[1].kind, VectorLayerKind::Stroke);
     HE_EXPECT_EQ(imageData.layers[2].kind, VectorLayerKind::Fill);
+    HE_EXPECT_NE(imageData.layers[0].shapeIndex, imageData.layers[2].shapeIndex);
+    HE_EXPECT_NE(imageData.layers[1].shapeIndex, imageData.layers[2].shapeIndex);
 }
 
 HE_TEST(scribe, vector_image_pipeline, skips_shapes_outside_simple_clip_paths)
@@ -501,6 +503,7 @@ HE_TEST(scribe, retained_vector_image, builds_authored_stroke_draws_from_runtime
         if ((draw.flags & RetainedVectorImageDrawFlagStroke) != 0)
         {
             ++authoredStrokeDrawCount;
+            HE_EXPECT((draw.flags & RetainedVectorImageDrawFlagUseCompiledShape) != 0);
             HE_EXPECT_GT(draw.strokeStyle.width, 0.0f);
         }
         else

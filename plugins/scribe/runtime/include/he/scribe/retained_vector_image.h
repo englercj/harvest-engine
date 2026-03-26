@@ -13,6 +13,7 @@ namespace he::scribe
     enum RetainedVectorImageDrawFlags : uint32_t
     {
         RetainedVectorImageDrawFlagStroke = 0x01u,
+        RetainedVectorImageDrawFlagUseCompiledShape = 0x02u,
     };
 
     struct RetainedVectorImageDraw

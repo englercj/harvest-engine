@@ -79,7 +79,7 @@ namespace he::scribe
             {
                 RetainedVectorImageDraw& stroke = m_draws.EmplaceBack();
                 stroke.shapeIndex = layer.GetShapeIndex();
-                stroke.flags = RetainedVectorImageDrawFlagStroke;
+                stroke.flags = RetainedVectorImageDrawFlagStroke | RetainedVectorImageDrawFlagUseCompiledShape;
                 stroke.color = {
                     layer.GetRed(),
                     layer.GetGreen(),

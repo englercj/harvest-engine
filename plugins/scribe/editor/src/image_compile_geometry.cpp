@@ -295,6 +295,710 @@ namespace he::scribe::editor
             curve_compile::AppendCurveTexels(out, curve);
         }
 
+        Point2 operator+(const Point2& a, const Point2& b)
+        {
+            return { a.x + b.x, a.y + b.y };
+        }
+
+        Point2 operator-(const Point2& a, const Point2& b)
+        {
+            return { a.x - b.x, a.y - b.y };
+        }
+
+        Point2 operator*(const Point2& point, float scalar)
+        {
+            return { point.x * scalar, point.y * scalar };
+        }
+
+        float SvgDot(const Point2& a, const Point2& b)
+        {
+            return (a.x * b.x) + (a.y * b.y);
+        }
+
+        float SvgComputeMinimalHalfFloatOffset(float value)
+        {
+            const uint16_t packedValue = PackFloat16(value);
+            float offset = 1.0f / 65536.0f;
+            while (offset < 1.0f)
+            {
+                if (PackFloat16(value + offset) != packedValue)
+                {
+                    return offset;
+                }
+
+                offset *= 2.0f;
+            }
+
+            return 1.0f;
+        }
+
+        float SvgCross(const Point2& a, const Point2& b)
+        {
+            return (a.x * b.y) - (a.y * b.x);
+        }
+
+        float SvgLengthSq(const Point2& value)
+        {
+            return SvgDot(value, value);
+        }
+
+        Point2 SvgLerpPoint(const Point2& a, const Point2& b, float t)
+        {
+            return {
+                Lerp(a.x, b.x, t),
+                Lerp(a.y, b.y, t)
+            };
+        }
+
+        float SvgSignedArea(Span<const Point2> points)
+        {
+            if (points.Size() < 3)
+            {
+                return 0.0f;
+            }
+
+            float area = 0.0f;
+            for (uint32_t pointIndex = 0; pointIndex < points.Size(); ++pointIndex)
+            {
+                const Point2& a = points[pointIndex];
+                const Point2& b = points[(pointIndex + 1) % points.Size()];
+                area += (a.x * b.y) - (b.x * a.y);
+            }
+
+            return area * 0.5f;
+        }
+
+        void SvgReversePoints(Vector<Point2>& points)
+        {
+            for (uint32_t i = 0, j = points.Size() > 0 ? points.Size() - 1 : 0; i < j; ++i, --j)
+            {
+                const Point2 tmp = points[i];
+                points[i] = points[j];
+                points[j] = tmp;
+            }
+        }
+
+        bool SvgTryComputeStableLineQuadraticControlPoint(
+            Point2& outControl,
+            const Point2& from,
+            const Point2& to)
+        {
+            const Point2 delta = to - from;
+            const float lenSq = SvgLengthSq(delta);
+            if (lenSq <= DegenerateLineLengthSq)
+            {
+                return false;
+            }
+
+            const float invLen = 1.0f / Sqrt(lenSq);
+            const float len = lenSq * invLen;
+            const Point2 mid = SvgLerpPoint(from, to, 0.5f);
+            const float tangentOffset = Min(0.5f, len * 0.25f);
+            const Point2 tangent = delta * invLen;
+            constexpr float AxisEpsilon = 1.0e-6f;
+
+            outControl.x = mid.x + (tangent.x * tangentOffset);
+            outControl.y = mid.y + (tangent.y * tangentOffset);
+
+            if (Abs(delta.x) <= AxisEpsilon)
+            {
+                outControl.x += SvgComputeMinimalHalfFloatOffset(mid.x);
+            }
+            else if (Abs(delta.y) <= AxisEpsilon)
+            {
+                outControl.y += SvgComputeMinimalHalfFloatOffset(mid.y);
+            }
+
+            return true;
+        }
+
+        void SvgAppendLineCurve(Vector<CurveData>& out, const Point2& from, const Point2& to)
+        {
+            Point2 control{};
+            if (!SvgTryComputeStableLineQuadraticControlPoint(control, from, to))
+            {
+                return;
+            }
+
+            const float minX = Min(from.x, to.x);
+            const float minY = Min(from.y, to.y);
+            const float maxX = Max(from.x, to.x);
+            const float maxY = Max(from.y, to.y);
+            if (((maxX - minX) <= DegenerateCurveExtent) && ((maxY - minY) <= DegenerateCurveExtent))
+            {
+                return;
+            }
+
+            CurveData& curve = out.EmplaceBack();
+            curve.p1 = from;
+            curve.p2 = control;
+            curve.p3 = to;
+            curve.minX = minX;
+            curve.minY = minY;
+            curve.maxX = maxX;
+            curve.maxY = maxY;
+        }
+
+        void SvgEmitClosedPolygon(Vector<CurveData>& outCurves, Span<const Point2> polygon)
+        {
+            if (polygon.Size() < 3)
+            {
+                return;
+            }
+
+            Vector<Point2> points{};
+            points.Reserve(polygon.Size());
+            for (uint32_t pointIndex = 0; pointIndex < polygon.Size(); ++pointIndex)
+            {
+                points.PushBack(polygon[pointIndex]);
+            }
+
+            if (SvgSignedArea(points) < 0.0f)
+            {
+                SvgReversePoints(points);
+            }
+
+            for (uint32_t pointIndex = 0; pointIndex < points.Size(); ++pointIndex)
+            {
+                const Point2& from = points[pointIndex];
+                const Point2& to = points[(pointIndex + 1) % points.Size()];
+                SvgAppendLineCurve(outCurves, from, to);
+            }
+        }
+
+        float SvgNormalizeAngle(float angle)
+        {
+            constexpr float Pi = 3.14159265358979323846f;
+            constexpr float TwoPi = Pi * 2.0f;
+            while (angle <= -Pi)
+            {
+                angle += TwoPi;
+            }
+
+            while (angle > Pi)
+            {
+                angle -= TwoPi;
+            }
+
+            return angle;
+        }
+
+        bool SvgAngleOnSweepCCW(float startAngle, float endAngle, float testAngle)
+        {
+            constexpr float TwoPi = 6.28318530717958647692f;
+
+            startAngle = SvgNormalizeAngle(startAngle);
+            endAngle = SvgNormalizeAngle(endAngle);
+            testAngle = SvgNormalizeAngle(testAngle);
+
+            if (endAngle < startAngle)
+            {
+                endAngle += TwoPi;
+            }
+
+            if (testAngle < startAngle)
+            {
+                testAngle += TwoPi;
+            }
+
+            return (testAngle >= startAngle) && (testAngle <= endAngle);
+        }
+
+        void SvgBuildArcPolygon(
+            Vector<Point2>& outPolygon,
+            const Point2& center,
+            const Point2& startPoint,
+            const Point2& endPoint,
+            float radius,
+            bool ccw)
+        {
+            constexpr float Pi = 3.14159265358979323846f;
+            constexpr float TwoPi = Pi * 2.0f;
+
+            outPolygon.Clear();
+            outPolygon.PushBack(center);
+            outPolygon.PushBack(startPoint);
+
+            float startAngle = Atan2(startPoint.y - center.y, startPoint.x - center.x);
+            float endAngle = Atan2(endPoint.y - center.y, endPoint.x - center.x);
+            if (ccw)
+            {
+                while (endAngle <= startAngle)
+                {
+                    endAngle += TwoPi;
+                }
+            }
+            else
+            {
+                while (endAngle >= startAngle)
+                {
+                    endAngle -= TwoPi;
+                }
+            }
+
+            const float sweep = endAngle - startAngle;
+            const float tolerance = Max(radius * 0.05f, 0.25f);
+            float maxStep = Pi * 0.25f;
+            if (radius > tolerance)
+            {
+                maxStep = Min(maxStep, 2.0f * Acos(Max(1.0f - (tolerance / radius), -1.0f)));
+            }
+
+            const uint32_t stepCount = Max(static_cast<uint32_t>(Ceil(Abs(sweep) / Max(maxStep, 0.05f))), 1u);
+            for (uint32_t stepIndex = 1; stepIndex < stepCount; ++stepIndex)
+            {
+                const float t = static_cast<float>(stepIndex) / static_cast<float>(stepCount);
+                const float angle = startAngle + (sweep * t);
+                outPolygon.PushBack({
+                    center.x + (Cos(angle) * radius),
+                    center.y + (Sin(angle) * radius)
+                });
+            }
+
+            outPolygon.PushBack(endPoint);
+        }
+
+        bool SvgComputeLineIntersection(
+            Point2& out,
+            const Point2& pointA,
+            const Point2& dirA,
+            const Point2& pointB,
+            const Point2& dirB)
+        {
+            const float denom = SvgCross(dirA, dirB);
+            if (Abs(denom) <= 1.0e-5f)
+            {
+                return false;
+            }
+
+            const float t = SvgCross(pointB - pointA, dirB) / denom;
+            out = pointA + (dirA * t);
+            return true;
+        }
+
+        void SvgAppendPointUnique(Vector<Point2>& out, const Point2& point)
+        {
+            if (!out.IsEmpty())
+            {
+                const Point2 delta = point - out.Back();
+                if (SvgLengthSq(delta) <= 1.0e-6f)
+                {
+                    return;
+                }
+            }
+
+            out.PushBack(point);
+        }
+
+        struct SvgStrokePath
+        {
+            Vector<Point2> points{};
+            bool closed{ false };
+        };
+
+        void SvgFinalizeStrokePath(Vector<SvgStrokePath>& outPaths, SvgStrokePath& current, bool closed)
+        {
+            if (current.points.Size() < 2)
+            {
+                current.points.Clear();
+                current.closed = false;
+                return;
+            }
+
+            if (closed && (current.points.Size() > 2))
+            {
+                const Point2 delta = current.points.Back() - current.points.Front();
+                if (SvgLengthSq(delta) <= 1.0e-6f)
+                {
+                    current.points.PopBack();
+                }
+            }
+
+            current.closed = closed;
+            outPaths.PushBack(Move(current));
+            current = {};
+        }
+
+        void SvgFlattenQuadratic(
+            Vector<Point2>& out,
+            const Point2& p0,
+            const Point2& p1,
+            const Point2& p2,
+            float toleranceSq,
+            uint32_t depth)
+        {
+            if ((depth >= MaxCubicSubdivisionDepth) || (SvgDistanceToLineSq(p1, p0, p2) <= toleranceSq))
+            {
+                SvgAppendPointUnique(out, p2);
+                return;
+            }
+
+            const Point2 p01 = SvgLerpPoint(p0, p1, 0.5f);
+            const Point2 p12 = SvgLerpPoint(p1, p2, 0.5f);
+            const Point2 p012 = SvgLerpPoint(p01, p12, 0.5f);
+
+            SvgFlattenQuadratic(out, p0, p01, p012, toleranceSq, depth + 1);
+            SvgFlattenQuadratic(out, p012, p12, p2, toleranceSq, depth + 1);
+        }
+
+        bool SvgDecodeStrokePaths(
+            Vector<SvgStrokePath>& outPaths,
+            Span<const StrokeSourcePoint> points,
+            Span<const StrokeSourceCommand> commands,
+            float flattenTolerance)
+        {
+            outPaths.Clear();
+            if (commands.IsEmpty())
+            {
+                return false;
+            }
+
+            const float toleranceSq = flattenTolerance * flattenTolerance;
+            SvgStrokePath currentPath{};
+            Point2 currentPoint{};
+            bool hasCurrent = false;
+
+            auto readPoint = [&](uint32_t pointIndex, Point2& outPoint) -> bool
+            {
+                if (pointIndex >= points.Size())
+                {
+                    return false;
+                }
+
+                outPoint.x = points[pointIndex].x;
+                outPoint.y = points[pointIndex].y;
+                return true;
+            };
+
+            for (const StrokeSourceCommand& command : commands)
+            {
+                const uint32_t pointIndex = command.firstPoint;
+                switch (command.type)
+                {
+                    case StrokeCommandType::MoveTo:
+                    {
+                        if (!currentPath.points.IsEmpty())
+                        {
+                            SvgFinalizeStrokePath(outPaths, currentPath, false);
+                        }
+
+                        Point2 point{};
+                        if (!readPoint(pointIndex, point))
+                        {
+                            return false;
+                        }
+
+                        SvgAppendPointUnique(currentPath.points, point);
+                        currentPoint = point;
+                        hasCurrent = true;
+                        break;
+                    }
+
+                    case StrokeCommandType::LineTo:
+                    {
+                        if (!hasCurrent)
+                        {
+                            return false;
+                        }
+
+                        Point2 point{};
+                        if (!readPoint(pointIndex, point))
+                        {
+                            return false;
+                        }
+
+                        SvgAppendPointUnique(currentPath.points, point);
+                        currentPoint = point;
+                        break;
+                    }
+
+                    case StrokeCommandType::QuadraticTo:
+                    {
+                        if (!hasCurrent)
+                        {
+                            return false;
+                        }
+
+                        Point2 control{};
+                        Point2 point{};
+                        if (!readPoint(pointIndex, control) || !readPoint(pointIndex + 1, point))
+                        {
+                            return false;
+                        }
+
+                        SvgFlattenQuadratic(currentPath.points, currentPoint, control, point, toleranceSq, 0);
+                        currentPoint = point;
+                        break;
+                    }
+
+                    case StrokeCommandType::Close:
+                        if (!currentPath.points.IsEmpty())
+                        {
+                            SvgFinalizeStrokePath(outPaths, currentPath, true);
+                            hasCurrent = false;
+                        }
+                        break;
+                }
+            }
+
+            if (!currentPath.points.IsEmpty())
+            {
+                SvgFinalizeStrokePath(outPaths, currentPath, false);
+            }
+
+            return !outPaths.IsEmpty();
+        }
+
+        float SvgLength(const Point2& value)
+        {
+            return Sqrt(SvgLengthSq(value));
+        }
+
+        Point2 SvgNormalize(const Point2& value)
+        {
+            const float lengthSq = SvgLengthSq(value);
+            if (lengthSq <= DegenerateLineLengthSq)
+            {
+                return {};
+            }
+
+            const float invLength = 1.0f / Sqrt(lengthSq);
+            return value * invLength;
+        }
+
+        Point2 SvgLeftNormal(const Point2& direction)
+        {
+            return { -direction.y, direction.x };
+        }
+
+        void SvgEmitRoundCap(
+            Vector<CurveData>& outCurves,
+            const Point2& center,
+            const Point2& startPoint,
+            const Point2& endPoint,
+            const Point2& exteriorDirection,
+            float radius)
+        {
+            const float startAngle = Atan2(startPoint.y - center.y, startPoint.x - center.x);
+            const float endAngle = Atan2(endPoint.y - center.y, endPoint.x - center.x);
+            const float exteriorAngle = Atan2(exteriorDirection.y, exteriorDirection.x);
+            const bool ccw = SvgAngleOnSweepCCW(startAngle, endAngle, exteriorAngle);
+
+            Vector<Point2> polygon{};
+            SvgBuildArcPolygon(polygon, center, startPoint, endPoint, radius, ccw);
+            SvgEmitClosedPolygon(outCurves, polygon);
+        }
+
+        void SvgEmitJoinPatch(
+            Vector<CurveData>& outCurves,
+            const Point2& vertex,
+            const Point2& dirIn,
+            const Point2& dirOut,
+            float halfWidth,
+            const StyleState& style)
+        {
+            const float turn = SvgCross(dirIn, dirOut);
+            if (Abs(turn) <= 1.0e-5f)
+            {
+                return;
+            }
+
+            Point2 offsetIn = SvgLeftNormal(dirIn) * halfWidth;
+            Point2 offsetOut = SvgLeftNormal(dirOut) * halfWidth;
+            if (turn < 0.0f)
+            {
+                offsetIn = offsetIn * -1.0f;
+                offsetOut = offsetOut * -1.0f;
+            }
+
+            const Point2 outerStart = vertex + offsetIn;
+            const Point2 outerEnd = vertex + offsetOut;
+            Vector<Point2> polygon{};
+
+            switch (style.strokeJoin)
+            {
+                case StrokeJoinKind::Round:
+                    SvgBuildArcPolygon(polygon, vertex, outerStart, outerEnd, halfWidth, turn > 0.0f);
+                    SvgEmitClosedPolygon(outCurves, polygon);
+                    return;
+
+                case StrokeJoinKind::Miter:
+                {
+                    Point2 intersection{};
+                    if (SvgComputeLineIntersection(intersection, outerStart, dirIn, outerEnd, dirOut))
+                    {
+                        const float miterLength = SvgLength(intersection - vertex) / Max(halfWidth, 1.0e-5f);
+                        if (miterLength <= Max(style.strokeMiterLimit, 1.0f))
+                        {
+                            polygon.PushBack(vertex);
+                            polygon.PushBack(outerStart);
+                            polygon.PushBack(intersection);
+                            polygon.PushBack(outerEnd);
+                            SvgEmitClosedPolygon(outCurves, polygon);
+                            return;
+                        }
+                    }
+                    break;
+                }
+
+                case StrokeJoinKind::Bevel:
+                default:
+                    break;
+            }
+
+            polygon.PushBack(vertex);
+            polygon.PushBack(outerStart);
+            polygon.PushBack(outerEnd);
+            SvgEmitClosedPolygon(outCurves, polygon);
+        }
+
+        void SvgBuildStrokeCurves(
+            Vector<CurveData>& outCurves,
+            Span<const SvgStrokePath> paths,
+            const StyleState& style)
+        {
+            outCurves.Clear();
+            if (style.strokeWidth <= 0.0f)
+            {
+                return;
+            }
+
+            const float halfWidth = style.strokeWidth * 0.5f;
+            for (const SvgStrokePath& path : paths)
+            {
+                if (path.points.Size() < 2)
+                {
+                    continue;
+                }
+
+                const uint32_t segmentCount = path.closed ? path.points.Size() : (path.points.Size() - 1);
+                for (uint32_t segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex)
+                {
+                    const uint32_t nextIndex = (segmentIndex + 1) % path.points.Size();
+                    Point2 start = path.points[segmentIndex];
+                    Point2 end = path.points[nextIndex];
+                    const Point2 direction = SvgNormalize(end - start);
+                    if (SvgLengthSq(direction) <= 1.0e-6f)
+                    {
+                        continue;
+                    }
+
+                    if (!path.closed && (style.strokeCap == StrokeCapKind::Square))
+                    {
+                        if (segmentIndex == 0)
+                        {
+                            start = start - (direction * halfWidth);
+                        }
+
+                        if (segmentIndex == (segmentCount - 1))
+                        {
+                            end = end + (direction * halfWidth);
+                        }
+                    }
+
+                    const Point2 normal = SvgLeftNormal(direction) * halfWidth;
+                    const Point2 polygon[] =
+                    {
+                        start + normal,
+                        start - normal,
+                        end - normal,
+                        end + normal,
+                    };
+                    SvgEmitClosedPolygon(outCurves, Span<const Point2>(polygon, HE_LENGTH_OF(polygon)));
+                }
+
+                const uint32_t joinStart = path.closed ? 0u : 1u;
+                const uint32_t joinEnd = path.closed ? path.points.Size() : (path.points.Size() - 1);
+                for (uint32_t pointIndex = joinStart; pointIndex < joinEnd; ++pointIndex)
+                {
+                    const uint32_t prevIndex = pointIndex == 0 ? (path.points.Size() - 1) : (pointIndex - 1);
+                    const uint32_t nextIndex = (pointIndex + 1) % path.points.Size();
+                    const Point2 dirIn = SvgNormalize(path.points[pointIndex] - path.points[prevIndex]);
+                    const Point2 dirOut = SvgNormalize(path.points[nextIndex] - path.points[pointIndex]);
+                    if ((SvgLengthSq(dirIn) <= 1.0e-6f) || (SvgLengthSq(dirOut) <= 1.0e-6f))
+                    {
+                        continue;
+                    }
+
+                    SvgEmitJoinPatch(outCurves, path.points[pointIndex], dirIn, dirOut, halfWidth, style);
+                }
+
+                if (!path.closed && (style.strokeCap == StrokeCapKind::Round))
+                {
+                    const Point2 startDir = SvgNormalize(path.points[1] - path.points[0]);
+                    const Point2 startNormal = SvgLeftNormal(startDir) * halfWidth;
+                    SvgEmitRoundCap(
+                        outCurves,
+                        path.points[0],
+                        path.points[0] - startNormal,
+                        path.points[0] + startNormal,
+                        startDir * -1.0f,
+                        halfWidth);
+
+                    const uint32_t lastPointIndex = path.points.Size() - 1;
+                    const Point2 endDir = SvgNormalize(path.points[lastPointIndex] - path.points[lastPointIndex - 1]);
+                    const Point2 endNormal = SvgLeftNormal(endDir) * halfWidth;
+                    SvgEmitRoundCap(
+                        outCurves,
+                        path.points[lastPointIndex],
+                        path.points[lastPointIndex] + endNormal,
+                        path.points[lastPointIndex] - endNormal,
+                        endDir,
+                        halfWidth);
+                }
+            }
+        }
+
+        bool BuildAuthoredStrokeShape(ParsedShape& out, const ParsedShape& source, const StyleState& style)
+        {
+            out = {};
+
+            const float flattenTolerance = Max(style.strokeWidth * 0.05f, 0.25f);
+            Vector<SvgStrokePath> paths{};
+            if (!SvgDecodeStrokePaths(
+                    paths,
+                    Span<const StrokeSourcePoint>(source.strokePoints.Data(), source.strokePoints.Size()),
+                    Span<const StrokeSourceCommand>(source.strokeCommands.Data(), source.strokeCommands.Size()),
+                    flattenTolerance))
+            {
+                return false;
+            }
+
+            SvgBuildStrokeCurves(out.curves, paths, style);
+            if (out.curves.IsEmpty())
+            {
+                return false;
+            }
+
+            out.fillRule = FillRule::NonZero;
+            out.color = style.stroke;
+            RecomputeShapeBounds(out);
+            return true;
+        }
+
+        uint32_t AppendParsedShape(ParsedImage& out, ParsedShape&& shape)
+        {
+            ParsedShape& outShape = out.shapes.EmplaceBack();
+            outShape = Move(shape);
+
+            if (out.shapes.Size() == 1)
+            {
+                out.boundsMinX = outShape.minX;
+                out.boundsMinY = outShape.minY;
+                out.boundsMaxX = outShape.maxX;
+                out.boundsMaxY = outShape.maxY;
+            }
+            else
+            {
+                out.boundsMinX = Min(out.boundsMinX, outShape.minX);
+                out.boundsMinY = Min(out.boundsMinY, outShape.minY);
+                out.boundsMaxX = Max(out.boundsMaxX, outShape.maxX);
+                out.boundsMaxY = Max(out.boundsMaxY, outShape.maxY);
+            }
+
+            return out.shapes.Size() - 1;
+        }
+
         class CurveBuilder final
         {
         public:
@@ -1720,14 +2424,23 @@ namespace he::scribe::editor
                 }
             }
 
-            ParsedShape& outShape = out.shapes.EmplaceBack();
-            outShape = Move(shape);
-            const uint32_t shapeIndex = out.shapes.Size() - 1;
+            uint32_t fillShapeIndex = 0;
+            if (hasVisibleFill)
+            {
+                fillShapeIndex = AppendParsedShape(out, Move(shape));
+            }
 
             if (hasVisibleStroke)
             {
+                ParsedShape strokeShape{};
+                if (!BuildAuthoredStrokeShape(strokeShape, hasVisibleFill ? out.shapes[fillShapeIndex] : shape, state.style))
+                {
+                    return false;
+                }
+
+                const uint32_t strokeShapeIndex = AppendParsedShape(out, Move(strokeShape));
                 CompiledVectorImageLayerEntry& layer = out.layers.EmplaceBack();
-                layer.shapeIndex = shapeIndex;
+                layer.shapeIndex = strokeShapeIndex;
                 layer.kind = VectorLayerKind::Stroke;
                 layer.red = state.style.stroke.x;
                 layer.green = state.style.stroke.y;
@@ -1742,27 +2455,12 @@ namespace he::scribe::editor
             if (hasVisibleFill)
             {
                 CompiledVectorImageLayerEntry& layer = out.layers.EmplaceBack();
-                layer.shapeIndex = shapeIndex;
+                layer.shapeIndex = fillShapeIndex;
                 layer.kind = VectorLayerKind::Fill;
                 layer.red = state.style.fill.x;
                 layer.green = state.style.fill.y;
                 layer.blue = state.style.fill.z;
                 layer.alpha = state.style.fill.w;
-            }
-
-            if (out.shapes.Size() == 1)
-            {
-                out.boundsMinX = outShape.minX;
-                out.boundsMinY = outShape.minY;
-                out.boundsMaxX = outShape.maxX;
-                out.boundsMaxY = outShape.maxY;
-            }
-            else
-            {
-                out.boundsMinX = Min(out.boundsMinX, outShape.minX);
-                out.boundsMinY = Min(out.boundsMinY, outShape.minY);
-                out.boundsMaxX = Max(out.boundsMaxX, outShape.maxX);
-                out.boundsMaxY = Max(out.boundsMaxY, outShape.maxY);
             }
 
             return true;

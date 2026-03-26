@@ -3,6 +3,7 @@
 #include "image_compile_geometry.h"
 
 #include "curve_compile_utils.h"
+#include "stroke_compile_utils.h"
 
 #include "he/core/log.h"
 #include "he/core/math.h"
@@ -31,8 +32,8 @@ namespace he::scribe::editor
         struct ParsedShape
         {
             Vector<CurveData> curves{};
-            Vector<CompiledOutlinePoint> outlinePoints{};
-            Vector<CompiledOutlineCommand> outlineCommands{};
+            Vector<StrokeSourcePoint> strokePoints{};
+            Vector<StrokeSourceCommand> strokeCommands{};
             FillRule fillRule{ FillRule::NonZero };
             Vec4f color{ 0.0f, 0.0f, 0.0f, 1.0f };
             float minX{ 0.0f };
@@ -142,7 +143,7 @@ namespace he::scribe::editor
                 TransformCurveBounds(curve);
             }
 
-            for (CompiledOutlinePoint& point : shape.outlinePoints)
+            for (StrokeSourcePoint& point : shape.strokePoints)
             {
                 const Point2 transformed = TransformPoint(state.transform, { point.x, point.y });
                 point.x = transformed.x;
@@ -761,8 +762,8 @@ namespace he::scribe::editor
             bool ParseUseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
             bool ParsePathData(
                 CurveBuilder& builder,
-                Vector<CompiledOutlinePoint>& outPoints,
-                Vector<CompiledOutlineCommand>& outCommands,
+                Vector<StrokeSourcePoint>& outPoints,
+                Vector<StrokeSourceCommand>& outCommands,
                 StringView text);
             bool SkipToClosingTag(StringView tagName);
             bool SkipElement(StringView tagName);
@@ -1117,9 +1118,9 @@ namespace he::scribe::editor
 
             CurveBuilder builder(m_flatteningTolerance);
             builder.SetTransform(state.transform);
-            Vector<CompiledOutlinePoint> outlinePoints{};
-            Vector<CompiledOutlineCommand> outlineCommands{};
-            if (!ParsePathData(builder, outlinePoints, outlineCommands, d))
+            Vector<StrokeSourcePoint> strokePoints{};
+            Vector<StrokeSourceCommand> strokeCommands{};
+            if (!ParsePathData(builder, strokePoints, strokeCommands, d))
             {
                 HE_LOG_ERROR(he_scribe, HE_MSG("Failed to parse SVG path data for scribe image compile."));
                 return false;
@@ -1133,8 +1134,8 @@ namespace he::scribe::editor
 
             ParsedShape shape{};
             shape.curves = Move(curves);
-            shape.outlinePoints = Move(outlinePoints);
-            shape.outlineCommands = Move(outlineCommands);
+            shape.strokePoints = Move(strokePoints);
+            shape.strokeCommands = Move(strokeCommands);
             shape.fillRule = state.style.fillRule;
             shape.color = state.style.fill;
             RecomputeShapeBounds(shape);
@@ -1250,8 +1251,8 @@ namespace he::scribe::editor
 
         bool SvgParser::ParsePathData(
             CurveBuilder& builder,
-            Vector<CompiledOutlinePoint>& outPoints,
-            Vector<CompiledOutlineCommand>& outCommands,
+            Vector<StrokeSourcePoint>& outPoints,
+            Vector<StrokeSourceCommand>& outCommands,
             StringView text)
         {
             const char* cur = text.Data();
@@ -1259,6 +1260,7 @@ namespace he::scribe::editor
 
             outPoints.Clear();
             outCommands.Clear();
+            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
 
             Point2 current{};
             Point2 subpathStart{};
@@ -1308,31 +1310,6 @@ namespace he::scribe::editor
                 return true;
             };
 
-            auto AppendOutlinePoint = [&](const Point2& point)
-            {
-                CompiledOutlinePoint& dst = outPoints.EmplaceBack();
-                dst.x = point.x;
-                dst.y = point.y;
-            };
-
-            auto AppendOutlineCommand = [&](OutlineCommandType type, const Point2* points, uint32_t pointCount)
-            {
-                CompiledOutlineCommand& commandEntry = outCommands.EmplaceBack();
-                commandEntry.type = type;
-                commandEntry.firstPoint = outPoints.Size();
-                for (uint32_t pointIndex = 0; pointIndex < pointCount; ++pointIndex)
-                {
-                    AppendOutlinePoint(points[pointIndex]);
-                }
-            };
-
-            auto AppendClose = [&]()
-            {
-                CompiledOutlineCommand& commandEntry = outCommands.EmplaceBack();
-                commandEntry.type = OutlineCommandType::Close;
-                commandEntry.firstPoint = outPoints.Size();
-            };
-
             while (true)
             {
                 SkipSeparators();
@@ -1367,7 +1344,7 @@ namespace he::scribe::editor
                             // Leave the previous contour open when a new move starts without a close.
                         }
 
-                        AppendOutlineCommand(OutlineCommandType::MoveTo, &point, 1);
+                        strokeBuilder.AppendMoveTo(point);
                         current = point;
                         subpathStart = point;
                         hasCurrent = true;
@@ -1385,7 +1362,7 @@ namespace he::scribe::editor
                         }
 
                         builder.AddLine(current, point);
-                        AppendOutlineCommand(OutlineCommandType::LineTo, &point, 1);
+                        strokeBuilder.AppendLineTo(point);
                         current = point;
                         hasCurrent = true;
                         break;
@@ -1402,7 +1379,7 @@ namespace he::scribe::editor
                         Point2 point = current;
                         point.x = relative ? (current.x + value) : value;
                         builder.AddLine(current, point);
-                        AppendOutlineCommand(OutlineCommandType::LineTo, &point, 1);
+                        strokeBuilder.AppendLineTo(point);
                         current = point;
                         hasCurrent = true;
                         break;
@@ -1419,7 +1396,7 @@ namespace he::scribe::editor
                         Point2 point = current;
                         point.y = relative ? (current.y + value) : value;
                         builder.AddLine(current, point);
-                        AppendOutlineCommand(OutlineCommandType::LineTo, &point, 1);
+                        strokeBuilder.AppendLineTo(point);
                         current = point;
                         hasCurrent = true;
                         break;
@@ -1435,8 +1412,7 @@ namespace he::scribe::editor
                         }
 
                         builder.AddQuadratic(current, control, point);
-                        const Point2 points[] = { control, point };
-                        AppendOutlineCommand(OutlineCommandType::QuadraticTo, points, HE_LENGTH_OF(points));
+                        strokeBuilder.AppendQuadraticTo(control, point);
                         current = point;
                         hasCurrent = true;
                         break;
@@ -1455,8 +1431,7 @@ namespace he::scribe::editor
                         }
 
                         builder.AddCubic(current, c1, c2, point);
-                        const Point2 points[] = { c1, c2, point };
-                        AppendOutlineCommand(OutlineCommandType::CubicTo, points, HE_LENGTH_OF(points));
+                        strokeBuilder.AppendCubicTo(c1, c2, point);
                         current = point;
                         hasCurrent = true;
                         break;
@@ -1467,7 +1442,7 @@ namespace he::scribe::editor
                         if (hasCurrent)
                         {
                             builder.AddLine(current, subpathStart);
-                            AppendClose();
+                            strokeBuilder.AppendClose();
                             current = subpathStart;
                             subpathClosed = true;
                         }
@@ -1479,6 +1454,8 @@ namespace he::scribe::editor
                 }
             }
 
+            outPoints = Move(strokeBuilder.Points());
+            outCommands = Move(strokeBuilder.Commands());
             return true;
         }
 
@@ -1586,8 +1563,8 @@ namespace he::scribe::editor
             CompiledVectorShapeRenderEntry& outShape,
             Vector<PackedCurveTexel>& outCurveTexels,
             Vector<PackedBandTexel>& outBandTexels,
-            Vector<CompiledOutlinePoint>& outOutlinePoints,
-            Vector<CompiledOutlineCommand>& outOutlineCommands,
+            Vector<CompiledStrokePoint>& outStrokePoints,
+            Vector<CompiledStrokeCommand>& outStrokeCommands,
             PackedBandStats& outBandStats,
             const ParsedShape& shape,
             float epsilon)
@@ -1604,28 +1581,13 @@ namespace he::scribe::editor
             outShape.boundsMaxX = shape.maxX;
             outShape.boundsMaxY = shape.maxY;
             outShape.fillRule = shape.fillRule;
-            outShape.firstOutlineCommand = outOutlineCommands.Size();
-            outShape.outlineCommandCount = shape.outlineCommands.Size();
-            const uint32_t pointBase = outOutlinePoints.Size();
-
-            if (!shape.outlinePoints.IsEmpty())
-            {
-                outOutlinePoints.Insert(outOutlinePoints.Size(), shape.outlinePoints.Data(), shape.outlinePoints.Size());
-            }
-
-            if (!shape.outlineCommands.IsEmpty())
-            {
-                Vector<CompiledOutlineCommand> commands = shape.outlineCommands;
-                for (CompiledOutlineCommand& command : commands)
-                {
-                    if (command.type != OutlineCommandType::Close)
-                    {
-                        command.firstPoint += pointBase;
-                    }
-                }
-
-                outOutlineCommands.Insert(outOutlineCommands.Size(), commands.Data(), commands.Size());
-            }
+            outShape.firstStrokeCommand = outStrokeCommands.Size();
+            outShape.strokeCommandCount = shape.strokeCommands.Size();
+            AppendCompiledStrokeData(
+                outStrokePoints,
+                outStrokeCommands,
+                Span<const StrokeSourcePoint>(shape.strokePoints.Data(), shape.strokePoints.Size()),
+                Span<const StrokeSourceCommand>(shape.strokeCommands.Data(), shape.strokeCommands.Size()));
 
             Vector<CurveData> curves = shape.curves;
             for (uint32_t curveIndex = 0; curveIndex < curves.Size(); ++curveIndex)
@@ -1706,8 +1668,8 @@ namespace he::scribe::editor
                 compiledShape,
                 out.curveTexels,
                 out.bandTexels,
-                out.outlinePoints,
-                out.outlineCommands,
+                out.strokePoints,
+                out.strokeCommands,
                 bandStats,
                 shape,
                 out.bandOverlapEpsilon))

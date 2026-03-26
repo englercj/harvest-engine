@@ -37,13 +37,13 @@ namespace he::scribe
     {
         out = {};
 
-        const FontFaceRenderData::Reader render = fontFace.GetRender();
-        if (!render.IsValid())
+        const FontFaceFillData::Reader fill = fontFace.GetFill();
+        if (!fill.IsValid())
         {
             return false;
         }
 
-        const schema::List<FontFaceGlyphRenderData>::Reader glyphs = render.GetGlyphs();
+        const schema::List<FontFaceGlyphRenderData>::Reader glyphs = fill.GetGlyphs();
         if (glyphIndex >= glyphs.Size())
         {
             return false;
@@ -97,18 +97,18 @@ namespace he::scribe
         out.vertices[4] = MakeCompiledShapeVertex(maxX, objectMaxY, 1.0f, 1.0f, maxX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
         out.vertices[5] = MakeCompiledShapeVertex(minX, objectMaxY, -1.0f, 1.0f, minX, minY, glyphLocBits, bandInfoBits, jacobian, banding, color);
 
-        const schema::Blob::Reader curveBytes = fontFace.GetCurveData();
-        const schema::Blob::Reader bandBytes = fontFace.GetBandData();
+        const schema::Blob::Reader curveBytes = fill.GetCurveData();
+        const schema::Blob::Reader bandBytes = fill.GetBandData();
 
         FillCompiledShapeCreateInfo(
             out.createInfo,
             out.vertices,
             curveBytes,
-            render.GetCurveTextureWidth(),
-            render.GetCurveTextureHeight(),
+            fill.GetCurveTextureWidth(),
+            fill.GetCurveTextureHeight(),
             bandBytes,
-            render.GetBandTextureWidth(),
-            render.GetBandTextureHeight());
+            fill.GetBandTextureWidth(),
+            fill.GetBandTextureHeight());
         out.glyph = glyph;
         return true;
     }
@@ -121,21 +121,21 @@ namespace he::scribe
     {
         out = {};
 
-        const FontFaceRenderData::Reader render = fontFace.GetRender();
-        const FontFaceOutlineData::Reader outline = fontFace.GetOutline();
-        if (!render.IsValid() || !outline.IsValid())
+        const FontFaceFillData::Reader fill = fontFace.GetFill();
+        const FontFaceStrokeData::Reader stroke = fontFace.GetStroke();
+        if (!fill.IsValid() || !stroke.IsValid())
         {
             return false;
         }
 
-        const schema::List<FontFaceGlyphRenderData>::Reader glyphs = render.GetGlyphs();
+        const schema::List<FontFaceGlyphRenderData>::Reader glyphs = fill.GetGlyphs();
         if (glyphIndex >= glyphs.Size())
         {
             return false;
         }
 
         const FontFaceGlyphRenderData::Reader glyph = glyphs[glyphIndex];
-        if (!glyph.IsValid() || (glyph.GetOutlineCommandCount() == 0))
+        if (!glyph.IsValid() || (glyph.GetStrokeCommandCount() == 0))
         {
             return false;
         }
@@ -143,10 +143,11 @@ namespace he::scribe
         StrokedShapeData shape{};
         if (!BuildStrokedShapeData(
                 shape,
-                outline.GetPoints(),
-                outline.GetCommands(),
-                glyph.GetFirstOutlineCommand(),
-                glyph.GetOutlineCommandCount(),
+                stroke.GetPointScale(),
+                stroke.GetPoints(),
+                stroke.GetCommands(),
+                glyph.GetFirstStrokeCommand(),
+                glyph.GetStrokeCommandCount(),
                 style))
         {
             return false;

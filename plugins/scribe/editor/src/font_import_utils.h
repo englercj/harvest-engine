@@ -4,6 +4,7 @@
 
 #include "he/scribe/schema_types.h"
 
+#include "he/core/span.h"
 #include "he/core/string.h"
 #include "he/core/vector.h"
 
@@ -28,6 +29,7 @@ namespace he::scribe::editor
     bool InspectFontFace(const Vector<uint8_t>& sourceBytes, uint32_t faceIndex, FontFaceInfo& out);
     bool InspectFontFaces(Vector<FontFaceInfo>& out, const Vector<uint8_t>& sourceBytes);
     bool ExtractFontFaceSourceBytes(Vector<uint8_t>& out, const Vector<uint8_t>& sourceBytes, uint32_t faceIndex);
+    bool BuildFontFaceShapingBytes(Vector<uint8_t>& out, Span<const uint8_t> sourceBytes, uint32_t faceIndex);
 
     void FillFontFaceMetrics(FontFaceMetrics::Builder metrics, const FontFaceInfo& info);
     void FillFontFaceAssetData(ScribeFontFace::Builder assetData, const FontFaceInfo& info);

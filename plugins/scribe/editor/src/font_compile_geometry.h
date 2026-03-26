@@ -73,16 +73,16 @@ namespace he::scribe::editor
         FillRule fillRule{ FillRule::NonZero };
         bool hasGeometry{ false };
         bool hasColorLayers{ false };
-        uint32_t firstOutlineCommand{ 0 };
-        uint32_t outlineCommandCount{ 0 };
+        uint32_t firstStrokeCommand{ 0 };
+        uint32_t strokeCommandCount{ 0 };
     };
 
     struct CompiledFontRenderData
     {
         Vector<PackedCurveTexel> curveTexels{};
         Vector<PackedBandTexel> bandTexels{};
-        Vector<CompiledOutlinePoint> outlinePoints{};
-        Vector<CompiledOutlineCommand> outlineCommands{};
+        Vector<CompiledStrokePoint> strokePoints{};
+        Vector<CompiledStrokeCommand> strokeCommands{};
         Vector<CompiledGlyphRenderEntry> glyphs{};
         CompiledFontPaintData paint{};
         uint32_t curveTextureWidth{ 0 };

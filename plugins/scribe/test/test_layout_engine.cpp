@@ -1,5 +1,7 @@
 // Copyright Chad Engler
 
+#include "font_import_utils.h"
+
 #include "he/scribe/layout_engine.h"
 #include "he/scribe/packed_data.h"
 #include "he/scribe/schema_types.h"
@@ -9,6 +11,7 @@
 
 using namespace he;
 using namespace he::scribe;
+using namespace he::scribe::editor;
 
 namespace
 {
@@ -62,6 +65,12 @@ namespace
             return false;
         }
 
+        Vector<uint8_t> shapingBytes;
+        if (!BuildFontFaceShapingBytes(shapingBytes, Span<const uint8_t>(fontBytes), 0))
+        {
+            return false;
+        }
+
         static const PackedCurveTexel CurveTexel = PackCurveTexel(0.0f, 0.0f, 0.0f, 0.0f);
         static PackedBandTexel BandTexels[ScribeBandTextureWidth]{};
 
@@ -69,7 +78,7 @@ namespace
         FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
         FontFaceShapingData::Builder shaping = root.GetShaping();
         shaping.SetFaceIndex(0);
-        shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(fontBytes)));
+        shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(shapingBytes)));
 
         FontFaceRuntimeMetadata::Builder metadata = root.GetMetadata();
         metadata.SetGlyphCount(0);
@@ -80,13 +89,13 @@ namespace
         metadata.SetCapHeight(700);
         metadata.SetHasColorGlyphs(hasColorGlyphs);
 
-        FontFaceRenderData::Builder render = root.GetRender();
-        render.SetCurveTextureWidth(1);
-        render.SetCurveTextureHeight(1);
-        render.SetBandTextureWidth(ScribeBandTextureWidth);
-        render.SetBandTextureHeight(1);
-        render.SetBandOverlapEpsilon(1.0f);
-        render.InitGlyphs(0);
+        FontFaceFillData::Builder fill = root.GetFill();
+        fill.SetCurveTextureWidth(1);
+        fill.SetCurveTextureHeight(1);
+        fill.SetBandTextureWidth(ScribeBandTextureWidth);
+        fill.SetBandTextureHeight(1);
+        fill.SetBandOverlapEpsilon(1.0f);
+        fill.InitGlyphs(0);
 
         FontFacePaintData::Builder paint = root.GetPaint();
         paint.SetDefaultPaletteIndex(0);
@@ -94,8 +103,8 @@ namespace
         paint.InitColorGlyphs(0);
         paint.InitLayers(0);
 
-        root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(&CurveTexel, 1).AsBytes()));
-        root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(BandTexels).AsBytes()));
+        root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(&CurveTexel, 1).AsBytes()));
+        root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(BandTexels).AsBytes()));
         rootBuilder.SetRoot(root);
 
         storage = Span<const schema::Word>(rootBuilder);

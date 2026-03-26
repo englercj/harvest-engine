@@ -85,11 +85,11 @@ namespace he::scribe::editor
         VectorImageResource::Builder blob = blobBuilder.AddStruct<VectorImageResource>();
 
         FillVectorImageResourceMetadata(blob.GetMetadata(), imageData);
-        FillVectorImageResourceRenderData(blob.GetRender(), imageData);
-        FillVectorImageResourceOutlineData(blob.GetOutline(), imageData);
+        FillVectorImageResourceFillData(blob.GetFill(), imageData);
+        FillVectorImageResourceStrokeData(blob.GetStroke(), imageData);
         FillVectorImageResourcePaintData(blob.GetPaint(), imageData);
-        blob.SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
-        blob.SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
+        blob.GetFill().SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
+        blob.GetFill().SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
         blobBuilder.SetRoot(blob);
 
         r = ctx.db.AddResource(ctx.asset.GetUuid(), RuntimeResourceId, Span<const schema::Word>(blobBuilder).AsBytes());

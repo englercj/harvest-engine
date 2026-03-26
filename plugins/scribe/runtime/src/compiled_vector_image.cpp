@@ -16,13 +16,13 @@ namespace he::scribe
     {
         out = {};
 
-        const VectorImageRenderData::Reader render = image.GetRender();
-        if (!render.IsValid())
+        const VectorImageFillData::Reader fill = image.GetFill();
+        if (!fill.IsValid())
         {
             return false;
         }
 
-        const schema::List<VectorImageShapeRenderData>::Reader shapes = render.GetShapes();
+        const schema::List<VectorImageShapeRenderData>::Reader shapes = fill.GetShapes();
         if (shapeIndex >= shapes.Size())
         {
             return false;
@@ -68,17 +68,17 @@ namespace he::scribe
         out.vertices[4] = MakeCompiledShapeVertex(maxX, maxY, 1.0f, 1.0f, maxX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
         out.vertices[5] = MakeCompiledShapeVertex(minX, maxY, -1.0f, 1.0f, minX, maxY, glyphLocBits, bandInfoBits, jacobian, banding, color);
 
-        const schema::Blob::Reader curveBytes = image.GetCurveData();
-        const schema::Blob::Reader bandBytes = image.GetBandData();
+        const schema::Blob::Reader curveBytes = fill.GetCurveData();
+        const schema::Blob::Reader bandBytes = fill.GetBandData();
         FillCompiledShapeCreateInfo(
             out.createInfo,
             out.vertices,
             curveBytes,
-            render.GetCurveTextureWidth(),
-            render.GetCurveTextureHeight(),
+            fill.GetCurveTextureWidth(),
+            fill.GetCurveTextureHeight(),
             bandBytes,
-            render.GetBandTextureWidth(),
-            render.GetBandTextureHeight());
+            fill.GetBandTextureWidth(),
+            fill.GetBandTextureHeight());
         out.shape = shape;
         return true;
     }
@@ -91,21 +91,21 @@ namespace he::scribe
     {
         out = {};
 
-        const VectorImageRenderData::Reader render = image.GetRender();
-        const VectorImageOutlineData::Reader outline = image.GetOutline();
-        if (!render.IsValid() || !outline.IsValid())
+        const VectorImageFillData::Reader fill = image.GetFill();
+        const VectorImageStrokeData::Reader stroke = image.GetStroke();
+        if (!fill.IsValid() || !stroke.IsValid())
         {
             return false;
         }
 
-        const schema::List<VectorImageShapeRenderData>::Reader shapes = render.GetShapes();
+        const schema::List<VectorImageShapeRenderData>::Reader shapes = fill.GetShapes();
         if (shapeIndex >= shapes.Size())
         {
             return false;
         }
 
         const VectorImageShapeRenderData::Reader shape = shapes[shapeIndex];
-        if (!shape.IsValid() || (shape.GetOutlineCommandCount() == 0))
+        if (!shape.IsValid() || (shape.GetStrokeCommandCount() == 0))
         {
             return false;
         }
@@ -113,10 +113,11 @@ namespace he::scribe
         StrokedShapeData strokeShape{};
         if (!BuildStrokedShapeData(
                 strokeShape,
-                outline.GetPoints(),
-                outline.GetCommands(),
-                shape.GetFirstOutlineCommand(),
-                shape.GetOutlineCommandCount(),
+                stroke.GetPointScale(),
+                stroke.GetPoints(),
+                stroke.GetCommands(),
+                shape.GetFirstStrokeCommand(),
+                shape.GetStrokeCommandCount(),
                 style))
         {
             return false;

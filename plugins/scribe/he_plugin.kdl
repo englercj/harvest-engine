@@ -58,7 +58,7 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
         include_dirs { "editor/src" }
 
         public {
-            dependencies { freetype; he_assets_editor; he_editor; he_scribe_assets }
+            dependencies { freetype; harfbuzz; he_assets_editor; he_editor; he_scribe_assets }
             include_dirs { "editor/include" }
         }
     }

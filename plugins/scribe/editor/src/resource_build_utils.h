@@ -23,24 +23,26 @@ namespace he::scribe::editor
         dstShape.SetBandMaxX(srcShape.bandMaxX);
         dstShape.SetBandMaxY(srcShape.bandMaxY);
         dstShape.SetFillRule(srcShape.fillRule);
-        dstShape.SetFirstOutlineCommand(srcShape.firstOutlineCommand);
-        dstShape.SetOutlineCommandCount(srcShape.outlineCommandCount);
+        dstShape.SetFirstStrokeCommand(srcShape.firstStrokeCommand);
+        dstShape.SetStrokeCommandCount(srcShape.strokeCommandCount);
     }
 
     template <typename TBuilder>
-    void FillCompiledOutlineData(
-        TBuilder outline,
-        Span<const CompiledOutlinePoint> points,
-        Span<const CompiledOutlineCommand> commands)
+    void FillCompiledStrokeData(
+        TBuilder stroke,
+        Span<const CompiledStrokePoint> points,
+        Span<const CompiledStrokeCommand> commands)
     {
-        schema::List<OutlinePoint>::Builder dstPoints = outline.InitPoints(points.Size());
+        stroke.SetPointScale(CompiledStrokePointScale);
+
+        schema::List<StrokePoint>::Builder dstPoints = stroke.InitPoints(points.Size());
         for (uint32_t pointIndex = 0; pointIndex < points.Size(); ++pointIndex)
         {
             dstPoints[pointIndex].SetX(points[pointIndex].x);
             dstPoints[pointIndex].SetY(points[pointIndex].y);
         }
 
-        schema::List<OutlineCommand>::Builder dstCommands = outline.InitCommands(commands.Size());
+        schema::List<StrokeCommand>::Builder dstCommands = stroke.InitCommands(commands.Size());
         for (uint32_t commandIndex = 0; commandIndex < commands.Size(); ++commandIndex)
         {
             dstCommands[commandIndex].SetType(commands[commandIndex].type);
@@ -67,15 +69,15 @@ namespace he::scribe::editor
         metadata.SetHasColorGlyphs(hasColorGlyphs);
     }
 
-    inline void FillFontFaceResourceRenderData(FontFaceRenderData::Builder render, const CompiledFontRenderData& renderData)
+    inline void FillFontFaceResourceFillData(FontFaceFillData::Builder fill, const CompiledFontRenderData& renderData)
     {
-        render.SetCurveTextureWidth(renderData.curveTextureWidth);
-        render.SetCurveTextureHeight(renderData.curveTextureHeight);
-        render.SetBandTextureWidth(renderData.bandTextureWidth);
-        render.SetBandTextureHeight(renderData.bandTextureHeight);
-        render.SetBandOverlapEpsilon(renderData.bandOverlapEpsilon);
+        fill.SetCurveTextureWidth(renderData.curveTextureWidth);
+        fill.SetCurveTextureHeight(renderData.curveTextureHeight);
+        fill.SetBandTextureWidth(renderData.bandTextureWidth);
+        fill.SetBandTextureHeight(renderData.bandTextureHeight);
+        fill.SetBandOverlapEpsilon(renderData.bandOverlapEpsilon);
 
-        schema::List<FontFaceGlyphRenderData>::Builder glyphs = render.InitGlyphs(renderData.glyphs.Size());
+        schema::List<FontFaceGlyphRenderData>::Builder glyphs = fill.InitGlyphs(renderData.glyphs.Size());
         for (uint32_t glyphIndex = 0; glyphIndex < renderData.glyphs.Size(); ++glyphIndex)
         {
             const CompiledGlyphRenderEntry& srcGlyph = renderData.glyphs[glyphIndex];
@@ -88,12 +90,12 @@ namespace he::scribe::editor
         }
     }
 
-    inline void FillFontFaceResourceOutlineData(FontFaceOutlineData::Builder outline, const CompiledFontRenderData& renderData)
+    inline void FillFontFaceResourceStrokeData(FontFaceStrokeData::Builder stroke, const CompiledFontRenderData& renderData)
     {
-        FillCompiledOutlineData(
-            outline,
-            Span<const CompiledOutlinePoint>(renderData.outlinePoints.Data(), renderData.outlinePoints.Size()),
-            Span<const CompiledOutlineCommand>(renderData.outlineCommands.Data(), renderData.outlineCommands.Size()));
+        FillCompiledStrokeData(
+            stroke,
+            Span<const CompiledStrokePoint>(renderData.strokePoints.Data(), renderData.strokePoints.Size()),
+            Span<const CompiledStrokeCommand>(renderData.strokeCommands.Data(), renderData.strokeCommands.Size()));
     }
 
     inline void FillFontFaceResourcePaintData(FontFacePaintData::Builder paint, const CompiledFontPaintData& paintData)
@@ -158,15 +160,15 @@ namespace he::scribe::editor
         metadata.SetSourceBoundsMaxY(imageData.boundsMaxY);
     }
 
-    inline void FillVectorImageResourceRenderData(VectorImageRenderData::Builder render, const CompiledVectorImageData& imageData)
+    inline void FillVectorImageResourceFillData(VectorImageFillData::Builder fill, const CompiledVectorImageData& imageData)
     {
-        render.SetCurveTextureWidth(imageData.curveTextureWidth);
-        render.SetCurveTextureHeight(imageData.curveTextureHeight);
-        render.SetBandTextureWidth(imageData.bandTextureWidth);
-        render.SetBandTextureHeight(imageData.bandTextureHeight);
-        render.SetBandOverlapEpsilon(imageData.bandOverlapEpsilon);
+        fill.SetCurveTextureWidth(imageData.curveTextureWidth);
+        fill.SetCurveTextureHeight(imageData.curveTextureHeight);
+        fill.SetBandTextureWidth(imageData.bandTextureWidth);
+        fill.SetBandTextureHeight(imageData.bandTextureHeight);
+        fill.SetBandOverlapEpsilon(imageData.bandOverlapEpsilon);
 
-        schema::List<VectorImageShapeRenderData>::Builder shapes = render.InitShapes(imageData.shapes.Size());
+        schema::List<VectorImageShapeRenderData>::Builder shapes = fill.InitShapes(imageData.shapes.Size());
         for (uint32_t shapeIndex = 0; shapeIndex < imageData.shapes.Size(); ++shapeIndex)
         {
             const CompiledVectorShapeRenderEntry& srcShape = imageData.shapes[shapeIndex];
@@ -175,12 +177,12 @@ namespace he::scribe::editor
         }
     }
 
-    inline void FillVectorImageResourceOutlineData(VectorImageOutlineData::Builder outline, const CompiledVectorImageData& imageData)
+    inline void FillVectorImageResourceStrokeData(VectorImageStrokeData::Builder stroke, const CompiledVectorImageData& imageData)
     {
-        FillCompiledOutlineData(
-            outline,
-            Span<const CompiledOutlinePoint>(imageData.outlinePoints.Data(), imageData.outlinePoints.Size()),
-            Span<const CompiledOutlineCommand>(imageData.outlineCommands.Data(), imageData.outlineCommands.Size()));
+        FillCompiledStrokeData(
+            stroke,
+            Span<const CompiledStrokePoint>(imageData.strokePoints.Data(), imageData.strokePoints.Size()),
+            Span<const CompiledStrokeCommand>(imageData.strokeCommands.Data(), imageData.strokeCommands.Size()));
     }
 
     inline void FillVectorImageResourcePaintData(VectorImagePaintData::Builder paint, const CompiledVectorImageData& imageData)

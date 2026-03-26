@@ -10,7 +10,7 @@ namespace he::scribe
     using FontFaceMetrics = ScribeFontFace::Metrics;
     using FontFaceShapingData = ScribeFontFace::RuntimeResource::Shaping;
     using FontFaceRuntimeMetadata = ScribeFontFace::RuntimeResource::Metadata;
-    using FontFaceOutlineData = ScribeFontFace::RuntimeResource::Outline;
+    using FontFaceStrokeData = ScribeFontFace::RuntimeResource::Stroke;
     using FontFaceGlyphRenderData = ScribeFontFace::GlyphRenderData;
     using FontFacePaletteBackground = ScribeFontFace::PaletteBackground;
     using FontFacePaletteColor = ScribeFontFace::PaletteColor;
@@ -18,7 +18,7 @@ namespace he::scribe
     using FontFaceColorSource = ScribeFontFace::ColorSource;
     using FontFaceColorGlyphLayer = ScribeFontFace::ColorGlyphLayer;
     using FontFaceColorGlyph = ScribeFontFace::ColorGlyph;
-    using FontFaceRenderData = ScribeFontFace::RuntimeResource::Render;
+    using FontFaceFillData = ScribeFontFace::RuntimeResource::Fill;
     using FontFacePaintData = ScribeFontFace::RuntimeResource::Paint;
     using FontFaceResource = ScribeFontFace::RuntimeResource;
     using FontFaceResourceReader = ScribeFontFace::RuntimeResource::Reader;
@@ -27,9 +27,9 @@ namespace he::scribe
     using FontFamilyResourceReader = ScribeFontFamily::RuntimeResource::Reader;
 
     using VectorImageRuntimeMetadata = ScribeImage::RuntimeResource::Metadata;
-    using VectorImageOutlineData = ScribeImage::RuntimeResource::Outline;
+    using VectorImageStrokeData = ScribeImage::RuntimeResource::Stroke;
     using VectorImageShapeRenderData = ScribeImage::ShapeRenderData;
-    using VectorImageRenderData = ScribeImage::RuntimeResource::Render;
+    using VectorImageFillData = ScribeImage::RuntimeResource::Fill;
     using VectorImageLayer = ScribeImage::Layer;
     using VectorImagePaintData = ScribeImage::RuntimeResource::Paint;
     using VectorImageResource = ScribeImage::RuntimeResource;

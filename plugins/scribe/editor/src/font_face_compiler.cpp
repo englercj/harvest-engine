@@ -95,9 +95,20 @@ namespace he::scribe::editor
         schema::Builder blobBuilder;
         FontFaceResource::Builder blob = blobBuilder.AddStruct<FontFaceResource>();
 
+        Vector<uint8_t> shapingBytes{};
+        if (!BuildFontFaceShapingBytes(shapingBytes, { sourceBlob.Data(), sourceBlob.Size() }, asset.GetFaceIndex()))
+        {
+            HE_LOG_ERROR(he_scribe,
+                HE_MSG("Failed to build scribe font shaping blob."),
+                HE_KV(asset_uuid, assets::AssetUuid(ctx.asset.GetUuid())),
+                HE_KV(asset_name, ctx.asset.GetName()),
+                HE_KV(face_index, asset.GetFaceIndex()));
+            return false;
+        }
+
         FontFaceShapingData::Builder shaping = blob.GetShaping();
         shaping.SetFaceIndex(asset.GetFaceIndex());
-        shaping.SetSourceBytes(blobBuilder.AddBlob({ sourceBlob.Data(), sourceBlob.Size() }));
+        shaping.SetSourceBytes(blobBuilder.AddBlob(Span<const uint8_t>(shapingBytes)));
 
         const ScribeFontFace::Metrics::Reader assetMetrics = asset.GetMetrics();
         FillFontFaceRuntimeMetadata(
@@ -110,11 +121,11 @@ namespace he::scribe::editor
             assetMetrics.GetCapHeight(),
             asset.GetHasColorGlyphs());
 
-        FillFontFaceResourceRenderData(blob.GetRender(), renderData);
-        FillFontFaceResourceOutlineData(blob.GetOutline(), renderData);
+        FillFontFaceResourceFillData(blob.GetFill(), renderData);
+        FillFontFaceResourceStrokeData(blob.GetStroke(), renderData);
         FillFontFaceResourcePaintData(blob.GetPaint(), renderData.paint);
-        blob.SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
-        blob.SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
+        blob.GetFill().SetCurveData(blobBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
+        blob.GetFill().SetBandData(blobBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
         blobBuilder.SetRoot(blob);
 
         r = ctx.db.AddResource(ctx.asset.GetUuid(), RuntimeResourceId, Span<const schema::Word>(blobBuilder).AsBytes());

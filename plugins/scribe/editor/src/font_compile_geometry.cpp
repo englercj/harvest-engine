@@ -3,6 +3,7 @@
 #include "font_compile_geometry.h"
 
 #include "curve_compile_utils.h"
+#include "stroke_compile_utils.h"
 
 #include "he/core/log.h"
 #include "he/core/math.h"
@@ -202,19 +203,21 @@ namespace he::scribe::editor
         public:
             explicit GlyphOutlineBuilder(float cubicTolerance)
                 : m_builder(cubicTolerance)
+                , m_strokeBuilder(cubicTolerance)
             {
             }
 
             bool Build(
                 Vector<CurveData>& outCurves,
-                Vector<CompiledOutlinePoint>& outPoints,
-                Vector<CompiledOutlineCommand>& outCommands,
+                Vector<StrokeSourcePoint>& outPoints,
+                Vector<StrokeSourceCommand>& outCommands,
                 const FT_Outline& outline)
             {
                 outCurves.Clear();
                 outPoints.Clear();
                 outCommands.Clear();
                 m_builder.Clear();
+                m_strokeBuilder.Clear();
                 m_hasCurrent = false;
                 m_hasContour = false;
 
@@ -233,37 +236,17 @@ namespace he::scribe::editor
                 }
 
                 outCurves = Move(m_builder.Curves());
-                outPoints = Move(m_points);
-                outCommands = Move(m_commands);
+                outPoints = Move(m_strokeBuilder.Points());
+                outCommands = Move(m_strokeBuilder.Commands());
                 m_hasCurrent = false;
                 m_hasContour = false;
                 return err == 0;
             }
 
         private:
-            void AppendPoint(const Point2& point)
-            {
-                CompiledOutlinePoint& dst = m_points.EmplaceBack();
-                dst.x = point.x;
-                dst.y = point.y;
-            }
-
-            void AppendCommand(OutlineCommandType type, const Point2* points, uint32_t pointCount)
-            {
-                CompiledOutlineCommand& command = m_commands.EmplaceBack();
-                command.type = type;
-                command.firstPoint = m_points.Size();
-                for (uint32_t pointIndex = 0; pointIndex < pointCount; ++pointIndex)
-                {
-                    AppendPoint(points[pointIndex]);
-                }
-            }
-
             void AppendClose()
             {
-                CompiledOutlineCommand& command = m_commands.EmplaceBack();
-                command.type = OutlineCommandType::Close;
-                command.firstPoint = m_points.Size();
+                m_strokeBuilder.AppendClose();
             }
 
             static int MoveTo(const FT_Vector* to, void* user)
@@ -277,7 +260,7 @@ namespace he::scribe::editor
                 self.m_current = ToPoint(*to);
                 self.m_hasCurrent = true;
                 self.m_hasContour = true;
-                self.AppendCommand(OutlineCommandType::MoveTo, &self.m_current, 1);
+                self.m_strokeBuilder.AppendMoveTo(self.m_current);
                 return 0;
             }
 
@@ -286,7 +269,7 @@ namespace he::scribe::editor
                 GlyphOutlineBuilder& self = *static_cast<GlyphOutlineBuilder*>(user);
                 const Point2 target = ToPoint(*to);
                 self.AddLine(self.m_current, target);
-                self.AppendCommand(OutlineCommandType::LineTo, &target, 1);
+                self.m_strokeBuilder.AppendLineTo(target);
                 self.m_current = target;
                 return 0;
             }
@@ -297,8 +280,7 @@ namespace he::scribe::editor
                 const Point2 p2 = ToPoint(*control);
                 const Point2 p3 = ToPoint(*to);
                 self.AddQuadratic(self.m_current, p2, p3);
-                const Point2 points[] = { p2, p3 };
-                self.AppendCommand(OutlineCommandType::QuadraticTo, points, HE_LENGTH_OF(points));
+                self.m_strokeBuilder.AppendQuadraticTo(p2, p3);
                 self.m_current = p3;
                 return 0;
             }
@@ -309,9 +291,8 @@ namespace he::scribe::editor
                 const Point2 p1 = ToPoint(*control1);
                 const Point2 p2 = ToPoint(*control2);
                 const Point2 p3 = ToPoint(*to);
-                self.FlattenCubic(self.m_current, p1, p2, p3, 0);
-                const Point2 points[] = { p1, p2, p3 };
-                self.AppendCommand(OutlineCommandType::CubicTo, points, HE_LENGTH_OF(points));
+                self.AddCubic(self.m_current, p1, p2, p3);
+                self.m_strokeBuilder.AppendCubicTo(p1, p2, p3);
                 self.m_current = p3;
                 return 0;
             }
@@ -326,15 +307,14 @@ namespace he::scribe::editor
                 m_builder.AddQuadratic(p1, p2, p3);
             }
 
-            void FlattenCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3, [[maybe_unused]] uint32_t depth)
+            void AddCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3)
             {
                 m_builder.AddCubic(p0, p1, p2, p3);
             }
 
         private:
             CurveBuilder m_builder;
-            Vector<CompiledOutlinePoint> m_points{};
-            Vector<CompiledOutlineCommand> m_commands{};
+            StrokeSourceBuilder m_strokeBuilder;
             Point2 m_current{};
             bool m_hasCurrent{ false };
             bool m_hasContour{ false };
@@ -807,9 +787,9 @@ namespace he::scribe::editor
 
             GlyphOutlineBuilder outlineBuilder(out.bandOverlapEpsilon);
             Vector<CurveData> curves{};
-            Vector<CompiledOutlinePoint> outlinePoints{};
-            Vector<CompiledOutlineCommand> outlineCommands{};
-            if (!outlineBuilder.Build(curves, outlinePoints, outlineCommands, ftFace->glyph->outline))
+            Vector<StrokeSourcePoint> strokePoints{};
+            Vector<StrokeSourceCommand> strokeCommands{};
+            if (!outlineBuilder.Build(curves, strokePoints, strokeCommands, ftFace->glyph->outline))
             {
                 HE_LOG_ERROR(he_scribe,
                     HE_MSG("Failed to decompose glyph outline for scribe font compile."),
@@ -824,31 +804,17 @@ namespace he::scribe::editor
             }
 
             glyphEntry.hasGeometry = true;
-            glyphEntry.firstOutlineCommand = out.outlineCommands.Size();
-            glyphEntry.outlineCommandCount = outlineCommands.Size();
+            glyphEntry.firstStrokeCommand = out.strokeCommands.Size();
+            glyphEntry.strokeCommandCount = strokeCommands.Size();
             glyphEntry.boundsMinX = curves[0].minX;
             glyphEntry.boundsMinY = curves[0].minY;
             glyphEntry.boundsMaxX = curves[0].maxX;
             glyphEntry.boundsMaxY = curves[0].maxY;
-
-            const uint32_t pointBase = out.outlinePoints.Size();
-            for (CompiledOutlineCommand& command : outlineCommands)
-            {
-                if (command.type != OutlineCommandType::Close)
-                {
-                    command.firstPoint += pointBase;
-                }
-            }
-
-            if (!outlinePoints.IsEmpty())
-            {
-                out.outlinePoints.Insert(out.outlinePoints.Size(), outlinePoints.Data(), outlinePoints.Size());
-            }
-
-            if (!outlineCommands.IsEmpty())
-            {
-                out.outlineCommands.Insert(out.outlineCommands.Size(), outlineCommands.Data(), outlineCommands.Size());
-            }
+            AppendCompiledStrokeData(
+                out.strokePoints,
+                out.strokeCommands,
+                Span<const StrokeSourcePoint>(strokePoints.Data(), strokePoints.Size()),
+                Span<const StrokeSourceCommand>(strokeCommands.Data(), strokeCommands.Size()));
 
             for (uint32_t curveIndex = 0; curveIndex < curves.Size(); ++curveIndex)
             {

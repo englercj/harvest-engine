@@ -16,24 +16,23 @@ enum FillRule
     EvenOdd @1;
 }
 
-enum OutlineCommandType
+enum StrokeCommandType
 {
     MoveTo @0;
     LineTo @1;
     QuadraticTo @2;
-    CubicTo @3;
-    Close @4;
+    Close @3;
 }
 
-struct OutlinePoint
+struct StrokePoint
 {
-    x @0 :float32;
-    y @1 :float32;
+    x @0 :int32;
+    y @1 :int32;
 }
 
-struct OutlineCommand
+struct StrokeCommand
 {
-    type @0 :OutlineCommandType;
+    type @0 :StrokeCommandType;
     firstPoint @1 :uint32;
 }
 
@@ -94,8 +93,8 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
         fillRule @14 :FillRule;
         hasGeometry @15 :bool;
         hasColorLayers @16 :bool;
-        firstOutlineCommand @17 :uint32;
-        outlineCommandCount @18 :uint32;
+        firstStrokeCommand @17 :uint32;
+        strokeCommandCount @18 :uint32;
     }
 
     struct PaletteColor
@@ -142,30 +141,29 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
             sourceBytes @1 :Blob;
         }
 
-        curveData @2 :Blob;
-        bandData @3 :Blob;
-
         paint :group
         {
-            defaultPaletteIndex @4 :uint32;
-            palettes @5 :Palette[];
-            colorGlyphs @6 :ColorGlyph[];
-            layers @7 :ColorGlyphLayer[];
+            defaultPaletteIndex @2 :uint32;
+            palettes @3 :Palette[];
+            colorGlyphs @4 :ColorGlyph[];
+            layers @5 :ColorGlyphLayer[];
         }
 
         metadata :group
         {
-            glyphCount @8 :uint32;
-            unitsPerEm @9 :uint32;
-            ascender @10 :int32;
-            descender @11 :int32;
-            lineHeight @12 :int32;
-            capHeight @13 :int32;
-            hasColorGlyphs @14 :bool;
+            glyphCount @6 :uint32;
+            unitsPerEm @7 :uint32;
+            ascender @8 :int32;
+            descender @9 :int32;
+            lineHeight @10 :int32;
+            capHeight @11 :int32;
+            hasColorGlyphs @12 :bool;
         }
 
-        render :group
+        fill :group
         {
+            curveData @13 :Blob;
+            bandData @14 :Blob;
             curveTextureWidth @15 :uint32;
             curveTextureHeight @16 :uint32;
             bandTextureWidth @17 :uint32;
@@ -174,10 +172,11 @@ struct ScribeFontFace $he.assets.AssetType $Display.ImportOnly $Display.Descript
             glyphs @20 :GlyphRenderData[];
         }
 
-        outline :group
+        stroke :group
         {
-            points @21 :OutlinePoint[];
-            commands @22 :OutlineCommand[];
+            pointScale @21 :float32;
+            points @22 :StrokePoint[];
+            commands @23 :StrokeCommand[];
         }
     }
 
@@ -227,8 +226,8 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
         bandMaxX @10 :uint32;
         bandMaxY @11 :uint32;
         fillRule @12 :FillRule;
-        firstOutlineCommand @13 :uint32;
-        outlineCommandCount @14 :uint32;
+        firstStrokeCommand @13 :uint32;
+        strokeCommandCount @14 :uint32;
     }
 
     struct Layer
@@ -244,28 +243,27 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
     {
         const ResourceName :String = "he.scribe.vector_image.runtime_resource";
 
-        curveData @0 :Blob;
-        bandData @1 :Blob;
-
         paint :group
         {
-            layers @2 :Layer[];
+            layers @0 :Layer[];
         }
 
         metadata :group
         {
-            sourceViewBoxMinX @3 :float32;
-            sourceViewBoxMinY @4 :float32;
-            sourceViewBoxWidth @5 :float32;
-            sourceViewBoxHeight @6 :float32;
-            sourceBoundsMinX @7 :float32;
-            sourceBoundsMinY @8 :float32;
-            sourceBoundsMaxX @9 :float32;
-            sourceBoundsMaxY @10 :float32;
+            sourceViewBoxMinX @1 :float32;
+            sourceViewBoxMinY @2 :float32;
+            sourceViewBoxWidth @3 :float32;
+            sourceViewBoxHeight @4 :float32;
+            sourceBoundsMinX @5 :float32;
+            sourceBoundsMinY @6 :float32;
+            sourceBoundsMaxX @7 :float32;
+            sourceBoundsMaxY @8 :float32;
         }
 
-        render :group
+        fill :group
         {
+            curveData @9 :Blob;
+            bandData @10 :Blob;
             curveTextureWidth @11 :uint32;
             curveTextureHeight @12 :uint32;
             bandTextureWidth @13 :uint32;
@@ -274,10 +272,11 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
             shapes @16 :ShapeRenderData[];
         }
 
-        outline :group
+        stroke :group
         {
-            points @17 :OutlinePoint[];
-            commands @18 :OutlineCommand[];
+            pointScale @17 :float32;
+            points @18 :StrokePoint[];
+            commands @19 :StrokeCommand[];
         }
     }
 

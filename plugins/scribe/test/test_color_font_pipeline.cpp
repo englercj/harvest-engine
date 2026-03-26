@@ -87,9 +87,15 @@ namespace
         schema::Builder rootBuilder;
         FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
 
+        Vector<uint8_t> shapingBytes{};
+        if (!BuildFontFaceShapingBytes(shapingBytes, Span<const uint8_t>(fontBytes), faceInfo.faceIndex))
+        {
+            return false;
+        }
+
         FontFaceShapingData::Builder shaping = root.GetShaping();
         shaping.SetFaceIndex(faceInfo.faceIndex);
-        shaping.SetSourceBytes(rootBuilder.AddBlob(fontBytes));
+        shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(shapingBytes)));
 
         FillFontFaceRuntimeMetadata(
             root.GetMetadata(),
@@ -101,11 +107,11 @@ namespace
             faceInfo.capHeight,
             faceInfo.hasColorGlyphs);
 
-        FillFontFaceResourceRenderData(root.GetRender(), renderData);
-        FillFontFaceResourceOutlineData(root.GetOutline(), renderData);
+        FillFontFaceResourceFillData(root.GetFill(), renderData);
+        FillFontFaceResourceStrokeData(root.GetStroke(), renderData);
         FillFontFaceResourcePaintData(root.GetPaint(), renderData.paint);
-        root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
-        root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
+        root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
+        root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
         rootBuilder.SetRoot(root);
 
         storage = Span<const schema::Word>(rootBuilder);

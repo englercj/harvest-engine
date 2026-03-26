@@ -16,7 +16,7 @@ namespace he::scribe
         }
 
         const VectorImageResourceReader image = desc.context->GetVectorImage(desc.image);
-        if (!image.IsValid() || !image.GetRender().IsValid() || !image.GetPaint().IsValid())
+        if (!image.IsValid() || !image.GetFill().IsValid() || !image.GetPaint().IsValid())
         {
             return false;
         }

@@ -54,11 +54,11 @@ namespace
         VectorImageResource::Builder root = rootBuilder.AddStruct<VectorImageResource>();
 
         FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
-        FillVectorImageResourceRenderData(root.GetRender(), imageData);
-        FillVectorImageResourceOutlineData(root.GetOutline(), imageData);
+        FillVectorImageResourceFillData(root.GetFill(), imageData);
+        FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
         FillVectorImageResourcePaintData(root.GetPaint(), imageData);
-        root.SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
-        root.SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
+        root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
+        root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
         rootBuilder.SetRoot(root);
 
         storage = Span<const schema::Word>(rootBuilder);
@@ -247,17 +247,17 @@ HE_TEST(scribe, vector_image_pipeline, loads_compiled_vector_blob)
     HE_ASSERT(BuildLoadedVectorImage(storage, image));
 
     const VectorImageRuntimeMetadata::Reader metadata = image.GetMetadata();
-    const VectorImageRenderData::Reader render = image.GetRender();
+    const VectorImageFillData::Reader fill = image.GetFill();
     const VectorImagePaintData::Reader paint = image.GetPaint();
 
     HE_EXPECT(image.IsValid());
     HE_EXPECT(metadata.IsValid());
-    HE_EXPECT(render.IsValid());
+    HE_EXPECT(fill.IsValid());
     HE_EXPECT(paint.IsValid());
-    HE_EXPECT_GT(image.GetOutline().GetCommands().Size(), 0u);
-    HE_EXPECT_GT(image.GetOutline().GetPoints().Size(), 0u);
+    HE_EXPECT_GT(image.GetStroke().GetCommands().Size(), 0u);
+    HE_EXPECT_GT(image.GetStroke().GetPoints().Size(), 0u);
     HE_EXPECT_EQ(metadata.GetSourceViewBoxWidth(), 180.0f);
-    HE_EXPECT_EQ(render.GetShapes().Size(), 3u);
+    HE_EXPECT_EQ(fill.GetShapes().Size(), 3u);
     HE_EXPECT_EQ(paint.GetLayers().Size(), 3u);
 }
 

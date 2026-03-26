@@ -12,20 +12,20 @@ namespace he::scribe
     {
         Hash<WyHash> hash{};
 
-        const schema::Blob::Reader curveData = fontFace.GetCurveData();
+        const FontFaceFillData::Reader fill = fontFace.GetFill();
+        const schema::Blob::Reader curveData = fill.GetCurveData();
         hash.Update(curveData.Data(), curveData.Size());
 
-        const schema::Blob::Reader bandData = fontFace.GetBandData();
+        const schema::Blob::Reader bandData = fill.GetBandData();
         hash.Update(bandData.Data(), bandData.Size());
 
-        const FontFaceRenderData::Reader render = fontFace.GetRender();
-        hash.Update(render.GetCurveTextureWidth());
-        hash.Update(render.GetCurveTextureHeight());
-        hash.Update(render.GetBandTextureWidth());
-        hash.Update(render.GetBandTextureHeight());
-        hash.Update(render.GetBandOverlapEpsilon());
+        hash.Update(fill.GetCurveTextureWidth());
+        hash.Update(fill.GetCurveTextureHeight());
+        hash.Update(fill.GetBandTextureWidth());
+        hash.Update(fill.GetBandTextureHeight());
+        hash.Update(fill.GetBandOverlapEpsilon());
 
-        const schema::List<FontFaceGlyphRenderData>::Reader glyphs = render.GetGlyphs();
+        const schema::List<FontFaceGlyphRenderData>::Reader glyphs = fill.GetGlyphs();
         hash.Update(glyphs.Size());
         for (uint32_t glyphIndex = 0; glyphIndex < glyphs.Size(); ++glyphIndex)
         {
@@ -47,6 +47,8 @@ namespace he::scribe
             hash.Update(static_cast<uint32_t>(glyph.GetFillRule()));
             hash.Update(glyph.GetHasGeometry());
             hash.Update(glyph.GetHasColorLayers());
+            hash.Update(glyph.GetFirstStrokeCommand());
+            hash.Update(glyph.GetStrokeCommandCount());
         }
 
         return hash.Final();
@@ -56,20 +58,20 @@ namespace he::scribe
     {
         Hash<WyHash> hash{};
 
-        const schema::Blob::Reader curveData = image.GetCurveData();
+        const VectorImageFillData::Reader fill = image.GetFill();
+        const schema::Blob::Reader curveData = fill.GetCurveData();
         hash.Update(curveData.Data(), curveData.Size());
 
-        const schema::Blob::Reader bandData = image.GetBandData();
+        const schema::Blob::Reader bandData = fill.GetBandData();
         hash.Update(bandData.Data(), bandData.Size());
 
-        const VectorImageRenderData::Reader render = image.GetRender();
-        hash.Update(render.GetCurveTextureWidth());
-        hash.Update(render.GetCurveTextureHeight());
-        hash.Update(render.GetBandTextureWidth());
-        hash.Update(render.GetBandTextureHeight());
-        hash.Update(render.GetBandOverlapEpsilon());
+        hash.Update(fill.GetCurveTextureWidth());
+        hash.Update(fill.GetCurveTextureHeight());
+        hash.Update(fill.GetBandTextureWidth());
+        hash.Update(fill.GetBandTextureHeight());
+        hash.Update(fill.GetBandOverlapEpsilon());
 
-        const schema::List<VectorImageShapeRenderData>::Reader shapes = render.GetShapes();
+        const schema::List<VectorImageShapeRenderData>::Reader shapes = fill.GetShapes();
         hash.Update(shapes.Size());
         for (uint32_t shapeIndex = 0; shapeIndex < shapes.Size(); ++shapeIndex)
         {
@@ -87,6 +89,8 @@ namespace he::scribe
             hash.Update(shape.GetBandMaxX());
             hash.Update(shape.GetBandMaxY());
             hash.Update(static_cast<uint32_t>(shape.GetFillRule()));
+            hash.Update(shape.GetFirstStrokeCommand());
+            hash.Update(shape.GetStrokeCommandCount());
         }
 
         return hash.Final();

@@ -232,13 +232,13 @@ namespace he
                     continue;
                 }
 
-                const scribe::FontFaceRenderData::Reader render = fontFace.GetRender();
-                if (!render.IsValid())
+                const scribe::FontFaceFillData::Reader fill = fontFace.GetFill();
+                if (!fill.IsValid())
                 {
                     continue;
                 }
 
-                const schema::List<scribe::FontFaceGlyphRenderData>::Reader glyphs = render.GetGlyphs();
+                const schema::List<scribe::FontFaceGlyphRenderData>::Reader glyphs = fill.GetGlyphs();
                 if (draw.glyphIndex >= glyphs.Size())
                 {
                     continue;
@@ -443,9 +443,14 @@ namespace he
 
             schema::Builder rootBuilder;
             scribe::FontFaceResource::Builder root = rootBuilder.AddStruct<scribe::FontFaceResource>();
+            Vector<uint8_t> shapingBytes{};
+            if (!scribe::editor::BuildFontFaceShapingBytes(shapingBytes, Span<const uint8_t>(fontBytes), faceInfo.faceIndex))
+            {
+                return false;
+            }
             scribe::FontFaceShapingData::Builder shaping = root.GetShaping();
             shaping.SetFaceIndex(faceInfo.faceIndex);
-            shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(fontBytes)));
+            shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(shapingBytes)));
 
             scribe::editor::FillFontFaceRuntimeMetadata(
                 root.GetMetadata(),
@@ -457,11 +462,11 @@ namespace he
                 faceInfo.capHeight,
                 faceInfo.hasColorGlyphs);
 
-            scribe::editor::FillFontFaceResourceRenderData(root.GetRender(), renderData);
-            scribe::editor::FillFontFaceResourceOutlineData(root.GetOutline(), renderData);
+            scribe::editor::FillFontFaceResourceFillData(root.GetFill(), renderData);
+            scribe::editor::FillFontFaceResourceStrokeData(root.GetStroke(), renderData);
             scribe::editor::FillFontFaceResourcePaintData(root.GetPaint(), renderData.paint);
-            root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
-            root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
+            root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
+            root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
             rootBuilder.SetRoot(root);
 
             storage = Span<const schema::Word>(rootBuilder);
@@ -500,11 +505,11 @@ namespace he
             schema::Builder rootBuilder;
             scribe::VectorImageResource::Builder root = rootBuilder.AddStruct<scribe::VectorImageResource>();
             scribe::editor::FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
-            scribe::editor::FillVectorImageResourceRenderData(root.GetRender(), imageData);
-            scribe::editor::FillVectorImageResourceOutlineData(root.GetOutline(), imageData);
+            scribe::editor::FillVectorImageResourceFillData(root.GetFill(), imageData);
+            scribe::editor::FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
             scribe::editor::FillVectorImageResourcePaintData(root.GetPaint(), imageData);
-            root.SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
-            root.SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
+            root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
+            root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
             rootBuilder.SetRoot(root);
 
             storage = Span<const schema::Word>(rootBuilder);

@@ -119,17 +119,17 @@ namespace he::scribe
 
             atlas = Allocator::GetDefault().New<GlyphAtlas>();
 
-            const auto render = reader.GetRender();
-            const schema::Blob::Reader curveData = reader.GetCurveData();
-            const schema::Blob::Reader bandData = reader.GetBandData();
+            const auto fill = reader.GetFill();
+            const schema::Blob::Reader curveData = fill.GetCurveData();
+            const schema::Blob::Reader bandData = fill.GetBandData();
             TextureDataDesc curveTexture{};
             curveTexture.data = curveData.Data();
-            curveTexture.size = { render.GetCurveTextureWidth(), render.GetCurveTextureHeight() };
-            curveTexture.rowPitch = render.GetCurveTextureWidth() * sizeof(PackedCurveTexel);
+            curveTexture.size = { fill.GetCurveTextureWidth(), fill.GetCurveTextureHeight() };
+            curveTexture.rowPitch = fill.GetCurveTextureWidth() * sizeof(PackedCurveTexel);
             TextureDataDesc bandTexture{};
             bandTexture.data = bandData.Data();
-            bandTexture.size = { render.GetBandTextureWidth(), render.GetBandTextureHeight() };
-            bandTexture.rowPitch = render.GetBandTextureWidth() * sizeof(PackedBandTexel);
+            bandTexture.size = { fill.GetBandTextureWidth(), fill.GetBandTextureHeight() };
+            bandTexture.rowPitch = fill.GetBandTextureWidth() * sizeof(PackedBandTexel);
 
             if (!UploadTexturePair2D(
                     device,
@@ -468,7 +468,7 @@ namespace he::scribe
             return nullptr;
         }
 
-        hb_face_t* face = hb_face_create(blob, (*fontFace)->resource.GetShaping().GetFaceIndex());
+        hb_face_t* face = hb_face_create(blob, 0);
         if (!face)
         {
             hb_blob_destroy(blob);
@@ -580,7 +580,7 @@ namespace he::scribe
             return false;
         }
 
-        if (shapeIndex >= (*image)->resource.GetRender().GetShapes().Size())
+        if (shapeIndex >= (*image)->resource.GetFill().GetShapes().Size())
         {
             return false;
         }
@@ -617,7 +617,7 @@ namespace he::scribe
             return false;
         }
 
-        if (shapeIndex >= (*image)->resource.GetRender().GetShapes().Size())
+        if (shapeIndex >= (*image)->resource.GetFill().GetShapes().Size())
         {
             return false;
         }

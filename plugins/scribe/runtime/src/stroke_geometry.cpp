@@ -12,7 +12,7 @@ namespace he::scribe
     {
         constexpr uint32_t CurveTextureWidth = 4096;
         constexpr uint32_t MaxBandCount = 8;
-        constexpr uint32_t MaxCubicSubdivisionDepth = 8;
+        constexpr uint32_t MaxCurveSubdivisionDepth = 8;
         constexpr float DegenerateLineLengthSq = 1.0e-6f;
         constexpr float DegenerateCurveExtent = 1.0e-4f;
         constexpr float Pi = 3.14159265358979323846f;
@@ -387,7 +387,7 @@ namespace he::scribe
             float toleranceSq,
             uint32_t depth)
         {
-            if ((depth >= MaxCubicSubdivisionDepth) || (DistanceToLineSq(p1, p0, p2) <= toleranceSq))
+            if ((depth >= MaxCurveSubdivisionDepth) || (DistanceToLineSq(p1, p0, p2) <= toleranceSq))
             {
                 AppendPointUnique(out, p2);
                 return;
@@ -401,38 +401,11 @@ namespace he::scribe
             FlattenQuadratic(out, p012, p12, p2, toleranceSq, depth + 1);
         }
 
-        void FlattenCubic(
-            Vector<Point2>& out,
-            const Point2& p0,
-            const Point2& p1,
-            const Point2& p2,
-            const Point2& p3,
-            float toleranceSq,
-            uint32_t depth)
-        {
-            const float d1 = DistanceToLineSq(p1, p0, p3);
-            const float d2 = DistanceToLineSq(p2, p0, p3);
-            if ((depth >= MaxCubicSubdivisionDepth) || (Max(d1, d2) <= toleranceSq))
-            {
-                AppendPointUnique(out, p3);
-                return;
-            }
-
-            const Point2 p01 = LerpPoint(p0, p1, 0.5f);
-            const Point2 p12 = LerpPoint(p1, p2, 0.5f);
-            const Point2 p23 = LerpPoint(p2, p3, 0.5f);
-            const Point2 p012 = LerpPoint(p01, p12, 0.5f);
-            const Point2 p123 = LerpPoint(p12, p23, 0.5f);
-            const Point2 p0123 = LerpPoint(p012, p123, 0.5f);
-
-            FlattenCubic(out, p0, p01, p012, p0123, toleranceSq, depth + 1);
-            FlattenCubic(out, p0123, p123, p23, p3, toleranceSq, depth + 1);
-        }
-
         bool DecodeStrokePaths(
             Vector<StrokePath>& outPaths,
-            schema::List<OutlinePoint>::Reader points,
-            schema::List<OutlineCommand>::Reader commands,
+            float pointScale,
+            schema::List<StrokePoint>::Reader points,
+            schema::List<StrokeCommand>::Reader commands,
             uint32_t firstCommand,
             uint32_t commandCount,
             float flattenTolerance)
@@ -453,9 +426,9 @@ namespace he::scribe
                     return false;
                 }
 
-                const OutlinePoint::Reader point = points[pointIndex];
-                outPoint.x = point.GetX();
-                outPoint.y = point.GetY();
+                const StrokePoint::Reader point = points[pointIndex];
+                outPoint.x = static_cast<float>(point.GetX()) * pointScale;
+                outPoint.y = static_cast<float>(point.GetY()) * pointScale;
                 return true;
             };
 
@@ -464,11 +437,11 @@ namespace he::scribe
 
             for (uint32_t commandOffset = 0; commandOffset < commandCount; ++commandOffset)
             {
-                const OutlineCommand::Reader command = commands[firstCommand + commandOffset];
+                const StrokeCommand::Reader command = commands[firstCommand + commandOffset];
                 const uint32_t pointIndex = command.GetFirstPoint();
                 switch (command.GetType())
                 {
-                    case OutlineCommandType::MoveTo:
+                    case StrokeCommandType::MoveTo:
                     {
                         if (!currentPath.points.IsEmpty())
                         {
@@ -487,7 +460,7 @@ namespace he::scribe
                         break;
                     }
 
-                    case OutlineCommandType::LineTo:
+                    case StrokeCommandType::LineTo:
                     {
                         if (!hasCurrent)
                         {
@@ -505,7 +478,7 @@ namespace he::scribe
                         break;
                     }
 
-                    case OutlineCommandType::QuadraticTo:
+                    case StrokeCommandType::QuadraticTo:
                     {
                         if (!hasCurrent)
                         {
@@ -524,27 +497,7 @@ namespace he::scribe
                         break;
                     }
 
-                    case OutlineCommandType::CubicTo:
-                    {
-                        if (!hasCurrent)
-                        {
-                            return false;
-                        }
-
-                        Point2 c1{};
-                        Point2 c2{};
-                        Point2 point{};
-                        if (!readPoint(pointIndex, c1) || !readPoint(pointIndex + 1, c2) || !readPoint(pointIndex + 2, point))
-                        {
-                            return false;
-                        }
-
-                        FlattenCubic(currentPath.points, currentPoint, c1, c2, point, toleranceSq, 0);
-                        currentPoint = point;
-                        break;
-                    }
-
-                    case OutlineCommandType::Close:
+                    case StrokeCommandType::Close:
                         if (!currentPath.points.IsEmpty())
                         {
                             FinalizeStrokePath(outPaths, currentPath, true);
@@ -1026,8 +979,9 @@ namespace he::scribe
 
     bool BuildStrokedShapeData(
         StrokedShapeData& out,
-        schema::List<OutlinePoint>::Reader points,
-        schema::List<OutlineCommand>::Reader commands,
+        float pointScale,
+        schema::List<StrokePoint>::Reader points,
+        schema::List<StrokeCommand>::Reader commands,
         uint32_t firstCommand,
         uint32_t commandCount,
         const StrokeStyle& style)
@@ -1040,7 +994,7 @@ namespace he::scribe
 
         Vector<StrokePath> paths{};
         const float flattenTolerance = Max(style.width * 0.05f, 0.25f);
-        if (!DecodeStrokePaths(paths, points, commands, firstCommand, commandCount, flattenTolerance))
+        if (!DecodeStrokePaths(paths, pointScale, points, commands, firstCommand, commandCount, flattenTolerance))
         {
             return false;
         }

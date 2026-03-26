@@ -31,8 +31,9 @@ namespace he::scribe
 
     bool BuildStrokedShapeData(
         StrokedShapeData& out,
-        schema::List<OutlinePoint>::Reader points,
-        schema::List<OutlineCommand>::Reader commands,
+        float pointScale,
+        schema::List<StrokePoint>::Reader points,
+        schema::List<StrokeCommand>::Reader commands,
         uint32_t firstCommand,
         uint32_t commandCount,
         const StrokeStyle& style);

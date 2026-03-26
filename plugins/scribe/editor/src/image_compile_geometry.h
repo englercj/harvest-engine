@@ -28,8 +28,8 @@ namespace he::scribe::editor
         uint32_t bandMaxX{ 0 };
         uint32_t bandMaxY{ 0 };
         FillRule fillRule{ FillRule::NonZero };
-        uint32_t firstOutlineCommand{ 0 };
-        uint32_t outlineCommandCount{ 0 };
+        uint32_t firstStrokeCommand{ 0 };
+        uint32_t strokeCommandCount{ 0 };
     };
 
     struct CompiledVectorImageLayerEntry
@@ -45,8 +45,8 @@ namespace he::scribe::editor
     {
         Vector<PackedCurveTexel> curveTexels{};
         Vector<PackedBandTexel> bandTexels{};
-        Vector<CompiledOutlinePoint> outlinePoints{};
-        Vector<CompiledOutlineCommand> outlineCommands{};
+        Vector<CompiledStrokePoint> strokePoints{};
+        Vector<CompiledStrokeCommand> strokeCommands{};
         Vector<CompiledVectorShapeRenderEntry> shapes{};
         Vector<CompiledVectorImageLayerEntry> layers{};
         uint32_t curveTextureWidth{ 0 };

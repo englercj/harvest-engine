@@ -104,7 +104,42 @@ namespace he::scribe::editor
             return fallback;
         }
 
-        bool ExtractFontFaceSourceBytes(Vector<uint8_t>& out, FT_Face ftFace)
+        constexpr uint32_t ShapingTableAllowlist[] =
+        {
+            FT_MAKE_TAG('B', 'A', 'S', 'E'),
+            FT_MAKE_TAG('G', 'D', 'E', 'F'),
+            FT_MAKE_TAG('G', 'P', 'O', 'S'),
+            FT_MAKE_TAG('G', 'S', 'U', 'B'),
+            FT_MAKE_TAG('J', 'S', 'T', 'F'),
+            FT_MAKE_TAG('O', 'S', '/', '2'),
+            FT_MAKE_TAG('c', 'm', 'a', 'p'),
+            FT_MAKE_TAG('h', 'e', 'a', 'd'),
+            FT_MAKE_TAG('h', 'h', 'e', 'a'),
+            FT_MAKE_TAG('h', 'm', 't', 'x'),
+            FT_MAKE_TAG('k', 'e', 'r', 'n'),
+            FT_MAKE_TAG('m', 'a', 'x', 'p'),
+            FT_MAKE_TAG('n', 'a', 'm', 'e'),
+        };
+
+        bool ShouldKeepFontTable(uint32_t tag, Span<const uint32_t> allowedTags)
+        {
+            if (allowedTags.IsEmpty())
+            {
+                return true;
+            }
+
+            for (uint32_t allowedTag : allowedTags)
+            {
+                if (allowedTag == tag)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool ExtractFontFaceSourceBytes(Vector<uint8_t>& out, FT_Face ftFace, Span<const uint32_t> allowedTags = {})
         {
             out.Clear();
 
@@ -124,6 +159,11 @@ namespace he::scribe::editor
                 FT_ULong tag = 0;
                 FT_ULong length = 0;
                 if (FT_Sfnt_Table_Info(ftFace, static_cast<FT_UInt>(tableIndex), &tag, &length) != 0 || length == 0)
+                {
+                    continue;
+                }
+
+                if (!ShouldKeepFontTable(static_cast<uint32_t>(tag), allowedTags))
                 {
                     continue;
                 }
@@ -429,6 +469,43 @@ namespace he::scribe::editor
         }
 
         return ExtractFontFaceSourceBytes(out, face.Get());
+    }
+
+    bool BuildFontFaceShapingBytes(Vector<uint8_t>& out, Span<const uint8_t> sourceBytes, uint32_t faceIndex)
+    {
+        out.Clear();
+        if (sourceBytes.IsEmpty())
+        {
+            return false;
+        }
+
+        Vector<uint8_t> ownedSourceBytes{};
+        ownedSourceBytes.Insert(0, sourceBytes.Data(), sourceBytes.Size());
+
+        FreeTypeLibrary library;
+        if (!library.Initialize())
+        {
+            return false;
+        }
+
+        FreeTypeFace face;
+        if (!face.Load(library.Get(), ownedSourceBytes, faceIndex))
+        {
+            HE_LOG_ERROR(he_scribe,
+                HE_MSG("Failed to load font face for shaping blob extraction."),
+                HE_KV(face_index, faceIndex));
+            return false;
+        }
+
+        if (!ExtractFontFaceSourceBytes(out, face.Get(), Span<const uint32_t>(ShapingTableAllowlist)))
+        {
+            HE_LOG_ERROR(he_scribe,
+                HE_MSG("Failed to extract shaping-only face bytes for scribe font."),
+                HE_KV(face_index, faceIndex));
+            return false;
+        }
+
+        return !out.IsEmpty();
     }
 
     void FillFontFaceMetrics(FontFaceMetrics::Builder metrics, const FontFaceInfo& info)

@@ -5,12 +5,20 @@
 #include "curve_compile_utils.h"
 #include "stroke_compile_utils.h"
 
+#include "font_import_utils.h"
+
+#include "he/core/file.h"
 #include "he/core/log.h"
 #include "he/core/math.h"
 #include "he/core/string.h"
 #include "he/core/string_ops.h"
 #include "he/core/string_view.h"
+#include "he/core/utf8.h"
 #include "he/core/utils.h"
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_OUTLINE_H
 
 #include <algorithm>
 
@@ -295,6 +303,11 @@ namespace he::scribe::editor
             {
             }
 
+            void Clear()
+            {
+                m_builder.Clear();
+            }
+
             void SetTransform(const Affine2D& transform)
             {
                 m_builder.SetTransform(transform);
@@ -319,6 +332,191 @@ namespace he::scribe::editor
 
         private:
             curve_compile::CurveBuilder m_builder;
+        };
+
+        class FreeTypeLibrary final
+        {
+        public:
+            ~FreeTypeLibrary() noexcept
+            {
+                if (m_library != nullptr)
+                {
+                    FT_Done_FreeType(m_library);
+                }
+            }
+
+            bool Initialize()
+            {
+                const FT_Error err = FT_Init_FreeType(&m_library);
+                if (err != 0)
+                {
+                    HE_LOG_ERROR(he_scribe,
+                        HE_MSG("Failed to initialize FreeType for SVG text compilation."),
+                        HE_KV(error, err));
+                    return false;
+                }
+
+                return true;
+            }
+
+            FT_Library Get() const { return m_library; }
+
+        private:
+            FT_Library m_library{ nullptr };
+        };
+
+        class FreeTypeFace final
+        {
+        public:
+            ~FreeTypeFace() noexcept
+            {
+                if (m_face != nullptr)
+                {
+                    FT_Done_Face(m_face);
+                }
+            }
+
+            bool Load(FT_Library library, Span<const uint8_t> sourceBytes, uint32_t faceIndex)
+            {
+                const FT_Error err = FT_New_Memory_Face(
+                    library,
+                    reinterpret_cast<const FT_Byte*>(sourceBytes.Data()),
+                    static_cast<FT_Long>(sourceBytes.Size()),
+                    static_cast<FT_Long>(faceIndex),
+                    &m_face);
+                if (err != 0)
+                {
+                    HE_LOG_ERROR(he_scribe,
+                        HE_MSG("Failed to load FreeType face for SVG text compilation."),
+                        HE_KV(face_index, faceIndex),
+                        HE_KV(error, err));
+                    return false;
+                }
+
+                return true;
+            }
+
+            FT_Face Get() const { return m_face; }
+
+        private:
+            FT_Face m_face{ nullptr };
+        };
+
+        Point2 ToPoint(const FT_Vector& value)
+        {
+            return {
+                static_cast<float>(value.x),
+                static_cast<float>(value.y)
+            };
+        }
+
+        class SvgTextOutlineBuilder final
+        {
+        public:
+            explicit SvgTextOutlineBuilder(float cubicTolerance)
+                : m_curveBuilder(cubicTolerance)
+                , m_strokeBuilder(cubicTolerance)
+            {
+            }
+
+            bool AppendGlyph(
+                Vector<CurveData>& outCurves,
+                Vector<StrokeSourcePoint>& outPoints,
+                Vector<StrokeSourceCommand>& outCommands,
+                const FT_Outline& outline,
+                const Affine2D& transform)
+            {
+                m_transform = transform;
+                m_curveBuilder.Clear();
+                m_strokeBuilder.Clear();
+                m_hasContour = false;
+                m_current = {};
+
+                FT_Outline_Funcs funcs{};
+                funcs.move_to = &MoveTo;
+                funcs.line_to = &LineTo;
+                funcs.conic_to = &ConicTo;
+                funcs.cubic_to = &CubicTo;
+
+                const FT_Error err = FT_Outline_Decompose(const_cast<FT_Outline*>(&outline), &funcs, this);
+                if (err != 0)
+                {
+                    return false;
+                }
+
+                if (m_hasContour)
+                {
+                    m_strokeBuilder.AppendClose();
+                }
+
+                outCurves.Insert(outCurves.Size(), m_curveBuilder.Curves().Data(), m_curveBuilder.Curves().Size());
+                AppendStrokeSourceData(
+                    outPoints,
+                    outCommands,
+                    Span<const StrokeSourcePoint>(m_strokeBuilder.Points().Data(), m_strokeBuilder.Points().Size()),
+                    Span<const StrokeSourceCommand>(m_strokeBuilder.Commands().Data(), m_strokeBuilder.Commands().Size()));
+                return true;
+            }
+
+        private:
+            Point2 TransformOutlinePoint(const FT_Vector& value) const
+            {
+                return TransformPoint(m_transform, ToPoint(value));
+            }
+
+            static int MoveTo(const FT_Vector* to, void* user)
+            {
+                SvgTextOutlineBuilder& self = *static_cast<SvgTextOutlineBuilder*>(user);
+                if (self.m_hasContour)
+                {
+                    self.m_strokeBuilder.AppendClose();
+                }
+
+                self.m_current = self.TransformOutlinePoint(*to);
+                self.m_strokeBuilder.AppendMoveTo(self.m_current);
+                self.m_hasContour = true;
+                return 0;
+            }
+
+            static int LineTo(const FT_Vector* to, void* user)
+            {
+                SvgTextOutlineBuilder& self = *static_cast<SvgTextOutlineBuilder*>(user);
+                const Point2 target = self.TransformOutlinePoint(*to);
+                self.m_curveBuilder.AddLine(self.m_current, target);
+                self.m_strokeBuilder.AppendLineTo(target);
+                self.m_current = target;
+                return 0;
+            }
+
+            static int ConicTo(const FT_Vector* control, const FT_Vector* to, void* user)
+            {
+                SvgTextOutlineBuilder& self = *static_cast<SvgTextOutlineBuilder*>(user);
+                const Point2 c = self.TransformOutlinePoint(*control);
+                const Point2 target = self.TransformOutlinePoint(*to);
+                self.m_curveBuilder.AddQuadratic(self.m_current, c, target);
+                self.m_strokeBuilder.AppendQuadraticTo(c, target);
+                self.m_current = target;
+                return 0;
+            }
+
+            static int CubicTo(const FT_Vector* control1, const FT_Vector* control2, const FT_Vector* to, void* user)
+            {
+                SvgTextOutlineBuilder& self = *static_cast<SvgTextOutlineBuilder*>(user);
+                const Point2 c1 = self.TransformOutlinePoint(*control1);
+                const Point2 c2 = self.TransformOutlinePoint(*control2);
+                const Point2 target = self.TransformOutlinePoint(*to);
+                self.m_curveBuilder.AddCubic(self.m_current, c1, c2, target);
+                self.m_strokeBuilder.AppendCubicTo(c1, c2, target);
+                self.m_current = target;
+                return 0;
+            }
+
+        private:
+            CurveBuilder m_curveBuilder;
+            StrokeSourceBuilder m_strokeBuilder;
+            Affine2D m_transform{};
+            Point2 m_current{};
+            bool m_hasContour{ false };
         };
 
         [[maybe_unused]] void ZeroCounts(Vector<uint32_t>& counts)
@@ -435,6 +633,102 @@ namespace he::scribe::editor
             }
 
             return { value.Data() + begin, end - begin };
+        }
+
+        StringView TrimQuotes(StringView value)
+        {
+            value = TrimView(value);
+            if ((value.Size() >= 2) && ((value[0] == '"') || (value[0] == '\'')) && (value[value.Size() - 1] == value[0]))
+            {
+                return value.Substring(1, value.Size() - 2);
+            }
+
+            return value;
+        }
+
+        bool ResolveRepoFontPath(String& out, const char* fileName)
+        {
+            static const char* Candidates[] =
+            {
+                "plugins/editor/src/fonts/",
+                "../../../plugins/editor/src/fonts/",
+            };
+
+            for (const char* base : Candidates)
+            {
+                out = base;
+                out += fileName;
+                if (File::Exists(out.Data()))
+                {
+                    return true;
+                }
+            }
+
+            out.Clear();
+            return false;
+        }
+
+        StringView GetPrimaryFontFamilyName(StringView value)
+        {
+            value = TrimView(value);
+            if (const char* comma = value.Find(','))
+            {
+                value = value.Substring(0, static_cast<uint32_t>(comma - value.Data()));
+            }
+
+            return TrimQuotes(value);
+        }
+
+        bool ResolveSvgFontPath(String& out, StringView familyName)
+        {
+            familyName = GetPrimaryFontFamilyName(familyName);
+            if (familyName.IsEmpty()
+                || familyName.EqualToI("sans-serif")
+                || familyName.EqualToI("sans")
+                || familyName.EqualToI("Noto Sans"))
+            {
+                if (ResolveRepoFontPath(out, "NotoSans-Regular.ttf"))
+                {
+                    return true;
+                }
+            }
+
+            if (familyName.EqualToI("monospace")
+                || familyName.EqualToI("mono")
+                || familyName.EqualToI("Noto Mono"))
+            {
+                if (ResolveRepoFontPath(out, "NotoMono-Regular.ttf"))
+                {
+                    return true;
+                }
+            }
+
+            if (familyName.EqualToI("Material Design Icons"))
+            {
+                if (ResolveRepoFontPath(out, "materialdesignicons.ttf"))
+                {
+                    return true;
+                }
+            }
+
+            static const char* WindowsCandidates[] =
+            {
+                "C:/Windows/Fonts/segoeui.ttf",
+                "C:/Windows/Fonts/arial.ttf",
+                "C:/Windows/Fonts/calibri.ttf",
+                "C:/Windows/Fonts/tahoma.ttf",
+            };
+            for (const char* candidate : WindowsCandidates)
+            {
+                if (File::Exists(candidate))
+                {
+                    out = candidate;
+                    return true;
+                }
+            }
+
+            out.Clear();
+            return false;
         }
 
         bool ParseFloat(StringView text, float& out)
@@ -897,12 +1191,14 @@ namespace he::scribe::editor
             bool ParseLineElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
             bool ParsePolylineElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
             bool ParsePolygonElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
+            bool ParseTextElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs, bool selfClosing);
             bool ParseUseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
             bool ParsePathData(
                 CurveBuilder& builder,
                 Vector<StrokeSourcePoint>& outPoints,
                 Vector<StrokeSourceCommand>& outCommands,
                 StringView text);
+            bool ReadTextContents(String& outText, StringView closingTag);
             bool EmitParsedShape(
                 ParsedImage& out,
                 const ParseState& state,
@@ -1141,8 +1437,14 @@ namespace he::scribe::editor
                         return false;
                     }
                 }
-                else if (tagName.EqualToI("text")
-                    || tagName.EqualToI("tspan")
+                else if (tagName.EqualToI("text"))
+                {
+                    if (!ParseTextElement(out, state, attrs, selfClosing))
+                    {
+                        return false;
+                    }
+                }
+                else if (tagName.EqualToI("tspan")
                     || tagName.EqualToI("title")
                     || tagName.EqualToI("desc")
                     || tagName.EqualToI("metadata")
@@ -1862,6 +2164,254 @@ namespace he::scribe::editor
             Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
             Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
             return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+        }
+
+        bool SvgParser::ReadTextContents(String& outText, StringView closingTag)
+        {
+            while (m_cur < m_end)
+            {
+                if ((m_end - m_cur) >= 2 && (m_cur[0] == '<') && (m_cur[1] == '/'))
+                {
+                    m_cur += 2;
+                    const StringView tagName = ParseName();
+                    if (tagName.IsEmpty())
+                    {
+                        return false;
+                    }
+
+                    SkipWhitespace();
+                    if (!Consume('>'))
+                    {
+                        return false;
+                    }
+
+                    return tagName.EqualToI(closingTag);
+                }
+
+                if (*m_cur != '<')
+                {
+                    const char* textBegin = m_cur;
+                    while ((m_cur < m_end) && (*m_cur != '<'))
+                    {
+                        ++m_cur;
+                    }
+
+                    if (m_cur > textBegin)
+                    {
+                        outText += StringView(textBegin, static_cast<uint32_t>(m_cur - textBegin));
+                    }
+                    continue;
+                }
+
+                if (!Consume('<'))
+                {
+                    return false;
+                }
+
+                if ((m_cur < m_end) && ((*m_cur == '!') || (*m_cur == '?')))
+                {
+                    if (!SkipMarkup())
+                    {
+                        return false;
+                    }
+                    continue;
+                }
+
+                const bool isClosing = Consume('/');
+                const StringView tagName = ParseName();
+                if (tagName.IsEmpty())
+                {
+                    return false;
+                }
+
+                Vector<Attribute> attrs{};
+                bool selfClosing = false;
+                if (!ParseAttributes(attrs, selfClosing))
+                {
+                    return false;
+                }
+
+                if (isClosing)
+                {
+                    if (tagName.EqualToI(closingTag))
+                    {
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                if (!selfClosing && tagName.EqualToI("tspan"))
+                {
+                    if (!ReadTextContents(outText, tagName))
+                    {
+                        return false;
+                    }
+                }
+                else if (!selfClosing && !SkipElement(tagName))
+                {
+                    return false;
+                }
+            }
+
+            return closingTag.IsEmpty();
+        }
+
+        bool SvgParser::ParseTextElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs, bool selfClosing)
+        {
+            if (selfClosing)
+            {
+                return true;
+            }
+
+            String text{};
+            if (!ReadTextContents(text, "text"))
+            {
+                return false;
+            }
+
+            const StringView trimmedText = UTF8Trim(StringView(text.Data(), text.Size()));
+            if (trimmedText.IsEmpty())
+            {
+                return true;
+            }
+
+            float x = 0.0f;
+            float y = 0.0f;
+            float fontSize = 16.0f;
+            StringView fontFamily("sans-serif");
+            StringView textAnchor("start");
+            StringView id{};
+            for (const Attribute& attr : attrs)
+            {
+                if (attr.name.EqualToI("x")) { ParseFloat(attr.value, x); }
+                else if (attr.name.EqualToI("y")) { ParseFloat(attr.value, y); }
+                else if (attr.name.EqualToI("font-size")) { ParseFloat(attr.value, fontSize); }
+                else if (attr.name.EqualToI("font-family")) { fontFamily = attr.value; }
+                else if (attr.name.EqualToI("text-anchor")) { textAnchor = TrimView(attr.value); }
+                else if (attr.name.EqualToI("id")) { id = attr.value; }
+            }
+
+            String fontPath{};
+            if (!ResolveSvgFontPath(fontPath, fontFamily))
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Failed to resolve SVG text font."),
+                    HE_KV(font_family, String(fontFamily)));
+                return false;
+            }
+
+            Vector<uint8_t> fontBytes{};
+            if (!ReadFontSourceBytes(fontBytes, fontPath.Data()))
+            {
+                return false;
+            }
+
+            FreeTypeLibrary library{};
+            if (!library.Initialize())
+            {
+                return false;
+            }
+
+            FreeTypeFace face{};
+            if (!face.Load(library.Get(), Span<const uint8_t>(fontBytes), 0))
+            {
+                return false;
+            }
+
+            FT_Face ftFace = face.Get();
+            const float unitsPerEm = Max(static_cast<float>(ftFace->units_per_EM), 1.0f);
+            const float scale = fontSize / unitsPerEm;
+
+            struct GlyphPlacement
+            {
+                FT_UInt glyphIndex{ 0 };
+                float penX{ 0.0f };
+            };
+
+            Vector<GlyphPlacement> glyphs{};
+            float penX = 0.0f;
+            FT_UInt previousGlyph = 0;
+            for (UTF8Iterator it(trimmedText);; ++it)
+            {
+                const uint32_t codePoint = *it;
+                if (codePoint == InvalidCodePoint)
+                {
+                    break;
+                }
+
+                const FT_UInt glyphIndex = FT_Get_Char_Index(ftFace, codePoint);
+                if ((previousGlyph != 0) && (glyphIndex != 0) && FT_HAS_KERNING(ftFace))
+                {
+                    FT_Vector kerning{};
+                    if (FT_Get_Kerning(ftFace, previousGlyph, glyphIndex, FT_KERNING_UNSCALED, &kerning) == 0)
+                    {
+                        penX += static_cast<float>(kerning.x) * scale;
+                    }
+                }
+
+                GlyphPlacement& placement = glyphs.EmplaceBack();
+                placement.glyphIndex = glyphIndex;
+                placement.penX = penX;
+
+                if (FT_Load_Glyph(
+                        ftFace,
+                        glyphIndex,
+                        FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING | FT_LOAD_IGNORE_TRANSFORM) != 0)
+                {
+                    return false;
+                }
+
+                penX += static_cast<float>(ftFace->glyph->advance.x) * scale;
+                previousGlyph = glyphIndex;
+            }
+
+            float anchorOffset = 0.0f;
+            if (textAnchor.EqualToI("middle"))
+            {
+                anchorOffset = penX * 0.5f;
+            }
+            else if (textAnchor.EqualToI("end"))
+            {
+                anchorOffset = penX;
+            }
+
+            Vector<CurveData> curves{};
+            Vector<StrokeSourcePoint> strokePoints{};
+            Vector<StrokeSourceCommand> strokeCommands{};
+            SvgTextOutlineBuilder outlineBuilder(m_flatteningTolerance);
+            for (const GlyphPlacement& glyph : glyphs)
+            {
+                if (glyph.glyphIndex == 0)
+                {
+                    continue;
+                }
+
+                if (FT_Load_Glyph(
+                        ftFace,
+                        glyph.glyphIndex,
+                        FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING | FT_LOAD_IGNORE_TRANSFORM) != 0)
+                {
+                    return false;
+                }
+
+                if ((ftFace->glyph->format != FT_GLYPH_FORMAT_OUTLINE) || (ftFace->glyph->outline.n_points == 0))
+                {
+                    continue;
+                }
+
+                Affine2D transform{};
+                transform.m00 = scale;
+                transform.m11 = -scale;
+                transform.tx = x + glyph.penX - anchorOffset;
+                transform.ty = y;
+                if (!outlineBuilder.AppendGlyph(curves, strokePoints, strokeCommands, ftFace->glyph->outline, transform))
+                {
+                    return false;
+                }
+            }
+
+            return EmitParsedShape(out, state, id, curves, strokePoints, strokeCommands);
         }
 
         bool SvgParser::ParseUseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)

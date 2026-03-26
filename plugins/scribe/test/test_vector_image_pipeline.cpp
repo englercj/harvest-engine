@@ -73,6 +73,11 @@ namespace
         "</g>"
         "</svg>";
 
+    constexpr const char* kSvgWithTextElement =
+        "<svg viewBox=\"0 0 160 48\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<text x=\"8\" y=\"30\" font-family=\"Noto Sans\" font-size=\"24\" fill=\"#111827\">SVG</text>"
+        "</svg>";
+
     bool BuildLoadedVectorImage(Vector<schema::Word>& storage, VectorImageResourceReader& out)
     {
         CompiledVectorImageData imageData{};
@@ -267,8 +272,8 @@ HE_TEST(scribe, vector_image_pipeline, skips_text_elements_without_failing_svg_c
         0.25f);
 
     HE_EXPECT(ok);
-    HE_EXPECT_EQ(imageData.layers.Size(), 2u);
-    HE_EXPECT_EQ(imageData.shapes.Size(), 2u);
+    HE_EXPECT_EQ(imageData.layers.Size(), 3u);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 3u);
 }
 
 HE_TEST(scribe, vector_image_pipeline, compiles_basic_svg_shape_elements)
@@ -338,6 +343,21 @@ HE_TEST(scribe, vector_image_pipeline, skips_shapes_outside_simple_clip_paths)
     HE_EXPECT_EQ(imageData.shapes.Size(), 1u);
     HE_EXPECT_EQ(imageData.layers.Size(), 1u);
     HE_EXPECT_EQ(imageData.layers[0].red, 17.0f / 255.0f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, compiles_svg_text_elements_to_geometry)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithTextElement), StrLen(kSvgWithTextElement)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_GT(imageData.shapes.Size(), 0u);
+    HE_EXPECT_GT(imageData.layers.Size(), 0u);
+    HE_EXPECT_GT(imageData.curveTexels.Size(), 0u);
+    HE_EXPECT_GT(imageData.strokeCommands.Size(), 0u);
 }
 
 HE_TEST(scribe, vector_image_pipeline, loads_compiled_vector_blob)
@@ -491,6 +511,41 @@ HE_TEST(scribe, retained_vector_image, builds_authored_stroke_draws_from_runtime
 
     HE_EXPECT_EQ(authoredStrokeDrawCount, 2u);
     HE_EXPECT_EQ(fillDrawCount, 1u);
+}
+
+HE_TEST(scribe, retained_vector_image, builds_draws_from_svg_text_elements)
+{
+    CompiledVectorImageData imageData{};
+    HE_ASSERT(BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithTextElement), StrLen(kSvgWithTextElement)),
+        0.25f));
+
+    schema::Builder rootBuilder;
+    VectorImageResource::Builder root = rootBuilder.AddStruct<VectorImageResource>();
+    FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
+    FillVectorImageResourceFillData(root.GetFill(), imageData);
+    FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
+    FillVectorImageResourcePaintData(root.GetPaint(), imageData);
+    root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
+    root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
+    rootBuilder.SetRoot(root);
+
+    Vector<schema::Word> storage;
+    storage = Span<const schema::Word>(rootBuilder);
+    const VectorImageResourceReader image = schema::ReadRoot<VectorImageResource>(storage.Data());
+    HE_ASSERT(image.IsValid());
+
+    RetainedVectorImageModel retainedImage;
+    ScribeContext context{};
+    const VectorImageHandle handle = context.RegisterVectorImage(image);
+    HE_ASSERT(handle.IsValid());
+
+    RetainedVectorImageBuildDesc desc{};
+    desc.context = &context;
+    desc.image = handle;
+    HE_ASSERT(retainedImage.Build(desc));
+    HE_EXPECT_GT(retainedImage.GetDrawCount(), 0u);
 }
 
 HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_image_copy_expires)

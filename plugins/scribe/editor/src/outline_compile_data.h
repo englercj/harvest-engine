@@ -45,6 +45,27 @@ namespace he::scribe::editor
         return static_cast<int32_t>(Clamp(scaled, minValue, maxValue));
     }
 
+    inline void AppendStrokeSourceData(
+        Vector<StrokeSourcePoint>& outPoints,
+        Vector<StrokeSourceCommand>& outCommands,
+        Span<const StrokeSourcePoint> sourcePoints,
+        Span<const StrokeSourceCommand> sourceCommands)
+    {
+        const uint32_t pointBase = outPoints.Size();
+        if (!sourcePoints.IsEmpty())
+        {
+            outPoints.Insert(outPoints.Size(), sourcePoints.Data(), sourcePoints.Size());
+        }
+
+        outCommands.Reserve(outCommands.Size() + sourceCommands.Size());
+        for (const StrokeSourceCommand& sourceCommand : sourceCommands)
+        {
+            StrokeSourceCommand& command = outCommands.EmplaceBack();
+            command = sourceCommand;
+            command.firstPoint += pointBase;
+        }
+    }
+
     inline void AppendCompiledStrokeData(
         Vector<CompiledStrokePoint>& outPoints,
         Vector<CompiledStrokeCommand>& outCommands,
@@ -52,7 +73,7 @@ namespace he::scribe::editor
         Span<const StrokeSourceCommand> sourceCommands)
     {
         const uint32_t pointBase = outPoints.Size();
-        outPoints.Reserve(outPoints.Size() + sourcePoints.Size());
+        outPoints.Expand(outPoints.Size() + sourcePoints.Size());
         for (const StrokeSourcePoint& point : sourcePoints)
         {
             CompiledStrokePoint& compiledPoint = outPoints.EmplaceBack();

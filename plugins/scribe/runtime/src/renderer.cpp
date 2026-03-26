@@ -38,7 +38,7 @@ namespace he::scribe
             rhi::Buffer*& out,
             uint32_t size,
             uint32_t stride,
-            const char* name)
+            [[maybe_unused]] const char* name)
         {
             rhi::BufferDesc desc{};
             desc.heapType = rhi::HeapType::Upload;

@@ -1901,6 +1901,7 @@ namespace he::scribe::editor
                 CurveBuilder& builder,
                 Vector<StrokeSourcePoint>& outPoints,
                 Vector<StrokeSourceCommand>& outCommands,
+                const Affine2D& strokeTransform,
                 StringView text);
             bool ReadTextContents(String& outText, StringView closingTag);
             bool EmitParsedShape(
@@ -2491,7 +2492,7 @@ namespace he::scribe::editor
             builder.SetTransform(state.transform);
             Vector<StrokeSourcePoint> strokePoints{};
             Vector<StrokeSourceCommand> strokeCommands{};
-            if (!ParsePathData(builder, strokePoints, strokeCommands, d))
+            if (!ParsePathData(builder, strokePoints, strokeCommands, state.transform, d))
             {
                 HE_LOG_ERROR(he_scribe, HE_MSG("Failed to parse SVG path data for scribe image compile."));
                 return false;
@@ -3103,7 +3104,8 @@ namespace he::scribe::editor
                 transform.m11 = -scale;
                 transform.tx = x + glyph.penX - anchorOffset;
                 transform.ty = y;
-                if (!outlineBuilder.AppendGlyph(curves, strokePoints, strokeCommands, ftFace->glyph->outline, transform))
+                const Affine2D finalTransform = ComposeAffine(state.transform, transform);
+                if (!outlineBuilder.AppendGlyph(curves, strokePoints, strokeCommands, ftFace->glyph->outline, finalTransform))
                 {
                     return false;
                 }
@@ -3180,6 +3182,7 @@ namespace he::scribe::editor
             CurveBuilder& builder,
             Vector<StrokeSourcePoint>& outPoints,
             Vector<StrokeSourceCommand>& outCommands,
+            const Affine2D& strokeTransform,
             StringView text)
         {
             const char* cur = text.Data();
@@ -3241,6 +3244,11 @@ namespace he::scribe::editor
                 return true;
             };
 
+            auto ToStrokePoint = [&](const Point2& point) -> Point2
+            {
+                return TransformPoint(strokeTransform, point);
+            };
+
             while (true)
             {
                 SkipSeparators();
@@ -3275,7 +3283,7 @@ namespace he::scribe::editor
                             // Leave the previous contour open when a new move starts without a close.
                         }
 
-                        strokeBuilder.AppendMoveTo(point);
+                        strokeBuilder.AppendMoveTo(ToStrokePoint(point));
                         current = point;
                         subpathStart = point;
                         hasCurrent = true;
@@ -3295,7 +3303,7 @@ namespace he::scribe::editor
                         }
 
                         builder.AddLine(current, point);
-                        strokeBuilder.AppendLineTo(point);
+                        strokeBuilder.AppendLineTo(ToStrokePoint(point));
                         current = point;
                         hasCurrent = true;
                         hasPreviousCubicControl = false;
@@ -3314,7 +3322,7 @@ namespace he::scribe::editor
                         Point2 point = current;
                         point.x = relative ? (current.x + value) : value;
                         builder.AddLine(current, point);
-                        strokeBuilder.AppendLineTo(point);
+                        strokeBuilder.AppendLineTo(ToStrokePoint(point));
                         current = point;
                         hasCurrent = true;
                         hasPreviousCubicControl = false;
@@ -3333,7 +3341,7 @@ namespace he::scribe::editor
                         Point2 point = current;
                         point.y = relative ? (current.y + value) : value;
                         builder.AddLine(current, point);
-                        strokeBuilder.AppendLineTo(point);
+                        strokeBuilder.AppendLineTo(ToStrokePoint(point));
                         current = point;
                         hasCurrent = true;
                         hasPreviousCubicControl = false;
@@ -3351,7 +3359,7 @@ namespace he::scribe::editor
                         }
 
                         builder.AddQuadratic(current, control, point);
-                        strokeBuilder.AppendQuadraticTo(control, point);
+                        strokeBuilder.AppendQuadraticTo(ToStrokePoint(control), ToStrokePoint(point));
                         current = point;
                         hasCurrent = true;
                         previousQuadraticControl = control;
@@ -3372,7 +3380,7 @@ namespace he::scribe::editor
                             ? ReflectPoint(current, previousQuadraticControl)
                             : current;
                         builder.AddQuadratic(current, control, point);
-                        strokeBuilder.AppendQuadraticTo(control, point);
+                        strokeBuilder.AppendQuadraticTo(ToStrokePoint(control), ToStrokePoint(point));
                         current = point;
                         hasCurrent = true;
                         previousQuadraticControl = control;
@@ -3394,7 +3402,7 @@ namespace he::scribe::editor
                         }
 
                         builder.AddCubic(current, c1, c2, point);
-                        strokeBuilder.AppendCubicTo(c1, c2, point);
+                        strokeBuilder.AppendCubicTo(ToStrokePoint(c1), ToStrokePoint(c2), ToStrokePoint(point));
                         current = point;
                         hasCurrent = true;
                         previousCubicControl = c2;
@@ -3417,7 +3425,7 @@ namespace he::scribe::editor
                             ? ReflectPoint(current, previousCubicControl)
                             : current;
                         builder.AddCubic(current, c1, c2, point);
-                        strokeBuilder.AppendCubicTo(c1, c2, point);
+                        strokeBuilder.AppendCubicTo(ToStrokePoint(c1), ToStrokePoint(c2), ToStrokePoint(point));
                         current = point;
                         hasCurrent = true;
                         previousCubicControl = c2;

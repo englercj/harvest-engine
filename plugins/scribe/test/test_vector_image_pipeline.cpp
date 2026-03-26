@@ -78,6 +78,20 @@ namespace
         "<text x=\"8\" y=\"30\" font-family=\"Noto Sans\" font-size=\"24\" fill=\"#111827\">SVG</text>"
         "</svg>";
 
+    constexpr const char* kSvgWithTransformedTextElement =
+        "<svg viewBox=\"0 0 100 100\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<g transform=\"translate(40 10)\">"
+        "<text x=\"5\" y=\"30\" font-family=\"Noto Sans\" font-size=\"20\" fill=\"#111827\">A</text>"
+        "</g>"
+        "</svg>";
+
+    constexpr const char* kSvgWithTransformedAuthoredStroke =
+        "<svg viewBox=\"0 0 100 100\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<g transform=\"translate(40 20)\">"
+        "<path fill=\"#22c55e\" stroke=\"#111827\" stroke-width=\"4\" d=\"M0 0 L20 0 L20 20 L0 20 Z\"/>"
+        "</g>"
+        "</svg>";
+
     bool BuildLoadedVectorImage(Vector<schema::Word>& storage, VectorImageResourceReader& out)
     {
         CompiledVectorImageData imageData{};
@@ -360,6 +374,41 @@ HE_TEST(scribe, vector_image_pipeline, compiles_svg_text_elements_to_geometry)
     HE_EXPECT_GT(imageData.layers.Size(), 0u);
     HE_EXPECT_GT(imageData.curveTexels.Size(), 0u);
     HE_EXPECT_GT(imageData.strokeCommands.Size(), 0u);
+}
+
+HE_TEST(scribe, vector_image_pipeline, applies_group_transform_to_svg_text_geometry)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithTransformedTextElement), StrLen(kSvgWithTransformedTextElement)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_GT(imageData.shapes.Size(), 0u);
+    HE_EXPECT_GT(imageData.layers.Size(), 0u);
+
+    const CompiledVectorShapeRenderEntry& shape = imageData.shapes[imageData.layers[0].shapeIndex];
+    HE_EXPECT_GT(shape.boundsMinX, 35.0f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, applies_group_transform_to_authored_path_strokes)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithTransformedAuthoredStroke), StrLen(kSvgWithTransformedAuthoredStroke)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.layers.Size(), 2u);
+    HE_EXPECT_EQ(imageData.layers[0].kind, VectorLayerKind::Stroke);
+    HE_EXPECT_EQ(imageData.layers[1].kind, VectorLayerKind::Fill);
+
+    const CompiledVectorShapeRenderEntry& strokeShape = imageData.shapes[imageData.layers[0].shapeIndex];
+    const CompiledVectorShapeRenderEntry& fillShape = imageData.shapes[imageData.layers[1].shapeIndex];
+    HE_EXPECT_GT(strokeShape.boundsMinX, 35.0f);
+    HE_EXPECT_GT(fillShape.boundsMinX, 35.0f);
 }
 
 HE_TEST(scribe, vector_image_pipeline, loads_compiled_vector_blob)

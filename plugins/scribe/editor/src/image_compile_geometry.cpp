@@ -42,6 +42,15 @@ namespace he::scribe::editor
             float maxY{ 0.0f };
         };
 
+        struct ParsedClipPath
+        {
+            String id{};
+            float minX{ 0.0f };
+            float minY{ 0.0f };
+            float maxX{ 0.0f };
+            float maxY{ 0.0f };
+        };
+
         struct ParsedDefinition
         {
             String id{};
@@ -51,6 +60,7 @@ namespace he::scribe::editor
         struct ParsedImage
         {
             Vector<ParsedShape> shapes{};
+            Vector<CompiledVectorImageLayerEntry> layers{};
             float viewBoxMinX{ 0.0f };
             float viewBoxMinY{ 0.0f };
             float viewBoxWidth{ 0.0f };
@@ -65,8 +75,14 @@ namespace he::scribe::editor
         struct StyleState
         {
             Vec4f fill{ 0.0f, 0.0f, 0.0f, 1.0f };
+            Vec4f stroke{ 0.0f, 0.0f, 0.0f, 0.0f };
             FillRule fillRule{ FillRule::NonZero };
             bool fillNone{ false };
+            bool strokeNone{ true };
+            float strokeWidth{ 1.0f };
+            StrokeJoinKind strokeJoin{ StrokeJoinKind::Miter };
+            StrokeCapKind strokeCap{ StrokeCapKind::Butt };
+            float strokeMiterLimit{ 4.0f };
         };
 
         struct ParseState
@@ -74,7 +90,10 @@ namespace he::scribe::editor
             Affine2D transform{};
             StyleState style{};
             bool inDefinitions{ false };
+            bool inClipPath{ false };
             bool suppressOutput{ false };
+            StringView activeClipPathId{};
+            StringView clipPathRef{};
         };
 
         struct Attribute
@@ -88,14 +107,39 @@ namespace he::scribe::editor
             return degrees * 0.017453292519943295769f;
         }
 
+        Point2 ReflectPoint(const Point2& around, const Point2& control)
+        {
+            return {
+                (around.x * 2.0f) - control.x,
+                (around.y * 2.0f) - control.y
+            };
+        }
+
         void RecomputeShapeBounds(ParsedShape& shape)
         {
             if (shape.curves.IsEmpty())
             {
-                shape.minX = 0.0f;
-                shape.minY = 0.0f;
-                shape.maxX = 0.0f;
-                shape.maxY = 0.0f;
+                if (shape.strokePoints.IsEmpty())
+                {
+                    shape.minX = 0.0f;
+                    shape.minY = 0.0f;
+                    shape.maxX = 0.0f;
+                    shape.maxY = 0.0f;
+                    return;
+                }
+
+                shape.minX = shape.strokePoints[0].x;
+                shape.minY = shape.strokePoints[0].y;
+                shape.maxX = shape.strokePoints[0].x;
+                shape.maxY = shape.strokePoints[0].y;
+                for (uint32_t pointIndex = 1; pointIndex < shape.strokePoints.Size(); ++pointIndex)
+                {
+                    const StrokeSourcePoint& point = shape.strokePoints[pointIndex];
+                    shape.minX = Min(shape.minX, point.x);
+                    shape.minY = Min(shape.minY, point.y);
+                    shape.maxX = Max(shape.maxX, point.x);
+                    shape.maxY = Max(shape.maxY, point.y);
+                }
                 return;
             }
 
@@ -664,6 +708,15 @@ namespace he::scribe::editor
                     style.fillNone = (color.w == 0.0f);
                 }
             }
+            else if (trimmedName.EqualToI("stroke"))
+            {
+                Vec4f color{};
+                if (ParseColor(color, trimmedValue))
+                {
+                    style.stroke = color;
+                    style.strokeNone = (color.w == 0.0f);
+                }
+            }
             else if (trimmedName.EqualToI("fill-rule"))
             {
                 if (trimmedValue.EqualToI("evenodd"))
@@ -675,13 +728,80 @@ namespace he::scribe::editor
                     style.fillRule = FillRule::NonZero;
                 }
             }
-            else if (trimmedName.EqualToI("opacity") || trimmedName.EqualToI("fill-opacity"))
+            else if (trimmedName.EqualToI("stroke-width"))
+            {
+                float width = 1.0f;
+                if (ParseFloat(trimmedValue, width))
+                {
+                    style.strokeWidth = Max(width, 0.0f);
+                }
+            }
+            else if (trimmedName.EqualToI("stroke-linejoin"))
+            {
+                if (trimmedValue.EqualToI("round"))
+                {
+                    style.strokeJoin = StrokeJoinKind::Round;
+                }
+                else if (trimmedValue.EqualToI("bevel"))
+                {
+                    style.strokeJoin = StrokeJoinKind::Bevel;
+                }
+                else
+                {
+                    style.strokeJoin = StrokeJoinKind::Miter;
+                }
+            }
+            else if (trimmedName.EqualToI("stroke-linecap"))
+            {
+                if (trimmedValue.EqualToI("round"))
+                {
+                    style.strokeCap = StrokeCapKind::Round;
+                }
+                else if (trimmedValue.EqualToI("square"))
+                {
+                    style.strokeCap = StrokeCapKind::Square;
+                }
+                else
+                {
+                    style.strokeCap = StrokeCapKind::Butt;
+                }
+            }
+            else if (trimmedName.EqualToI("stroke-miterlimit"))
+            {
+                float miterLimit = 4.0f;
+                if (ParseFloat(trimmedValue, miterLimit))
+                {
+                    style.strokeMiterLimit = Max(miterLimit, 0.0f);
+                }
+            }
+            else if (trimmedName.EqualToI("opacity"))
+            {
+                float alpha = 1.0f;
+                if (ParseFloat(trimmedValue, alpha))
+                {
+                    alpha = Clamp(alpha, 0.0f, 1.0f);
+                    style.fill.w *= alpha;
+                    style.stroke.w *= alpha;
+                    style.fillNone = (style.fill.w <= 0.0f);
+                    style.strokeNone = (style.stroke.w <= 0.0f);
+                }
+            }
+            else if (trimmedName.EqualToI("fill-opacity"))
             {
                 float alpha = 1.0f;
                 if (ParseFloat(trimmedValue, alpha))
                 {
                     style.fill.w *= Clamp(alpha, 0.0f, 1.0f);
                     style.fillNone = (style.fill.w <= 0.0f);
+                }
+            }
+            else if (trimmedName.EqualToI("stroke-opacity"))
+            {
+                float alpha = 1.0f;
+                if (ParseFloat(trimmedValue, alpha))
+                {
+                    style.stroke.w *= Clamp(alpha, 0.0f, 1.0f);
+                    style.strokeNone = (style.stroke.w <= 0.0f);
                 }
             }
         }
@@ -741,6 +861,18 @@ namespace he::scribe::editor
                 {
                     ApplyStyleProperty(state.style, attr.name, attr.value);
                 }
+
+                if (attr.name.EqualToI("clip-path"))
+                {
+                    StringView trimmedValue = TrimView(attr.value);
+                    const StringView prefix("url(#");
+                    if ((trimmedValue.Size() > prefix.Size())
+                        && trimmedValue.StartsWith(prefix)
+                        && (trimmedValue[trimmedValue.Size() - 1] == ')'))
+                    {
+                        state.clipPathRef = trimmedValue.Substring(prefix.Size(), trimmedValue.Size() - prefix.Size() - 1);
+                    }
+                }
             }
         }
 
@@ -759,15 +891,29 @@ namespace he::scribe::editor
             bool ParseAttributes(Vector<Attribute>& out, bool& outSelfClosing);
             void ParseSvgAttributes(ParsedImage& out, Span<const Attribute> attrs);
             bool ParsePathElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
+            bool ParseRectElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
+            bool ParseCircleElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
+            bool ParseEllipseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
+            bool ParseLineElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
+            bool ParsePolylineElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
+            bool ParsePolygonElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
             bool ParseUseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
             bool ParsePathData(
                 CurveBuilder& builder,
                 Vector<StrokeSourcePoint>& outPoints,
                 Vector<StrokeSourceCommand>& outCommands,
                 StringView text);
+            bool EmitParsedShape(
+                ParsedImage& out,
+                const ParseState& state,
+                StringView id,
+                Vector<CurveData>& curves,
+                Vector<StrokeSourcePoint>& strokePoints,
+                Vector<StrokeSourceCommand>& strokeCommands);
             bool SkipToClosingTag(StringView tagName);
             bool SkipElement(StringView tagName);
             const ParsedShape* FindDefinition(StringView id) const;
+            const ParsedClipPath* FindClipPath(StringView id) const;
 
         private:
             StringView m_text{};
@@ -775,6 +921,7 @@ namespace he::scribe::editor
             const char* m_end{ nullptr };
             float m_flatteningTolerance{ 0.25f };
             Vector<ParsedDefinition> m_definitions{};
+            Vector<ParsedClipPath> m_clipPaths{};
         };
 
         bool SvgParser::Parse(ParsedImage& out, StringView text, float flatteningTolerance)
@@ -785,6 +932,7 @@ namespace he::scribe::editor
             m_flatteningTolerance = Max(flatteningTolerance, 0.01f);
             out = {};
             m_definitions.Clear();
+            m_clipPaths.Clear();
 
             ParseState rootState{};
             if (!ParseContainer(out, rootState, {}))
@@ -877,8 +1025,20 @@ namespace he::scribe::editor
                     state.inDefinitions = true;
                     state.suppressOutput = true;
                 }
-                else if (tagName.EqualToI("clipPath")
-                    || tagName.EqualToI("mask")
+                else if (tagName.EqualToI("clipPath"))
+                {
+                    state.inClipPath = true;
+                    state.suppressOutput = true;
+                    for (const Attribute& attr : attrs)
+                    {
+                        if (attr.name.EqualToI("id"))
+                        {
+                            state.activeClipPathId = attr.value;
+                            break;
+                        }
+                    }
+                }
+                else if (tagName.EqualToI("mask")
                     || tagName.EqualToI("filter")
                     || tagName.EqualToI("symbol"))
                 {
@@ -888,6 +1048,78 @@ namespace he::scribe::editor
                 if (tagName.EqualToI("path"))
                 {
                     if (!ParsePathElement(out, state, attrs))
+                    {
+                        return false;
+                    }
+
+                    if (!selfClosing && !SkipToClosingTag(tagName))
+                    {
+                        return false;
+                    }
+                }
+                else if (tagName.EqualToI("rect"))
+                {
+                    if (!ParseRectElement(out, state, attrs))
+                    {
+                        return false;
+                    }
+
+                    if (!selfClosing && !SkipToClosingTag(tagName))
+                    {
+                        return false;
+                    }
+                }
+                else if (tagName.EqualToI("circle"))
+                {
+                    if (!ParseCircleElement(out, state, attrs))
+                    {
+                        return false;
+                    }
+
+                    if (!selfClosing && !SkipToClosingTag(tagName))
+                    {
+                        return false;
+                    }
+                }
+                else if (tagName.EqualToI("ellipse"))
+                {
+                    if (!ParseEllipseElement(out, state, attrs))
+                    {
+                        return false;
+                    }
+
+                    if (!selfClosing && !SkipToClosingTag(tagName))
+                    {
+                        return false;
+                    }
+                }
+                else if (tagName.EqualToI("line"))
+                {
+                    if (!ParseLineElement(out, state, attrs))
+                    {
+                        return false;
+                    }
+
+                    if (!selfClosing && !SkipToClosingTag(tagName))
+                    {
+                        return false;
+                    }
+                }
+                else if (tagName.EqualToI("polyline"))
+                {
+                    if (!ParsePolylineElement(out, state, attrs))
+                    {
+                        return false;
+                    }
+
+                    if (!selfClosing && !SkipToClosingTag(tagName))
+                    {
+                        return false;
+                    }
+                }
+                else if (tagName.EqualToI("polygon"))
+                {
+                    if (!ParsePolygonElement(out, state, attrs))
                     {
                         return false;
                     }
@@ -1095,6 +1327,145 @@ namespace he::scribe::editor
             }
         }
 
+        bool SvgParser::EmitParsedShape(
+            ParsedImage& out,
+            const ParseState& state,
+            StringView id,
+            Vector<CurveData>& curves,
+            Vector<StrokeSourcePoint>& strokePoints,
+            Vector<StrokeSourceCommand>& strokeCommands)
+        {
+            if (curves.IsEmpty() && strokeCommands.IsEmpty())
+            {
+                return true;
+            }
+
+            ParsedShape shape{};
+            shape.curves = Move(curves);
+            shape.strokePoints = Move(strokePoints);
+            shape.strokeCommands = Move(strokeCommands);
+            shape.fillRule = state.style.fillRule;
+            shape.color = state.style.fill;
+            RecomputeShapeBounds(shape);
+
+            if (state.inClipPath)
+            {
+                if (!state.activeClipPathId.IsEmpty())
+                {
+                    ParsedClipPath* clipPath = nullptr;
+                    for (ParsedClipPath& existing : m_clipPaths)
+                    {
+                        if (StringView(existing.id.Data(), existing.id.Size()).EqualToI(state.activeClipPathId))
+                        {
+                            clipPath = &existing;
+                            break;
+                        }
+                    }
+
+                    if (clipPath == nullptr)
+                    {
+                        clipPath = &m_clipPaths.EmplaceBack();
+                        clipPath->id = String(state.activeClipPathId);
+                        clipPath->minX = shape.minX;
+                        clipPath->minY = shape.minY;
+                        clipPath->maxX = shape.maxX;
+                        clipPath->maxY = shape.maxY;
+                    }
+                    else
+                    {
+                        clipPath->minX = Min(clipPath->minX, shape.minX);
+                        clipPath->minY = Min(clipPath->minY, shape.minY);
+                        clipPath->maxX = Max(clipPath->maxX, shape.maxX);
+                        clipPath->maxY = Max(clipPath->maxY, shape.maxY);
+                    }
+                }
+
+                return true;
+            }
+
+            if (state.inDefinitions)
+            {
+                if (!id.IsEmpty())
+                {
+                    ParsedDefinition& definition = m_definitions.EmplaceBack();
+                    definition.id = String(id);
+                    definition.shape = Move(shape);
+                }
+
+                return true;
+            }
+
+            const bool hasVisibleFill = !state.style.fillNone && (state.style.fill.w > 0.0f) && !shape.curves.IsEmpty();
+            const bool hasVisibleStroke = !state.style.strokeNone && (state.style.stroke.w > 0.0f) && (state.style.strokeWidth > 0.0f) && !shape.strokeCommands.IsEmpty();
+            if (state.suppressOutput || (!hasVisibleFill && !hasVisibleStroke))
+            {
+                return true;
+            }
+
+            if (!state.clipPathRef.IsEmpty())
+            {
+                const ParsedClipPath* clipPath = FindClipPath(state.clipPathRef);
+                if (clipPath != nullptr)
+                {
+                    const bool overlaps = (shape.maxX > clipPath->minX)
+                        && (shape.maxY > clipPath->minY)
+                        && (shape.minX < clipPath->maxX)
+                        && (shape.minY < clipPath->maxY);
+                    if (!overlaps)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            ParsedShape& outShape = out.shapes.EmplaceBack();
+            outShape = Move(shape);
+            const uint32_t shapeIndex = out.shapes.Size() - 1;
+
+            if (hasVisibleStroke)
+            {
+                CompiledVectorImageLayerEntry& layer = out.layers.EmplaceBack();
+                layer.shapeIndex = shapeIndex;
+                layer.kind = VectorLayerKind::Stroke;
+                layer.red = state.style.stroke.x;
+                layer.green = state.style.stroke.y;
+                layer.blue = state.style.stroke.z;
+                layer.alpha = state.style.stroke.w;
+                layer.strokeWidth = state.style.strokeWidth;
+                layer.strokeJoin = state.style.strokeJoin;
+                layer.strokeCap = state.style.strokeCap;
+                layer.strokeMiterLimit = state.style.strokeMiterLimit;
+            }
+
+            if (hasVisibleFill)
+            {
+                CompiledVectorImageLayerEntry& layer = out.layers.EmplaceBack();
+                layer.shapeIndex = shapeIndex;
+                layer.kind = VectorLayerKind::Fill;
+                layer.red = state.style.fill.x;
+                layer.green = state.style.fill.y;
+                layer.blue = state.style.fill.z;
+                layer.alpha = state.style.fill.w;
+            }
+
+            if (out.shapes.Size() == 1)
+            {
+                out.boundsMinX = outShape.minX;
+                out.boundsMinY = outShape.minY;
+                out.boundsMaxX = outShape.maxX;
+                out.boundsMaxY = outShape.maxY;
+            }
+            else
+            {
+                out.boundsMinX = Min(out.boundsMinX, outShape.minX);
+                out.boundsMinY = Min(out.boundsMinY, outShape.minY);
+                out.boundsMaxX = Max(out.boundsMaxX, outShape.maxX);
+                out.boundsMaxY = Max(out.boundsMaxY, outShape.maxY);
+            }
+
+            return true;
+        }
+
         bool SvgParser::ParsePathElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
         {
             StringView d{};
@@ -1126,60 +1497,378 @@ namespace he::scribe::editor
                 return false;
             }
 
-            Vector<CurveData>& curves = builder.Curves();
-            if (curves.IsEmpty())
+            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+        }
+
+        bool SvgParser::ParseRectElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
+        {
+            float x = 0.0f;
+            float y = 0.0f;
+            float width = 0.0f;
+            float height = 0.0f;
+            float rx = 0.0f;
+            float ry = 0.0f;
+            StringView id{};
+
+            for (const Attribute& attr : attrs)
+            {
+                if (attr.name.EqualToI("x")) { ParseFloat(attr.value, x); }
+                else if (attr.name.EqualToI("y")) { ParseFloat(attr.value, y); }
+                else if (attr.name.EqualToI("width")) { ParseFloat(attr.value, width); }
+                else if (attr.name.EqualToI("height")) { ParseFloat(attr.value, height); }
+                else if (attr.name.EqualToI("rx")) { ParseFloat(attr.value, rx); }
+                else if (attr.name.EqualToI("ry")) { ParseFloat(attr.value, ry); }
+                else if (attr.name.EqualToI("id")) { id = attr.value; }
+            }
+
+            if ((width <= 0.0f) || (height <= 0.0f))
             {
                 return true;
             }
 
-            ParsedShape shape{};
-            shape.curves = Move(curves);
-            shape.strokePoints = Move(strokePoints);
-            shape.strokeCommands = Move(strokeCommands);
-            shape.fillRule = state.style.fillRule;
-            shape.color = state.style.fill;
-            RecomputeShapeBounds(shape);
-
-            if (state.inDefinitions)
+            if ((rx > 0.0f) && (ry <= 0.0f))
             {
-                if (!id.IsEmpty())
-                {
-                    ParsedDefinition& definition = m_definitions.EmplaceBack();
-                    definition.id = String(id);
-                    definition.shape = Move(shape);
-                }
-
-                return true;
+                ry = rx;
+            }
+            else if ((ry > 0.0f) && (rx <= 0.0f))
+            {
+                rx = ry;
             }
 
-            if (state.suppressOutput || state.style.fillNone || (state.style.fill.w <= 0.0f))
-            {
-                return true;
-            }
+            rx = Clamp(rx, 0.0f, width * 0.5f);
+            ry = Clamp(ry, 0.0f, height * 0.5f);
 
-            ParsedShape& outShape = out.shapes.EmplaceBack();
-            outShape = Move(shape);
-            if (out.shapes.Size() == 1)
+            constexpr float Kappa = 0.5522847498307936f;
+            auto tx = [&](float px, float py) -> Point2
             {
-                out.boundsMinX = outShape.minX;
-                out.boundsMinY = outShape.minY;
-                out.boundsMaxX = outShape.maxX;
-                out.boundsMaxY = outShape.maxY;
+                return TransformPoint(state.transform, { px, py });
+            };
+
+            CurveBuilder builder(m_flatteningTolerance);
+            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
+            if ((rx <= 0.0f) || (ry <= 0.0f))
+            {
+                const Point2 p0 = tx(x, y);
+                const Point2 p1 = tx(x + width, y);
+                const Point2 p2 = tx(x + width, y + height);
+                const Point2 p3 = tx(x, y + height);
+
+                strokeBuilder.AppendMoveTo(p0);
+                builder.AddLine(p0, p1);
+                strokeBuilder.AppendLineTo(p1);
+                builder.AddLine(p1, p2);
+                strokeBuilder.AppendLineTo(p2);
+                builder.AddLine(p2, p3);
+                strokeBuilder.AppendLineTo(p3);
+                builder.AddLine(p3, p0);
+                strokeBuilder.AppendClose();
             }
             else
             {
-                out.boundsMinX = Min(out.boundsMinX, outShape.minX);
-                out.boundsMinY = Min(out.boundsMinY, outShape.minY);
-                out.boundsMaxX = Max(out.boundsMaxX, outShape.maxX);
-                out.boundsMaxY = Max(out.boundsMaxY, outShape.maxY);
+                const float cx0 = x + rx;
+                const float cx1 = x + width - rx;
+                const float cy0 = y + ry;
+                const float cy1 = y + height - ry;
+                const float ox = rx * Kappa;
+                const float oy = ry * Kappa;
+
+                const Point2 start = tx(cx0, y);
+                strokeBuilder.AppendMoveTo(start);
+
+                const Point2 topRight = tx(cx1, y);
+                builder.AddLine(start, topRight);
+                strokeBuilder.AppendLineTo(topRight);
+
+                const Point2 trc1 = tx(cx1 + ox, y);
+                const Point2 trc2 = tx(x + width, cy0 - oy);
+                const Point2 tr = tx(x + width, cy0);
+                builder.AddCubic(topRight, trc1, trc2, tr);
+                strokeBuilder.AppendCubicTo(trc1, trc2, tr);
+
+                const Point2 bottomRight = tx(x + width, cy1);
+                builder.AddLine(tr, bottomRight);
+                strokeBuilder.AppendLineTo(bottomRight);
+
+                const Point2 brc1 = tx(x + width, cy1 + oy);
+                const Point2 brc2 = tx(cx1 + ox, y + height);
+                const Point2 br = tx(cx1, y + height);
+                builder.AddCubic(bottomRight, brc1, brc2, br);
+                strokeBuilder.AppendCubicTo(brc1, brc2, br);
+
+                const Point2 bottomLeft = tx(cx0, y + height);
+                builder.AddLine(br, bottomLeft);
+                strokeBuilder.AppendLineTo(bottomLeft);
+
+                const Point2 blc1 = tx(cx0 - ox, y + height);
+                const Point2 blc2 = tx(x, cy1 + oy);
+                const Point2 bl = tx(x, cy1);
+                builder.AddCubic(bottomLeft, blc1, blc2, bl);
+                strokeBuilder.AppendCubicTo(blc1, blc2, bl);
+
+                const Point2 topLeft = tx(x, cy0);
+                builder.AddLine(bl, topLeft);
+                strokeBuilder.AppendLineTo(topLeft);
+
+                const Point2 tlc1 = tx(x, cy0 - oy);
+                const Point2 tlc2 = tx(cx0 - ox, y);
+                builder.AddCubic(topLeft, tlc1, tlc2, start);
+                strokeBuilder.AppendCubicTo(tlc1, tlc2, start);
+                strokeBuilder.AppendClose();
             }
 
-            return true;
+            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
+            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
+            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+        }
+
+        bool SvgParser::ParseCircleElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
+        {
+            float cx = 0.0f;
+            float cy = 0.0f;
+            float r = 0.0f;
+            StringView id{};
+
+            for (const Attribute& attr : attrs)
+            {
+                if (attr.name.EqualToI("cx")) { ParseFloat(attr.value, cx); }
+                else if (attr.name.EqualToI("cy")) { ParseFloat(attr.value, cy); }
+                else if (attr.name.EqualToI("r")) { ParseFloat(attr.value, r); }
+                else if (attr.name.EqualToI("id")) { id = attr.value; }
+            }
+
+            if (r <= 0.0f)
+            {
+                return true;
+            }
+
+            auto tx = [&](float px, float py) -> Point2
+            {
+                return TransformPoint(state.transform, { px, py });
+            };
+
+            constexpr float Kappa = 0.5522847498307936f;
+            CurveBuilder builder(m_flatteningTolerance);
+            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
+            const Point2 start = tx(cx + r, cy);
+            strokeBuilder.AppendMoveTo(start);
+
+            const Point2 c1 = tx(cx + r, cy + (r * Kappa));
+            const Point2 c2 = tx(cx + (r * Kappa), cy + r);
+            const Point2 p1 = tx(cx, cy + r);
+            builder.AddCubic(start, c1, c2, p1);
+            strokeBuilder.AppendCubicTo(c1, c2, p1);
+
+            const Point2 c3 = tx(cx - (r * Kappa), cy + r);
+            const Point2 c4 = tx(cx - r, cy + (r * Kappa));
+            const Point2 p2 = tx(cx - r, cy);
+            builder.AddCubic(p1, c3, c4, p2);
+            strokeBuilder.AppendCubicTo(c3, c4, p2);
+
+            const Point2 c5 = tx(cx - r, cy - (r * Kappa));
+            const Point2 c6 = tx(cx - (r * Kappa), cy - r);
+            const Point2 p3 = tx(cx, cy - r);
+            builder.AddCubic(p2, c5, c6, p3);
+            strokeBuilder.AppendCubicTo(c5, c6, p3);
+
+            const Point2 c7 = tx(cx + (r * Kappa), cy - r);
+            const Point2 c8 = tx(cx + r, cy - (r * Kappa));
+            builder.AddCubic(p3, c7, c8, start);
+            strokeBuilder.AppendCubicTo(c7, c8, start);
+            strokeBuilder.AppendClose();
+
+            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
+            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
+            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+        }
+
+        bool SvgParser::ParseEllipseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
+        {
+            float cx = 0.0f;
+            float cy = 0.0f;
+            float rx = 0.0f;
+            float ry = 0.0f;
+            StringView id{};
+
+            for (const Attribute& attr : attrs)
+            {
+                if (attr.name.EqualToI("cx")) { ParseFloat(attr.value, cx); }
+                else if (attr.name.EqualToI("cy")) { ParseFloat(attr.value, cy); }
+                else if (attr.name.EqualToI("rx")) { ParseFloat(attr.value, rx); }
+                else if (attr.name.EqualToI("ry")) { ParseFloat(attr.value, ry); }
+                else if (attr.name.EqualToI("id")) { id = attr.value; }
+            }
+
+            if ((rx <= 0.0f) || (ry <= 0.0f))
+            {
+                return true;
+            }
+
+            auto tx = [&](float px, float py) -> Point2
+            {
+                return TransformPoint(state.transform, { px, py });
+            };
+
+            constexpr float Kappa = 0.5522847498307936f;
+            CurveBuilder builder(m_flatteningTolerance);
+            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
+            const Point2 start = tx(cx + rx, cy);
+            strokeBuilder.AppendMoveTo(start);
+
+            const Point2 c1 = tx(cx + rx, cy + (ry * Kappa));
+            const Point2 c2 = tx(cx + (rx * Kappa), cy + ry);
+            const Point2 p1 = tx(cx, cy + ry);
+            builder.AddCubic(start, c1, c2, p1);
+            strokeBuilder.AppendCubicTo(c1, c2, p1);
+
+            const Point2 c3 = tx(cx - (rx * Kappa), cy + ry);
+            const Point2 c4 = tx(cx - rx, cy + (ry * Kappa));
+            const Point2 p2 = tx(cx - rx, cy);
+            builder.AddCubic(p1, c3, c4, p2);
+            strokeBuilder.AppendCubicTo(c3, c4, p2);
+
+            const Point2 c5 = tx(cx - rx, cy - (ry * Kappa));
+            const Point2 c6 = tx(cx - (rx * Kappa), cy - ry);
+            const Point2 p3 = tx(cx, cy - ry);
+            builder.AddCubic(p2, c5, c6, p3);
+            strokeBuilder.AppendCubicTo(c5, c6, p3);
+
+            const Point2 c7 = tx(cx + (rx * Kappa), cy - ry);
+            const Point2 c8 = tx(cx + rx, cy - (ry * Kappa));
+            builder.AddCubic(p3, c7, c8, start);
+            strokeBuilder.AppendCubicTo(c7, c8, start);
+            strokeBuilder.AppendClose();
+
+            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
+            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
+            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+        }
+
+        bool SvgParser::ParseLineElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
+        {
+            float x1 = 0.0f;
+            float y1 = 0.0f;
+            float x2 = 0.0f;
+            float y2 = 0.0f;
+            StringView id{};
+
+            for (const Attribute& attr : attrs)
+            {
+                if (attr.name.EqualToI("x1")) { ParseFloat(attr.value, x1); }
+                else if (attr.name.EqualToI("y1")) { ParseFloat(attr.value, y1); }
+                else if (attr.name.EqualToI("x2")) { ParseFloat(attr.value, x2); }
+                else if (attr.name.EqualToI("y2")) { ParseFloat(attr.value, y2); }
+                else if (attr.name.EqualToI("id")) { id = attr.value; }
+            }
+
+            const Point2 p0 = TransformPoint(state.transform, { x1, y1 });
+            const Point2 p1 = TransformPoint(state.transform, { x2, y2 });
+
+            CurveBuilder builder(m_flatteningTolerance);
+            builder.AddLine(p0, p1);
+
+            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
+            strokeBuilder.AppendMoveTo(p0);
+            strokeBuilder.AppendLineTo(p1);
+
+            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
+            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
+            ParseState lineState = state;
+            lineState.style.fillNone = true;
+            lineState.style.fill = { 0.0f, 0.0f, 0.0f, 0.0f };
+            return EmitParsedShape(out, lineState, id, builder.Curves(), strokePoints, strokeCommands);
+        }
+
+        bool SvgParser::ParsePolylineElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
+        {
+            StringView pointsAttr{};
+            StringView id{};
+            for (const Attribute& attr : attrs)
+            {
+                if (attr.name.EqualToI("points")) { pointsAttr = attr.value; }
+                else if (attr.name.EqualToI("id")) { id = attr.value; }
+            }
+
+            if (pointsAttr.IsEmpty())
+            {
+                return true;
+            }
+
+            Vector<float> values{};
+            if (!ParseNumberList(values, pointsAttr) || (values.Size() < 4) || ((values.Size() & 1u) != 0u))
+            {
+                return false;
+            }
+
+            CurveBuilder builder(m_flatteningTolerance);
+            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
+            Point2 first = TransformPoint(state.transform, { values[0], values[1] });
+            Point2 previous = first;
+            strokeBuilder.AppendMoveTo(first);
+            for (uint32_t pointIndex = 2; pointIndex < values.Size(); pointIndex += 2)
+            {
+                const Point2 current = TransformPoint(state.transform, { values[pointIndex], values[pointIndex + 1] });
+                builder.AddLine(previous, current);
+                strokeBuilder.AppendLineTo(current);
+                previous = current;
+            }
+
+            if (!state.style.fillNone && (state.style.fill.w > 0.0f))
+            {
+                builder.AddLine(previous, first);
+            }
+
+            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
+            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
+            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+        }
+
+        bool SvgParser::ParsePolygonElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
+        {
+            StringView pointsAttr{};
+            StringView id{};
+            for (const Attribute& attr : attrs)
+            {
+                if (attr.name.EqualToI("points")) { pointsAttr = attr.value; }
+                else if (attr.name.EqualToI("id")) { id = attr.value; }
+            }
+
+            if (pointsAttr.IsEmpty())
+            {
+                return true;
+            }
+
+            Vector<float> values{};
+            if (!ParseNumberList(values, pointsAttr) || (values.Size() < 6) || ((values.Size() & 1u) != 0u))
+            {
+                return false;
+            }
+
+            CurveBuilder builder(m_flatteningTolerance);
+            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
+            Point2 first = TransformPoint(state.transform, { values[0], values[1] });
+            Point2 previous = first;
+            strokeBuilder.AppendMoveTo(first);
+            for (uint32_t pointIndex = 2; pointIndex < values.Size(); pointIndex += 2)
+            {
+                const Point2 current = TransformPoint(state.transform, { values[pointIndex], values[pointIndex + 1] });
+                builder.AddLine(previous, current);
+                strokeBuilder.AppendLineTo(current);
+                previous = current;
+            }
+
+            builder.AddLine(previous, first);
+            strokeBuilder.AppendClose();
+
+            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
+            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
+            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
         }
 
         bool SvgParser::ParseUseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
         {
-            if (state.suppressOutput || state.style.fillNone || (state.style.fill.w <= 0.0f))
+            const bool hasVisibleFill = !state.style.fillNone && (state.style.fill.w > 0.0f);
+            const bool hasVisibleStroke = !state.style.strokeNone && (state.style.stroke.w > 0.0f) && (state.style.strokeWidth > 0.0f);
+            if (state.suppressOutput || (!hasVisibleFill && !hasVisibleStroke))
             {
                 return true;
             }
@@ -1229,24 +1918,14 @@ namespace he::scribe::editor
                 instanceState.transform = ComposeAffine(instanceState.transform, translation);
             }
 
-            ParsedShape& outShape = out.shapes.EmplaceBack();
-            outShape = CloneTransformedShape(*definition, instanceState);
-            if (out.shapes.Size() == 1)
-            {
-                out.boundsMinX = outShape.minX;
-                out.boundsMinY = outShape.minY;
-                out.boundsMaxX = outShape.maxX;
-                out.boundsMaxY = outShape.maxY;
-            }
-            else
-            {
-                out.boundsMinX = Min(out.boundsMinX, outShape.minX);
-                out.boundsMinY = Min(out.boundsMinY, outShape.minY);
-                out.boundsMaxX = Max(out.boundsMaxX, outShape.maxX);
-                out.boundsMaxY = Max(out.boundsMaxY, outShape.maxY);
-            }
-
-            return true;
+            ParsedShape shape = CloneTransformedShape(*definition, instanceState);
+            return EmitParsedShape(
+                out,
+                instanceState,
+                {},
+                shape.curves,
+                shape.strokePoints,
+                shape.strokeCommands);
         }
 
         bool SvgParser::ParsePathData(
@@ -1264,9 +1943,13 @@ namespace he::scribe::editor
 
             Point2 current{};
             Point2 subpathStart{};
+            Point2 previousCubicControl{};
+            Point2 previousQuadraticControl{};
             char command = 0;
             bool hasCurrent = false;
             bool subpathClosed = false;
+            bool hasPreviousCubicControl = false;
+            bool hasPreviousQuadraticControl = false;
 
             auto SkipSeparators = [&]()
             {
@@ -1349,6 +2032,8 @@ namespace he::scribe::editor
                         subpathStart = point;
                         hasCurrent = true;
                         subpathClosed = false;
+                        hasPreviousCubicControl = false;
+                        hasPreviousQuadraticControl = false;
                         command = relative ? 'l' : 'L';
                         break;
                     }
@@ -1365,6 +2050,8 @@ namespace he::scribe::editor
                         strokeBuilder.AppendLineTo(point);
                         current = point;
                         hasCurrent = true;
+                        hasPreviousCubicControl = false;
+                        hasPreviousQuadraticControl = false;
                         break;
                     }
 
@@ -1382,6 +2069,8 @@ namespace he::scribe::editor
                         strokeBuilder.AppendLineTo(point);
                         current = point;
                         hasCurrent = true;
+                        hasPreviousCubicControl = false;
+                        hasPreviousQuadraticControl = false;
                         break;
                     }
 
@@ -1399,6 +2088,8 @@ namespace he::scribe::editor
                         strokeBuilder.AppendLineTo(point);
                         current = point;
                         hasCurrent = true;
+                        hasPreviousCubicControl = false;
+                        hasPreviousQuadraticControl = false;
                         break;
                     }
 
@@ -1415,6 +2106,30 @@ namespace he::scribe::editor
                         strokeBuilder.AppendQuadraticTo(control, point);
                         current = point;
                         hasCurrent = true;
+                        previousQuadraticControl = control;
+                        hasPreviousQuadraticControl = true;
+                        hasPreviousCubicControl = false;
+                        break;
+                    }
+
+                    case 'T':
+                    {
+                        Point2 point{};
+                        if (!ReadPoint(relative, point))
+                        {
+                            return false;
+                        }
+
+                        const Point2 control = hasPreviousQuadraticControl
+                            ? ReflectPoint(current, previousQuadraticControl)
+                            : current;
+                        builder.AddQuadratic(current, control, point);
+                        strokeBuilder.AppendQuadraticTo(control, point);
+                        current = point;
+                        hasCurrent = true;
+                        previousQuadraticControl = control;
+                        hasPreviousQuadraticControl = true;
+                        hasPreviousCubicControl = false;
                         break;
                     }
 
@@ -1434,6 +2149,32 @@ namespace he::scribe::editor
                         strokeBuilder.AppendCubicTo(c1, c2, point);
                         current = point;
                         hasCurrent = true;
+                        previousCubicControl = c2;
+                        hasPreviousCubicControl = true;
+                        hasPreviousQuadraticControl = false;
+                        break;
+                    }
+
+                    case 'S':
+                    {
+                        Point2 c2{};
+                        Point2 point{};
+                        if (!ReadPoint(relative, c2)
+                            || !ReadPoint(relative, point))
+                        {
+                            return false;
+                        }
+
+                        const Point2 c1 = hasPreviousCubicControl
+                            ? ReflectPoint(current, previousCubicControl)
+                            : current;
+                        builder.AddCubic(current, c1, c2, point);
+                        strokeBuilder.AppendCubicTo(c1, c2, point);
+                        current = point;
+                        hasCurrent = true;
+                        previousCubicControl = c2;
+                        hasPreviousCubicControl = true;
+                        hasPreviousQuadraticControl = false;
                         break;
                     }
 
@@ -1445,6 +2186,8 @@ namespace he::scribe::editor
                             strokeBuilder.AppendClose();
                             current = subpathStart;
                             subpathClosed = true;
+                            hasPreviousCubicControl = false;
+                            hasPreviousQuadraticControl = false;
                         }
                         break;
                     }
@@ -1559,6 +2302,20 @@ namespace he::scribe::editor
             return nullptr;
         }
 
+        const ParsedClipPath* SvgParser::FindClipPath(StringView id) const
+        {
+            for (const ParsedClipPath& clipPath : m_clipPaths)
+            {
+                const StringView clipPathId(clipPath.id.Data(), clipPath.id.Size());
+                if (clipPathId.EqualToI(id))
+                {
+                    return &clipPath;
+                }
+            }
+
+            return nullptr;
+        }
+
         bool BuildCompiledShape(
             CompiledVectorShapeRenderEntry& outShape,
             Vector<PackedCurveTexel>& outCurveTexels,
@@ -1571,7 +2328,7 @@ namespace he::scribe::editor
         {
             outShape = {};
             outBandStats = {};
-            if (shape.curves.IsEmpty())
+            if (shape.curves.IsEmpty() && shape.strokeCommands.IsEmpty())
             {
                 return false;
             }
@@ -1589,38 +2346,41 @@ namespace he::scribe::editor
                 Span<const StrokeSourcePoint>(shape.strokePoints.Data(), shape.strokePoints.Size()),
                 Span<const StrokeSourceCommand>(shape.strokeCommands.Data(), shape.strokeCommands.Size()));
 
-            Vector<CurveData> curves = shape.curves;
-            for (uint32_t curveIndex = 0; curveIndex < curves.Size(); ++curveIndex)
+            if (!shape.curves.IsEmpty())
             {
-                CurveData& curve = curves[curveIndex];
-                curve.curveTexelIndex = outCurveTexels.Size();
-                SvgAppendCurveTexels(outCurveTexels, curve);
+                Vector<CurveData> curves = shape.curves;
+                for (uint32_t curveIndex = 0; curveIndex < curves.Size(); ++curveIndex)
+                {
+                    CurveData& curve = curves[curveIndex];
+                    curve.curveTexelIndex = outCurveTexels.Size();
+                    SvgAppendCurveTexels(outCurveTexels, curve);
+                }
+
+                const uint32_t bandCountX = SvgChooseBandCount(curves, false, shape.minX, shape.maxX, epsilon);
+                const uint32_t bandCountY = SvgChooseBandCount(curves, true, shape.minY, shape.maxY, epsilon);
+
+                Vector<Vector<CurveRef>> xBands{};
+                Vector<Vector<CurveRef>> yBands{};
+                SvgBuildBandRefs(xBands, curves, false, shape.minX, shape.maxX, bandCountX, epsilon);
+                SvgBuildBandRefs(yBands, curves, true, shape.minY, shape.maxY, bandCountY, epsilon);
+
+                outShape.bandScaleX = ComputeBandScale(shape.minX, shape.maxX, bandCountX);
+                outShape.bandScaleY = ComputeBandScale(shape.minY, shape.maxY, bandCountY);
+                outShape.bandOffsetX = -shape.minX * outShape.bandScaleX;
+                outShape.bandOffsetY = -shape.minY * outShape.bandScaleY;
+                outShape.glyphBandLocX = outBandTexels.Size() % ScribeBandTextureWidth;
+                outShape.glyphBandLocY = outBandTexels.Size() / ScribeBandTextureWidth;
+                outShape.bandMaxX = bandCountX > 0 ? bandCountX - 1 : 0;
+                outShape.bandMaxY = bandCountY > 0 ? bandCountY - 1 : 0;
+
+                const uint32_t glyphBandStart = outBandTexels.Size();
+                const PackedBandStats bandStats = AppendPackedBands(
+                    outBandTexels,
+                    glyphBandStart,
+                    yBands,
+                    xBands);
+                outBandStats = bandStats;
             }
-
-            const uint32_t bandCountX = SvgChooseBandCount(curves, false, shape.minX, shape.maxX, epsilon);
-            const uint32_t bandCountY = SvgChooseBandCount(curves, true, shape.minY, shape.maxY, epsilon);
-
-            Vector<Vector<CurveRef>> xBands{};
-            Vector<Vector<CurveRef>> yBands{};
-            SvgBuildBandRefs(xBands, curves, false, shape.minX, shape.maxX, bandCountX, epsilon);
-            SvgBuildBandRefs(yBands, curves, true, shape.minY, shape.maxY, bandCountY, epsilon);
-
-            outShape.bandScaleX = ComputeBandScale(shape.minX, shape.maxX, bandCountX);
-            outShape.bandScaleY = ComputeBandScale(shape.minY, shape.maxY, bandCountY);
-            outShape.bandOffsetX = -shape.minX * outShape.bandScaleX;
-            outShape.bandOffsetY = -shape.minY * outShape.bandScaleY;
-            outShape.glyphBandLocX = outBandTexels.Size() % ScribeBandTextureWidth;
-            outShape.glyphBandLocY = outBandTexels.Size() / ScribeBandTextureWidth;
-            outShape.bandMaxX = bandCountX > 0 ? bandCountX - 1 : 0;
-            outShape.bandMaxY = bandCountY > 0 ? bandCountY - 1 : 0;
-
-            const uint32_t glyphBandStart = outBandTexels.Size();
-            const PackedBandStats bandStats = AppendPackedBands(
-                outBandTexels,
-                glyphBandStart,
-                yBands,
-                xBands);
-            outBandStats = bandStats;
 
             return true;
         }
@@ -1658,7 +2418,7 @@ namespace he::scribe::editor
         out.boundsMaxY = parsed.boundsMaxY;
 
         out.shapes.Reserve(parsed.shapes.Size());
-        out.layers.Reserve(parsed.shapes.Size());
+        out.layers = parsed.layers;
         for (uint32_t shapeIndex = 0; shapeIndex < parsed.shapes.Size(); ++shapeIndex)
         {
             const ParsedShape& shape = parsed.shapes[shapeIndex];
@@ -1680,13 +2440,6 @@ namespace he::scribe::editor
             out.emittedBandPayloadTexelCount += bandStats.emittedPayloadTexelCount;
             out.reusedBandCount += bandStats.reusedBandCount;
             out.reusedBandPayloadTexelCount += bandStats.reusedPayloadTexelCount;
-
-            CompiledVectorImageLayerEntry& layer = out.layers.EmplaceBack();
-            layer.shapeIndex = shapeIndex;
-            layer.red = shape.color.x;
-            layer.green = shape.color.y;
-            layer.blue = shape.color.z;
-            layer.alpha = shape.color.w;
         }
 
         PadCurveTexture(out.curveTexels, out.curveTextureWidth, out.curveTextureHeight);

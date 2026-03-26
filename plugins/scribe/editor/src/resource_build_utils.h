@@ -193,10 +193,15 @@ namespace he::scribe::editor
             const CompiledVectorImageLayerEntry& srcLayer = imageData.layers[layerIndex];
             VectorImageLayer::Builder dstLayer = layers[layerIndex];
             dstLayer.SetShapeIndex(srcLayer.shapeIndex);
+            dstLayer.SetKind(srcLayer.kind);
             dstLayer.SetRed(srcLayer.red);
             dstLayer.SetGreen(srcLayer.green);
             dstLayer.SetBlue(srcLayer.blue);
             dstLayer.SetAlpha(srcLayer.alpha);
+            dstLayer.SetStrokeWidth(srcLayer.strokeWidth);
+            dstLayer.SetStrokeJoin(srcLayer.strokeJoin);
+            dstLayer.SetStrokeCap(srcLayer.strokeCap);
+            dstLayer.SetStrokeMiterLimit(srcLayer.strokeMiterLimit);
         }
     }
 }

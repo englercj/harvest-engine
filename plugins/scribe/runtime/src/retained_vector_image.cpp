@@ -6,6 +6,33 @@
 
 namespace he::scribe
 {
+    namespace
+    {
+        StrokeJoinStyle ToRuntimeStrokeJoin(StrokeJoinKind value)
+        {
+            switch (value)
+            {
+                case StrokeJoinKind::Bevel: return StrokeJoinStyle::Bevel;
+                case StrokeJoinKind::Round: return StrokeJoinStyle::Round;
+                case StrokeJoinKind::Miter:
+                default:
+                    return StrokeJoinStyle::Miter;
+            }
+        }
+
+        StrokeCapStyle ToRuntimeStrokeCap(StrokeCapKind value)
+        {
+            switch (value)
+            {
+                case StrokeCapKind::Square: return StrokeCapStyle::Square;
+                case StrokeCapKind::Round: return StrokeCapStyle::Round;
+                case StrokeCapKind::Butt:
+                default:
+                    return StrokeCapStyle::Butt;
+            }
+        }
+    }
+
     bool RetainedVectorImageModel::Build(const RetainedVectorImageBuildDesc& desc)
     {
         Clear();
@@ -47,6 +74,27 @@ namespace he::scribe
         for (uint32_t layerIndex = 0; layerIndex < layers.Size(); ++layerIndex)
         {
             const VectorImageLayer::Reader layer = layers[layerIndex];
+            const bool isStrokeLayer = layer.GetKind() == VectorLayerKind::Stroke;
+            if (isStrokeLayer)
+            {
+                RetainedVectorImageDraw& stroke = m_draws.EmplaceBack();
+                stroke.shapeIndex = layer.GetShapeIndex();
+                stroke.flags = RetainedVectorImageDrawFlagStroke;
+                stroke.color = {
+                    layer.GetRed(),
+                    layer.GetGreen(),
+                    layer.GetBlue(),
+                    layer.GetAlpha()
+                };
+                stroke.offset = drawOffset;
+                stroke.strokeStyle.width = layer.GetStrokeWidth();
+                stroke.strokeStyle.joinStyle = ToRuntimeStrokeJoin(layer.GetStrokeJoin());
+                stroke.strokeStyle.capStyle = ToRuntimeStrokeCap(layer.GetStrokeCap());
+                stroke.strokeStyle.miterLimit = layer.GetStrokeMiterLimit();
+                m_estimatedVertexCount += ScribeGlyphVertexCount;
+                continue;
+            }
+
             if (addStroke)
             {
                 RetainedVectorImageDraw& stroke = m_draws.EmplaceBack();

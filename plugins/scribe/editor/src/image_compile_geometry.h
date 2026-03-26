@@ -35,10 +35,15 @@ namespace he::scribe::editor
     struct CompiledVectorImageLayerEntry
     {
         uint32_t shapeIndex{ 0 };
+        VectorLayerKind kind{ VectorLayerKind::Fill };
         float red{ 1.0f };
         float green{ 1.0f };
         float blue{ 1.0f };
         float alpha{ 1.0f };
+        float strokeWidth{ 0.0f };
+        StrokeJoinKind strokeJoin{ StrokeJoinKind::Miter };
+        StrokeCapKind strokeCap{ StrokeCapKind::Butt };
+        float strokeMiterLimit{ 4.0f };
     };
 
     struct CompiledVectorImageData

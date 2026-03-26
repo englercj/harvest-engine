@@ -42,6 +42,37 @@ namespace
         "<path fill=\"#22c55e\" d=\"M16 16 L48 16 L48 48 L16 48 Z\"/>"
         "</svg>";
 
+    constexpr const char* kSvgBasicShapes =
+        "<svg viewBox=\"0 0 128 128\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<g transform=\"translate(4 6)\" style=\"fill:#ef4444; opacity:0.5\">"
+        "<rect x=\"4\" y=\"4\" width=\"20\" height=\"16\"/>"
+        "<circle cx=\"40\" cy=\"20\" r=\"10\"/>"
+        "</g>"
+        "<ellipse cx=\"88\" cy=\"28\" rx=\"18\" ry=\"10\" fill=\"#22c55e\"/>"
+        "<polygon fill=\"#3b82f6\" points=\"20,72 44,56 68,72 58,100 30,102\"/>"
+        "</svg>";
+
+    constexpr const char* kSvgSmoothPathCommands =
+        "<svg viewBox=\"0 0 128 96\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<path fill=\"#111827\" d=\"M8 8 Q24 0 40 8 T72 8 L72 40 L8 40 Z\"/>"
+        "<path fill=\"#22c55e\" d=\"M8 56 C20 32 44 32 56 56 S92 80 104 56 L104 88 L8 88 Z\"/>"
+        "</svg>";
+
+    constexpr const char* kSvgWithAuthoredStroke =
+        "<svg viewBox=\"0 0 96 64\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<path fill=\"none\" stroke=\"#ef4444\" stroke-width=\"6\" stroke-linejoin=\"round\" d=\"M8 52 L24 12 L40 52 Z\"/>"
+        "<rect x=\"56\" y=\"14\" width=\"20\" height=\"20\" fill=\"#22c55e\" stroke=\"#111827\" stroke-width=\"4\"/>"
+        "</svg>";
+
+    constexpr const char* kSvgWithClipPath =
+        "<svg viewBox=\"0 0 64 64\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<defs><clipPath id=\"clipBox\"><rect x=\"0\" y=\"0\" width=\"20\" height=\"20\"/></clipPath></defs>"
+        "<g clip-path=\"url(#clipBox)\">"
+        "<rect fill=\"#111827\" x=\"4\" y=\"4\" width=\"8\" height=\"8\"/>"
+        "<rect fill=\"#22c55e\" x=\"40\" y=\"40\" width=\"8\" height=\"8\"/>"
+        "</g>"
+        "</svg>";
+
     bool BuildLoadedVectorImage(Vector<schema::Word>& storage, VectorImageResourceReader& out)
     {
         CompiledVectorImageData imageData{};
@@ -240,6 +271,75 @@ HE_TEST(scribe, vector_image_pipeline, skips_text_elements_without_failing_svg_c
     HE_EXPECT_EQ(imageData.shapes.Size(), 2u);
 }
 
+HE_TEST(scribe, vector_image_pipeline, compiles_basic_svg_shape_elements)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgBasicShapes), StrLen(kSvgBasicShapes)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 4u);
+    HE_EXPECT_EQ(imageData.layers.Size(), 4u);
+    HE_EXPECT_GT(imageData.strokeCommands.Size(), 0u);
+    HE_EXPECT_GT(imageData.strokePoints.Size(), 0u);
+    HE_EXPECT_EQ(imageData.layers[0].red, 239.0f / 255.0f);
+    HE_EXPECT_EQ(imageData.layers[0].alpha, 0.5f);
+    HE_EXPECT_EQ(imageData.layers[1].alpha, 0.5f);
+    HE_EXPECT_EQ(imageData.layers[2].green, 197.0f / 255.0f);
+    HE_EXPECT_EQ(imageData.layers[3].blue, 246.0f / 255.0f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, supports_smooth_path_commands)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgSmoothPathCommands), StrLen(kSvgSmoothPathCommands)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 2u);
+    HE_EXPECT_EQ(imageData.layers.Size(), 2u);
+    HE_EXPECT_GT(imageData.curveTexels.Size(), 0u);
+    HE_EXPECT_GT(imageData.strokeCommands.Size(), 0u);
+    HE_EXPECT_GT(imageData.shapes[0].strokeCommandCount, 0u);
+    HE_EXPECT_GT(imageData.shapes[1].strokeCommandCount, 0u);
+}
+
+HE_TEST(scribe, vector_image_pipeline, emits_authored_stroke_layers)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithAuthoredStroke), StrLen(kSvgWithAuthoredStroke)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 2u);
+    HE_EXPECT_EQ(imageData.layers.Size(), 3u);
+    HE_EXPECT_EQ(imageData.layers[0].kind, VectorLayerKind::Stroke);
+    HE_EXPECT_EQ(imageData.layers[0].strokeJoin, StrokeJoinKind::Round);
+    HE_EXPECT_EQ(imageData.layers[0].strokeWidth, 6.0f);
+    HE_EXPECT_EQ(imageData.layers[1].kind, VectorLayerKind::Stroke);
+    HE_EXPECT_EQ(imageData.layers[2].kind, VectorLayerKind::Fill);
+}
+
+HE_TEST(scribe, vector_image_pipeline, skips_shapes_outside_simple_clip_paths)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithClipPath), StrLen(kSvgWithClipPath)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 1u);
+    HE_EXPECT_EQ(imageData.layers.Size(), 1u);
+    HE_EXPECT_EQ(imageData.layers[0].red, 17.0f / 255.0f);
+}
+
 HE_TEST(scribe, vector_image_pipeline, loads_compiled_vector_blob)
 {
     Vector<schema::Word> storage;
@@ -339,6 +439,58 @@ HE_TEST(scribe, retained_vector_image, builds_runtime_stroke_draws_from_runtime_
     }
 
     HE_EXPECT_EQ(strokeDrawCount, image.GetPaint().GetLayers().Size());
+}
+
+HE_TEST(scribe, retained_vector_image, builds_authored_stroke_draws_from_runtime_resource)
+{
+    CompiledVectorImageData imageData{};
+    HE_ASSERT(BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithAuthoredStroke), StrLen(kSvgWithAuthoredStroke)),
+        0.25f));
+
+    schema::Builder rootBuilder;
+    VectorImageResource::Builder root = rootBuilder.AddStruct<VectorImageResource>();
+    FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
+    FillVectorImageResourceFillData(root.GetFill(), imageData);
+    FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
+    FillVectorImageResourcePaintData(root.GetPaint(), imageData);
+    root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
+    root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
+    rootBuilder.SetRoot(root);
+
+    Vector<schema::Word> storage;
+    storage = Span<const schema::Word>(rootBuilder);
+    const VectorImageResourceReader image = schema::ReadRoot<VectorImageResource>(storage.Data());
+    HE_ASSERT(image.IsValid());
+
+    RetainedVectorImageModel retainedImage;
+    ScribeContext context{};
+    const VectorImageHandle handle = context.RegisterVectorImage(image);
+    HE_ASSERT(handle.IsValid());
+
+    RetainedVectorImageBuildDesc desc{};
+    desc.context = &context;
+    desc.image = handle;
+    HE_ASSERT(retainedImage.Build(desc));
+
+    uint32_t authoredStrokeDrawCount = 0;
+    uint32_t fillDrawCount = 0;
+    for (const RetainedVectorImageDraw& draw : retainedImage.GetDraws())
+    {
+        if ((draw.flags & RetainedVectorImageDrawFlagStroke) != 0)
+        {
+            ++authoredStrokeDrawCount;
+            HE_EXPECT_GT(draw.strokeStyle.width, 0.0f);
+        }
+        else
+        {
+            ++fillDrawCount;
+        }
+    }
+
+    HE_EXPECT_EQ(authoredStrokeDrawCount, 2u);
+    HE_EXPECT_EQ(fillDrawCount, 1u);
 }
 
 HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_image_copy_expires)

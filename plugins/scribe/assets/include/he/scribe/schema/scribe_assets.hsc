@@ -24,6 +24,26 @@ enum StrokeCommandType
     Close @3;
 }
 
+enum StrokeJoinKind
+{
+    Miter @0;
+    Bevel @1;
+    Round @2;
+}
+
+enum StrokeCapKind
+{
+    Butt @0;
+    Square @1;
+    Round @2;
+}
+
+enum VectorLayerKind
+{
+    Fill @0;
+    Stroke @1;
+}
+
 struct StrokePoint
 {
     x @0 :int32;
@@ -233,10 +253,15 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
     struct Layer
     {
         shapeIndex @0 :uint32;
-        red @1 :float32;
-        green @2 :float32;
-        blue @3 :float32;
-        alpha @4 :float32;
+        kind @1 :VectorLayerKind = VectorLayerKind.Fill;
+        red @2 :float32;
+        green @3 :float32;
+        blue @4 :float32;
+        alpha @5 :float32;
+        strokeWidth @6 :float32;
+        strokeJoin @7 :StrokeJoinKind = StrokeJoinKind.Miter;
+        strokeCap @8 :StrokeCapKind = StrokeCapKind.Butt;
+        strokeMiterLimit @9 :float32;
     }
 
     struct RuntimeResource

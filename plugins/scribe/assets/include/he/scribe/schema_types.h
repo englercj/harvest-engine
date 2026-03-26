@@ -6,6 +6,9 @@
 
 namespace he::scribe
 {
+    using ScribeStrokeJoinKind = StrokeJoinKind;
+    using ScribeStrokeCapKind = StrokeCapKind;
+
     using FontSourceFormat = ScribeFontFace::SourceFormat;
     using FontFaceMetrics = ScribeFontFace::Metrics;
     using FontFaceShapingData = ScribeFontFace::RuntimeResource::Shaping;

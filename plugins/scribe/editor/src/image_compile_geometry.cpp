@@ -2967,7 +2967,17 @@ namespace he::scribe::editor
         out.boundsMaxX = parsed.boundsMaxX;
         out.boundsMaxY = parsed.boundsMaxY;
 
+        uint32_t totalStrokePointCount = 0;
+        uint32_t totalStrokeCommandCount = 0;
+        for (const ParsedShape& shape : parsed.shapes)
+        {
+            totalStrokePointCount += shape.strokePoints.Size();
+            totalStrokeCommandCount += shape.strokeCommands.Size();
+        }
+
         out.shapes.Reserve(parsed.shapes.Size());
+        out.strokePoints.Reserve(totalStrokePointCount);
+        out.strokeCommands.Reserve(totalStrokeCommandCount);
         out.layers = parsed.layers;
         for (uint32_t shapeIndex = 0; shapeIndex < parsed.shapes.Size(); ++shapeIndex)
         {

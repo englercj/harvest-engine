@@ -73,7 +73,7 @@ namespace he::scribe::editor
         Span<const StrokeSourceCommand> sourceCommands)
     {
         const uint32_t pointBase = outPoints.Size();
-        outPoints.Expand(outPoints.Size() + sourcePoints.Size());
+        outPoints.Reserve(outPoints.Size() + sourcePoints.Size());
         for (const StrokeSourcePoint& point : sourcePoints)
         {
             CompiledStrokePoint& compiledPoint = outPoints.EmplaceBack();

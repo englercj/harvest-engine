@@ -320,6 +320,184 @@ namespace he::scribe::editor
             bool m_hasContour{ false };
         };
 
+        class GlyphStrokeCountBuilder final
+        {
+        public:
+            explicit GlyphStrokeCountBuilder(float cubicTolerance)
+                : m_cubicToleranceSq(cubicTolerance * cubicTolerance)
+            {
+            }
+
+            bool Build(const FT_Outline& outline)
+            {
+                m_pointCount = 0;
+                m_commandCount = 0;
+                m_hasContour = false;
+                m_current = {};
+
+                FT_Outline_Funcs funcs{};
+                funcs.move_to = &MoveTo;
+                funcs.line_to = &LineTo;
+                funcs.conic_to = &ConicTo;
+                funcs.cubic_to = &CubicTo;
+                funcs.shift = 0;
+                funcs.delta = 0;
+
+                const FT_Error err = FT_Outline_Decompose(const_cast<FT_Outline*>(&outline), &funcs, this);
+                if (err != 0)
+                {
+                    return false;
+                }
+
+                if (m_hasContour)
+                {
+                    AppendClose();
+                }
+
+                return true;
+            }
+
+            uint32_t GetPointCount() const { return m_pointCount; }
+            uint32_t GetCommandCount() const { return m_commandCount; }
+
+        private:
+            void AppendMoveTo(const Point2& point)
+            {
+                ++m_commandCount;
+                ++m_pointCount;
+                m_current = point;
+                m_hasContour = true;
+            }
+
+            void AppendLineTo(const Point2& point)
+            {
+                ++m_commandCount;
+                ++m_pointCount;
+                m_current = point;
+            }
+
+            void AppendQuadraticTo(const Point2& point)
+            {
+                ++m_commandCount;
+                m_pointCount += 2;
+                m_current = point;
+            }
+
+            void AppendClose()
+            {
+                ++m_commandCount;
+                m_hasContour = false;
+            }
+
+            void FlattenCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3, uint32_t depth)
+            {
+                const float d1 = curve_compile::DistanceToLineSq(p1, p0, p3);
+                const float d2 = curve_compile::DistanceToLineSq(p2, p0, p3);
+                if ((depth >= curve_compile::MaxCubicSubdivisionDepth) || (Max(d1, d2) <= m_cubicToleranceSq))
+                {
+                    AppendLineTo(p3);
+                    return;
+                }
+
+                const Point2 p01 = curve_compile::MidPoint(p0, p1);
+                const Point2 p12 = curve_compile::MidPoint(p1, p2);
+                const Point2 p23 = curve_compile::MidPoint(p2, p3);
+                const Point2 p012 = curve_compile::MidPoint(p01, p12);
+                const Point2 p123 = curve_compile::MidPoint(p12, p23);
+                const Point2 p0123 = curve_compile::MidPoint(p012, p123);
+
+                FlattenCubic(p0, p01, p012, p0123, depth + 1);
+                FlattenCubic(p0123, p123, p23, p3, depth + 1);
+            }
+
+            static int MoveTo(const FT_Vector* to, void* user)
+            {
+                GlyphStrokeCountBuilder& self = *static_cast<GlyphStrokeCountBuilder*>(user);
+                if (self.m_hasContour)
+                {
+                    self.AppendClose();
+                }
+
+                self.AppendMoveTo(ToPoint(*to));
+                return 0;
+            }
+
+            static int LineTo(const FT_Vector* to, void* user)
+            {
+                GlyphStrokeCountBuilder& self = *static_cast<GlyphStrokeCountBuilder*>(user);
+                self.AppendLineTo(ToPoint(*to));
+                return 0;
+            }
+
+            static int ConicTo(const FT_Vector* control, const FT_Vector* to, void* user)
+            {
+                GlyphStrokeCountBuilder& self = *static_cast<GlyphStrokeCountBuilder*>(user);
+                (void)control;
+                self.AppendQuadraticTo(ToPoint(*to));
+                return 0;
+            }
+
+            static int CubicTo(const FT_Vector* control1, const FT_Vector* control2, const FT_Vector* to, void* user)
+            {
+                GlyphStrokeCountBuilder& self = *static_cast<GlyphStrokeCountBuilder*>(user);
+                self.FlattenCubic(self.m_current, ToPoint(*control1), ToPoint(*control2), ToPoint(*to), 0);
+                return 0;
+            }
+
+        private:
+            Point2 m_current{};
+            float m_cubicToleranceSq{ 0.0f };
+            uint32_t m_pointCount{ 0 };
+            uint32_t m_commandCount{ 0 };
+            bool m_hasContour{ false };
+        };
+
+        bool EstimateCompiledStrokeStorage(
+            uint32_t& outPointCount,
+            uint32_t& outCommandCount,
+            FT_Face face,
+            uint32_t glyphCount,
+            float cubicTolerance)
+        {
+            outPointCount = 0;
+            outCommandCount = 0;
+
+            GlyphStrokeCountBuilder counter(cubicTolerance);
+            for (uint32_t glyphIndex = 0; glyphIndex < glyphCount; ++glyphIndex)
+            {
+                const FT_Error loadErr = FT_Load_Glyph(
+                    face,
+                    static_cast<FT_UInt>(glyphIndex),
+                    FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING | FT_LOAD_IGNORE_TRANSFORM);
+                if (loadErr != 0)
+                {
+                    HE_LOG_ERROR(he_scribe,
+                        HE_MSG("Failed to load glyph outline for stroke storage estimation."),
+                        HE_KV(glyph_index, glyphIndex),
+                        HE_KV(error, loadErr));
+                    return false;
+                }
+
+                if ((face->glyph->format != FT_GLYPH_FORMAT_OUTLINE) || (face->glyph->outline.n_points == 0))
+                {
+                    continue;
+                }
+
+                if (!counter.Build(face->glyph->outline))
+                {
+                    HE_LOG_ERROR(he_scribe,
+                        HE_MSG("Failed to estimate glyph stroke storage."),
+                        HE_KV(glyph_index, glyphIndex));
+                    return false;
+                }
+
+                outPointCount += counter.GetPointCount();
+                outCommandCount += counter.GetCommandCount();
+            }
+
+            return true;
+        }
+
         float ComputeBandScale(float minBound, float maxBound, uint32_t bandCount)
         {
             if (bandCount <= 1)
@@ -758,6 +936,20 @@ namespace he::scribe::editor
             return false;
         }
         out.bandOverlapEpsilon = Max(1.0f, static_cast<float>(ftFace->units_per_EM) / 1024.0f);
+
+        uint32_t estimatedStrokePointCount = 0;
+        uint32_t estimatedStrokeCommandCount = 0;
+        if (!EstimateCompiledStrokeStorage(
+                estimatedStrokePointCount,
+                estimatedStrokeCommandCount,
+                ftFace,
+                glyphCount,
+                out.bandOverlapEpsilon))
+        {
+            return false;
+        }
+        out.strokePoints.Reserve(estimatedStrokePointCount);
+        out.strokeCommands.Reserve(estimatedStrokeCommandCount);
 
         for (uint32_t glyphIndex = 0; glyphIndex < glyphCount; ++glyphIndex)
         {

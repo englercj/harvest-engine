@@ -815,7 +815,7 @@ namespace he::scribe
             float epsilon)
         {
             outBands.Clear();
-            outBands.Resize(bandCount, DefaultInit);
+            outBands.Resize(bandCount);
 
             for (const CurveData& curve : curves)
             {

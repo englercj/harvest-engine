@@ -79,11 +79,13 @@ namespace he::scribe::editor
         // a visible bow.
         if (Abs(dx) <= AxisEpsilon)
         {
-            outControl.x += ComputeMinimalHalfFloatOffset(midX);
+            const float offset = ComputeMinimalHalfFloatOffset(midX);
+            outControl.x += dy >= 0.0f ? offset : -offset;
         }
         else if (Abs(dy) <= AxisEpsilon)
         {
-            outControl.y += ComputeMinimalHalfFloatOffset(midY);
+            const float offset = ComputeMinimalHalfFloatOffset(midY);
+            outControl.y += dx >= 0.0f ? -offset : offset;
         }
         return true;
     }

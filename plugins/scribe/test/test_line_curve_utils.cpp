@@ -69,5 +69,21 @@ HE_TEST(scribe, line_curve_utils, keeps_horizontal_line_controls_near_the_stem_a
     HE_EXPECT(TryComputeStableLineQuadraticControlPoint(control, { 0.0f, 0.0f }, { 2000.0f, 0.0f }, kDegenerateLineLengthSq));
 
     HE_EXPECT(Abs(control.x - 1000.5f) <= 1.0e-4f);
+    HE_EXPECT_EQ(control.y, -ComputeMinimalHalfFloatOffset(0.0f));
+}
+
+HE_TEST(scribe, line_curve_utils, flips_axis_aligned_offsets_with_segment_direction)
+{
+    using he::scribe::editor::LineCurvePoint;
+    using he::scribe::editor::ComputeMinimalHalfFloatOffset;
+    using he::scribe::editor::TryComputeStableLineQuadraticControlPoint;
+
+    constexpr float kDegenerateLineLengthSq = 1.0e-6f;
+
+    LineCurvePoint control{};
+    HE_EXPECT(TryComputeStableLineQuadraticControlPoint(control, { 0.0f, 2000.0f }, { 0.0f, 0.0f }, kDegenerateLineLengthSq));
+    HE_EXPECT_EQ(control.x, -ComputeMinimalHalfFloatOffset(0.0f));
+
+    HE_EXPECT(TryComputeStableLineQuadraticControlPoint(control, { 2000.0f, 0.0f }, { 0.0f, 0.0f }, kDegenerateLineLengthSq));
     HE_EXPECT_EQ(control.y, ComputeMinimalHalfFloatOffset(0.0f));
 }

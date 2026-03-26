@@ -306,7 +306,7 @@ namespace he::scribe::editor::curve_compile
         float epsilon)
     {
         outBands.Clear();
-        outBands.Resize(bandCount, DefaultInit);
+        outBands.Resize(bandCount);
 
         for (uint32_t curveIndex = 0; curveIndex < curves.Size(); ++curveIndex)
         {

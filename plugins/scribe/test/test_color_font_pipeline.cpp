@@ -872,6 +872,8 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_has_no_detached_left_edg
     HE_ASSERT(glyphIndex < renderData.glyphs.Size());
 
     const CompiledGlyphRenderEntry& glyph = renderData.glyphs[glyphIndex];
+    const float detachedCoverageMargin = 1.0f / Max(pixelsPerUnit.x, 1.0e-6f);
+    const float detachedCoverageStartX = glyph.boundsMinX - detachedCoverageMargin - 8.0f;
     float maxCoverageOutsideLeft = 0.0f;
     float maxCoverageOutsideLeftX = 0.0f;
     float maxCoverageOutsideLeftY = 0.0f;
@@ -881,7 +883,7 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_has_no_detached_left_edg
         const float sampleY = Lerp(glyph.boundsMinY, glyph.boundsMaxY, t);
         for (uint32_t xIndex = 0; xIndex < 32u; ++xIndex)
         {
-            const float sampleX = glyph.boundsMinX - 8.0f + (static_cast<float>(xIndex) * 0.25f);
+            const float sampleX = detachedCoverageStartX + (static_cast<float>(xIndex) * 0.25f);
             const float coverage = EvaluateGlyphCoverageCpu(renderData, glyph, sampleX, sampleY, pixelsPerUnit);
             if (coverage > maxCoverageOutsideLeft)
             {
@@ -950,8 +952,8 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_has_no_detached_left_edg
     DumpGlyphCoverageSliceCpu(
         renderData,
         glyph,
-        glyph.boundsMinX - 2.0f,
-        glyph.boundsMinX + 6.0f,
+        detachedCoverageStartX,
+        detachedCoverageStartX + 8.0f,
         maxCoverageOutsideLeftY,
         pixelsPerUnit,
         0.125f);

@@ -1,6 +1,8 @@
 // Copyright Chad Engler
 
 #include "image_compile_geometry.h"
+#include "font_compile_geometry.h"
+#include "font_import_utils.h"
 #include "resource_build_utils.h"
 
 #include "he/scribe/compiled_vector_image.h"
@@ -9,6 +11,7 @@
 #include "he/scribe/schema_types.h"
 
 #include "he/core/test.h"
+#include "he/core/file.h"
 #include "he/rhi/device.h"
 #include "he/rhi/instance.h"
 
@@ -99,6 +102,21 @@ namespace
         "</g>"
         "</svg>";
 
+    constexpr const char* kSvgWithDashedStroke =
+        "<svg viewBox=\"0 0 64 24\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<path fill=\"none\" stroke=\"#1475bc\" stroke-width=\"2\" stroke-dasharray=\"4,4\" d=\"M4 12 L60 12\"/>"
+        "</svg>";
+
+    constexpr const char* kSvgWithPostScriptTimesText =
+        "<svg viewBox=\"0 0 64 32\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<text x=\"8\" y=\"20\" font-family=\"CIZBRT+TimesNewRomanPS-BoldMT\" font-weight=\"bold\" font-size=\"18\">p</text>"
+        "</svg>";
+
+    constexpr const char* kSvgWithPostScriptArialText =
+        "<svg viewBox=\"0 0 64 32\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<text x=\"8\" y=\"20\" font-family=\"XLKSZD+ArialMT\" font-size=\"18\">x</text>"
+        "</svg>";
+
     bool BuildLoadedVectorImage(Vector<schema::Word>& storage, VectorImageResourceReader& out)
     {
         CompiledVectorImageData imageData{};
@@ -114,12 +132,68 @@ namespace
         FillVectorImageResourceFillData(root.GetFill(), imageData);
         FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
         FillVectorImageResourcePaintData(root.GetPaint(), imageData);
+        FillVectorImageResourceTextData(rootBuilder, root.GetText(), imageData);
         root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
         root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
         rootBuilder.SetRoot(root);
 
         storage = Span<const schema::Word>(rootBuilder);
         out = schema::ReadRoot<VectorImageResource>(storage.Data());
+        return out.IsValid();
+    }
+
+    bool BuildLoadedFontFace(
+        Vector<schema::Word>& storage,
+        FontFaceResourceReader& out,
+        const char* fileName)
+    {
+        Vector<uint8_t> fontBytes{};
+        if (!File::ReadAll(fontBytes, fileName))
+        {
+            return false;
+        }
+
+        FontFaceInfo faceInfo{};
+        if (!InspectFontFace(fontBytes, 0, faceInfo))
+        {
+            return false;
+        }
+
+        CompiledFontRenderData renderData{};
+        if (!BuildCompiledFontRenderData(renderData, fontBytes, 0))
+        {
+            return false;
+        }
+
+        schema::Builder rootBuilder;
+        FontFaceResource::Builder root = rootBuilder.AddStruct<FontFaceResource>();
+        Vector<uint8_t> shapingBytes{};
+        if (!BuildFontFaceShapingBytes(shapingBytes, Span<const uint8_t>(fontBytes), faceInfo.faceIndex))
+        {
+            return false;
+        }
+
+        FontFaceShapingData::Builder shaping = root.GetShaping();
+        shaping.SetFaceIndex(faceInfo.faceIndex);
+        shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(shapingBytes)));
+        FillFontFaceRuntimeMetadata(
+            root.GetMetadata(),
+            renderData.glyphs.Size(),
+            faceInfo.unitsPerEm,
+            faceInfo.ascender,
+            faceInfo.descender,
+            faceInfo.lineHeight,
+            faceInfo.capHeight,
+            faceInfo.hasColorGlyphs);
+        FillFontFaceResourceFillData(root.GetFill(), renderData);
+        FillFontFaceResourceStrokeData(root.GetStroke(), renderData);
+        FillFontFaceResourcePaintData(root.GetPaint(), renderData.paint);
+        root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
+        root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
+        rootBuilder.SetRoot(root);
+
+        storage = Span<const schema::Word>(rootBuilder);
+        out = schema::ReadRoot<FontFaceResource>(storage.Data());
         return out.IsValid();
     }
 
@@ -293,8 +367,9 @@ HE_TEST(scribe, vector_image_pipeline, skips_text_elements_without_failing_svg_c
         0.25f);
 
     HE_EXPECT(ok);
-    HE_EXPECT_EQ(imageData.layers.Size(), 3u);
-    HE_EXPECT_EQ(imageData.shapes.Size(), 3u);
+    HE_EXPECT_EQ(imageData.layers.Size(), 2u);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 2u);
+    HE_EXPECT_GT(imageData.textRuns.Size(), 0u);
 }
 
 HE_TEST(scribe, vector_image_pipeline, compiles_basic_svg_shape_elements)
@@ -383,10 +458,10 @@ HE_TEST(scribe, vector_image_pipeline, compiles_svg_text_elements_to_geometry)
         0.25f);
 
     HE_EXPECT(ok);
-    HE_EXPECT_GT(imageData.shapes.Size(), 0u);
-    HE_EXPECT_GT(imageData.layers.Size(), 0u);
-    HE_EXPECT_GT(imageData.curveTexels.Size(), 0u);
-    HE_EXPECT_GT(imageData.strokeCommands.Size(), 0u);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 0u);
+    HE_EXPECT_EQ(imageData.layers.Size(), 0u);
+    HE_EXPECT_GT(imageData.textRuns.Size(), 0u);
+    HE_EXPECT_EQ(imageData.fontFaces.Size(), 1u);
 }
 
 HE_TEST(scribe, vector_image_pipeline, applies_group_transform_to_svg_text_geometry)
@@ -398,11 +473,8 @@ HE_TEST(scribe, vector_image_pipeline, applies_group_transform_to_svg_text_geome
         0.25f);
 
     HE_EXPECT(ok);
-    HE_EXPECT_GT(imageData.shapes.Size(), 0u);
-    HE_EXPECT_GT(imageData.layers.Size(), 0u);
-
-    const CompiledVectorShapeRenderEntry& shape = imageData.shapes[imageData.layers[0].shapeIndex];
-    HE_EXPECT_GT(shape.boundsMinX, 35.0f);
+    HE_EXPECT_GT(imageData.textRuns.Size(), 0u);
+    HE_EXPECT_GT(imageData.textRuns[0].transformTranslation.x, 35.0f);
 }
 
 HE_TEST(scribe, vector_image_pipeline, uses_tspan_position_for_svg_text_geometry)
@@ -414,9 +486,36 @@ HE_TEST(scribe, vector_image_pipeline, uses_tspan_position_for_svg_text_geometry
         0.25f);
 
     HE_EXPECT(ok);
-    HE_EXPECT_GT(imageData.shapes.Size(), 0u);
-    const CompiledVectorShapeRenderEntry& shape = imageData.shapes[imageData.layers[0].shapeIndex];
-    HE_EXPECT_GT(shape.boundsMinX, 35.0f);
+    HE_EXPECT_GT(imageData.textRuns.Size(), 0u);
+    HE_EXPECT_GT(imageData.textRuns[0].position.x, 35.0f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, compiles_svg_text_with_postscript_font_names)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithPostScriptTimesText), StrLen(kSvgWithPostScriptTimesText)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_GT(imageData.textRuns.Size(), 0u);
+    HE_EXPECT_EQ(imageData.fontFaces.Size(), 1u);
+    HE_EXPECT_EQ(StringView(imageData.fontFaces[0].key.Data(), imageData.fontFaces[0].key.Size()), "TimesNewRomanPS-BoldMT");
+}
+
+HE_TEST(scribe, vector_image_pipeline, compiles_svg_text_with_postscript_sans_font_names)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithPostScriptArialText), StrLen(kSvgWithPostScriptArialText)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_GT(imageData.textRuns.Size(), 0u);
+    HE_EXPECT_EQ(imageData.fontFaces.Size(), 1u);
+    HE_EXPECT_EQ(StringView(imageData.fontFaces[0].key.Data(), imageData.fontFaces[0].key.Size()), "ArialMT");
 }
 
 HE_TEST(scribe, vector_image_pipeline, applies_group_transform_to_authored_path_strokes)
@@ -434,8 +533,23 @@ HE_TEST(scribe, vector_image_pipeline, applies_group_transform_to_authored_path_
 
     const CompiledVectorShapeRenderEntry& strokeShape = imageData.shapes[imageData.layers[0].shapeIndex];
     const CompiledVectorShapeRenderEntry& fillShape = imageData.shapes[imageData.layers[1].shapeIndex];
-    HE_EXPECT_GT(strokeShape.boundsMinX, 35.0f);
-    HE_EXPECT_GT(fillShape.boundsMinX, 35.0f);
+    HE_EXPECT_GT(strokeShape.originX, 35.0f);
+    HE_EXPECT_GT(fillShape.originX, 35.0f);
+    HE_EXPECT_GE(strokeShape.boundsMinX, 0.0f);
+    HE_EXPECT_GE(fillShape.boundsMinX, 0.0f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, compiles_dashed_authored_strokes)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithDashedStroke), StrLen(kSvgWithDashedStroke)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.layers.Size(), 1u);
+    HE_EXPECT_GT(imageData.curveTexels.Size(), 16u);
 }
 
 HE_TEST(scribe, vector_image_pipeline, loads_compiled_vector_blob)
@@ -553,6 +667,7 @@ HE_TEST(scribe, retained_vector_image, builds_authored_stroke_draws_from_runtime
     FillVectorImageResourceFillData(root.GetFill(), imageData);
     FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
     FillVectorImageResourcePaintData(root.GetPaint(), imageData);
+    FillVectorImageResourceTextData(rootBuilder, root.GetText(), imageData);
     root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
     root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
     rootBuilder.SetRoot(root);
@@ -606,6 +721,7 @@ HE_TEST(scribe, retained_vector_image, builds_draws_from_svg_text_elements)
     FillVectorImageResourceFillData(root.GetFill(), imageData);
     FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
     FillVectorImageResourcePaintData(root.GetPaint(), imageData);
+    FillVectorImageResourceTextData(rootBuilder, root.GetText(), imageData);
     root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
     root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
     rootBuilder.SetRoot(root);
@@ -614,9 +730,20 @@ HE_TEST(scribe, retained_vector_image, builds_draws_from_svg_text_elements)
     storage = Span<const schema::Word>(rootBuilder);
     const VectorImageResourceReader image = schema::ReadRoot<VectorImageResource>(storage.Data());
     HE_ASSERT(image.IsValid());
+    HE_EXPECT_EQ(image.GetText().GetFontFaces().Size(), 1u);
+    HE_EXPECT_EQ(image.GetText().GetFontFaces()[0].AsView(), "Noto Sans");
+    HE_EXPECT_GT(image.GetText().GetRuns().Size(), 0u);
 
     RetainedVectorImageModel retainedImage;
     ScribeContext context{};
+    Vector<schema::Word> fontStorage{};
+    FontFaceResourceReader fontFace{};
+    HE_ASSERT(BuildLoadedFontFace(
+        fontStorage,
+        fontFace,
+        "C:/Users/engle/source/repos/harvest-engine/plugins/editor/src/fonts/NotoSans-Regular.ttf"));
+    const FontFaceHandle fontHandle = context.RegisterFontFace(fontFace, "Noto Sans");
+    HE_ASSERT(fontHandle.IsValid());
     const VectorImageHandle handle = context.RegisterVectorImage(image);
     HE_ASSERT(handle.IsValid());
 
@@ -625,6 +752,17 @@ HE_TEST(scribe, retained_vector_image, builds_draws_from_svg_text_elements)
     desc.image = handle;
     HE_ASSERT(retainedImage.Build(desc));
     HE_EXPECT_GT(retainedImage.GetDrawCount(), 0u);
+    bool foundOffsetTextDraw = false;
+    HE_EXPECT_GT(retainedImage.GetTextDrawCount(), 0u);
+    for (const RetainedTextDraw& draw : retainedImage.GetTextDraws())
+    {
+        if (draw.position.x > 5.0f)
+        {
+            foundOffsetTextDraw = true;
+            break;
+        }
+    }
+    HE_EXPECT(foundOffsetTextDraw);
 }
 
 HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_image_copy_expires)

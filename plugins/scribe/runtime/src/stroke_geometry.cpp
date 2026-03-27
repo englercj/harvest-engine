@@ -2,6 +2,8 @@
 
 #include "stroke_geometry.h"
 
+#include "he/scribe/stroke_outline.h"
+
 #include "he/core/math.h"
 
 #include <algorithm>
@@ -87,6 +89,31 @@ namespace he::scribe
             };
         }
 
+        Point2 EvaluateQuadratic(const Point2& p0, const Point2& p1, const Point2& p2, float t)
+        {
+            const float mt = 1.0f - t;
+            const float w0 = mt * mt;
+            const float w1 = 2.0f * mt * t;
+            const float w2 = t * t;
+            return {
+                (p0.x * w0) + (p1.x * w1) + (p2.x * w2),
+                (p0.y * w0) + (p1.y * w1) + (p2.y * w2)
+            };
+        }
+
+        Point2 EvaluateCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3, float t)
+        {
+            const float mt = 1.0f - t;
+            const float w0 = mt * mt * mt;
+            const float w1 = 3.0f * mt * mt * t;
+            const float w2 = 3.0f * mt * t * t;
+            const float w3 = t * t * t;
+            return {
+                (p0.x * w0) + (p1.x * w1) + (p2.x * w2) + (p3.x * w3),
+                (p0.y * w0) + (p1.y * w1) + (p2.y * w2) + (p3.y * w3)
+            };
+        }
+
         float SignedArea(Span<const Point2> points)
         {
             if (points.Size() < 3)
@@ -126,6 +153,41 @@ namespace he::scribe
 
             const float area = Cross(point - a, ab);
             return (area * area) / lenSq;
+        }
+
+        Point2 ReduceCubicToQuadraticControl(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3)
+        {
+            const Point2 startControl{
+                ((3.0f * p1.x) - p0.x) * 0.5f,
+                ((3.0f * p1.y) - p0.y) * 0.5f
+            };
+            const Point2 endControl{
+                ((3.0f * p2.x) - p3.x) * 0.5f,
+                ((3.0f * p2.y) - p3.y) * 0.5f
+            };
+            return LerpPoint(startControl, endControl, 0.5f);
+        }
+
+        float ComputeCubicQuadraticApproximationErrorSq(
+            const Point2& p0,
+            const Point2& p1,
+            const Point2& p2,
+            const Point2& p3,
+            const Point2& quadraticControl)
+        {
+            constexpr float SampleTs[] = { 0.25f, 0.5f, 0.75f };
+
+            float maxErrorSq = 0.0f;
+            for (float t : SampleTs)
+            {
+                const Point2 cubicPoint = EvaluateCubic(p0, p1, p2, p3, t);
+                const Point2 quadraticPoint = EvaluateQuadratic(p0, quadraticControl, p3, t);
+                const float dx = cubicPoint.x - quadraticPoint.x;
+                const float dy = cubicPoint.y - quadraticPoint.y;
+                maxErrorSq = Max(maxErrorSq, (dx * dx) + (dy * dy));
+            }
+
+            return maxErrorSq;
         }
 
         float ComputeMinimalHalfFloatOffset(float value) noexcept
@@ -1042,15 +1104,127 @@ namespace he::scribe
             return false;
         }
 
-        Vector<StrokePath> paths{};
-        const float flattenTolerance = Max(style.width * 0.05f, 0.25f);
-        if (!DecodeStrokePaths(paths, pointScale, points, commands, firstCommand, commandCount, flattenTolerance))
+        Vector<CurveData> curves{};
+        StrokeOutlineStyle outlineStyle{};
+        outlineStyle.width = style.width;
+        outlineStyle.join = style.joinStyle == StrokeJoinStyle::Bevel
+            ? StrokeJoinKind::Bevel
+            : style.joinStyle == StrokeJoinStyle::Round
+                ? StrokeJoinKind::Round
+                : StrokeJoinKind::Miter;
+        outlineStyle.cap = style.capStyle == StrokeCapStyle::Square
+            ? StrokeCapKind::Square
+            : style.capStyle == StrokeCapStyle::Round
+                ? StrokeCapKind::Round
+                : StrokeCapKind::Butt;
+        outlineStyle.miterLimit = style.miterLimit;
+
+        Vector<StrokeOutlineCurve> outlineCurves{};
+        if (!BuildStrokedOutlineCurves(
+                outlineCurves,
+                pointScale,
+                points,
+                commands,
+                firstCommand,
+                commandCount,
+                outlineStyle))
         {
             return false;
         }
 
-        Vector<CurveData> curves{};
-        BuildStrokeCurves(curves, paths, style);
+        auto appendQuadraticCurve = [&](const Point2& p0, const Point2& p1, const Point2& p2, bool isLineLike)
+        {
+            float minX = 0.0f;
+            float minY = 0.0f;
+            float maxX = 0.0f;
+            float maxY = 0.0f;
+            if (isLineLike)
+            {
+                minX = Min(p0.x, p2.x);
+                minY = Min(p0.y, p2.y);
+                maxX = Max(p0.x, p2.x);
+                maxY = Max(p0.y, p2.y);
+            }
+            else
+            {
+                minX = Min(p0.x, p1.x, p2.x);
+                minY = Min(p0.y, p1.y, p2.y);
+                maxX = Max(p0.x, p1.x, p2.x);
+                maxY = Max(p0.y, p1.y, p2.y);
+            }
+
+            if (((maxX - minX) <= DegenerateCurveExtent) && ((maxY - minY) <= DegenerateCurveExtent))
+            {
+                return;
+            }
+
+            CurveData& curve = curves.EmplaceBack();
+            curve.p1 = p0;
+            curve.p2 = p1;
+            curve.p3 = p2;
+            curve.minX = minX;
+            curve.minY = minY;
+            curve.maxX = maxX;
+            curve.maxY = maxY;
+        };
+
+        auto appendOutlineLine = [&](const Point2& from, const Point2& to)
+        {
+            Point2 control{};
+            if (!TryComputeStableLineQuadraticControlPoint(control, from, to))
+            {
+                return;
+            }
+
+            appendQuadraticCurve(from, control, to, true);
+        };
+
+        const float cubicToleranceSq = Max(style.width * 0.01f, 0.01f) * Max(style.width * 0.01f, 0.01f);
+
+        auto flattenOutlineCubic = [&](auto&& self, const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3, uint32_t depth) -> void
+        {
+            const Point2 quadraticControl = ReduceCubicToQuadraticControl(p0, p1, p2, p3);
+            const float errorSq = ComputeCubicQuadraticApproximationErrorSq(p0, p1, p2, p3, quadraticControl);
+            if ((depth >= MaxCurveSubdivisionDepth) || (errorSq <= cubicToleranceSq))
+            {
+                appendQuadraticCurve(p0, quadraticControl, p3, false);
+                return;
+            }
+
+            const Point2 p01 = LerpPoint(p0, p1, 0.5f);
+            const Point2 p12 = LerpPoint(p1, p2, 0.5f);
+            const Point2 p23 = LerpPoint(p2, p3, 0.5f);
+            const Point2 p012 = LerpPoint(p01, p12, 0.5f);
+            const Point2 p123 = LerpPoint(p12, p23, 0.5f);
+            const Point2 p0123 = LerpPoint(p012, p123, 0.5f);
+
+            self(self, p0, p01, p012, p0123, depth + 1);
+            self(self, p0123, p123, p23, p3, depth + 1);
+        };
+
+        for (const StrokeOutlineCurve& outlineCurve : outlineCurves)
+        {
+            const Point2 p0{ outlineCurve.x0, outlineCurve.y0 };
+            if (outlineCurve.kind == StrokeOutlineCurveKind::Line)
+            {
+                appendOutlineLine(p0, { outlineCurve.x1, outlineCurve.y1 });
+            }
+            else if (outlineCurve.kind == StrokeOutlineCurveKind::Quadratic)
+            {
+                appendQuadraticCurve(p0, { outlineCurve.x1, outlineCurve.y1 }, { outlineCurve.x2, outlineCurve.y2 }, false);
+            }
+            else
+            {
+                flattenOutlineCubic(
+                    flattenOutlineCubic,
+                    p0,
+                    { outlineCurve.x1, outlineCurve.y1 },
+                    { outlineCurve.x2, outlineCurve.y2 },
+                    { outlineCurve.x3, outlineCurve.y3 },
+                    0);
+            }
+        }
+
         if (curves.IsEmpty())
         {
             return false;

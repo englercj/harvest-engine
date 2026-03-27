@@ -4,6 +4,7 @@
 
 #include "he/scribe/schema_types.h"
 
+#include "he/core/string_view.h"
 #include "he/core/hash_table.h"
 #include "he/core/span.h"
 #include "he/core/types.h"
@@ -102,10 +103,13 @@ namespace he::scribe
         [[nodiscard]] rhi::Device* GetDevice() const { return m_device; }
 
         FontFaceHandle RegisterFontFace(const ScribeFontFace::RuntimeResource::Reader& fontFace);
+        FontFaceHandle RegisterFontFace(const ScribeFontFace::RuntimeResource::Reader& fontFace, StringView alias);
+        bool AddFontFaceAlias(FontFaceHandle handle, StringView alias);
         VectorImageHandle RegisterVectorImage(const ScribeImage::RuntimeResource::Reader& image);
 
         [[nodiscard]] ScribeFontFace::RuntimeResource::Reader GetFontFace(FontFaceHandle handle) const;
         [[nodiscard]] ScribeImage::RuntimeResource::Reader GetVectorImage(VectorImageHandle handle) const;
+        bool TryFindFontFaceByAlias(StringView alias, FontFaceHandle& out) const;
 
         [[nodiscard]] ::hb_font_t* GetHbFont(FontFaceHandle handle);
         [[nodiscard]] bool HasSourceBytes(FontFaceHandle handle) const;

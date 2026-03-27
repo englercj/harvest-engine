@@ -459,6 +459,18 @@ namespace he::scribe
             }
         }
 
+        for (const RetainedTextDraw& draw : image.GetTextDraws())
+        {
+            const GlyphResource* glyphResource = nullptr;
+            const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
+                ? m_context.TryGetStrokedGlyphResource(image.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
+                : m_context.TryGetGlyphResource(image.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
+            if (!ok)
+            {
+                continue;
+            }
+        }
+
         return true;
     }
 
@@ -578,6 +590,34 @@ namespace he::scribe
             desc.position = instance.origin;
             desc.size = { instance.scale, instance.scale };
             desc.color = MultiplyColor(draw.color, instance.tint);
+            desc.offset = draw.offset;
+            QueueDraw(desc);
+        }
+
+        for (const RetainedTextDraw& draw : image.GetTextDraws())
+        {
+            const GlyphResource* glyphResource = nullptr;
+            const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
+                ? m_context.TryGetStrokedGlyphResource(image.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
+                : m_context.TryGetGlyphResource(image.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
+            if (!ok)
+            {
+                continue;
+            }
+
+            DrawGlyphDesc desc{};
+            desc.glyph = glyphResource;
+            desc.position = {
+                instance.origin.x + (draw.position.x * instance.scale),
+                instance.origin.y + (draw.position.y * instance.scale)
+            };
+            desc.size = {
+                draw.size.x * instance.scale,
+                draw.size.y * instance.scale
+            };
+            desc.color = MultiplyColor(draw.color, instance.tint);
+            desc.basisX = draw.basisX;
+            desc.basisY = draw.basisY;
             desc.offset = draw.offset;
             QueueDraw(desc);
         }

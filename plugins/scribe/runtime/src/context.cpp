@@ -18,6 +18,7 @@
 #include "he/core/memory_ops.h"
 #include "he/core/result_fmt.h"
 #include "he/core/scope_guard.h"
+#include "he/core/string.h"
 #include "he/core/utils.h"
 #include "he/rhi/cmd_list.h"
 #include "he/rhi/cmd_queue.h"
@@ -81,6 +82,7 @@ namespace he::scribe
         schema::Builder builder;
         ScribeFontFace::RuntimeResource::Builder resource;
         uint64_t hash{ 0 };
+        Vector<String> aliases{};
 
         ::hb_blob_t* blob{ nullptr };
         ::hb_face_t* face{ nullptr };
@@ -365,6 +367,11 @@ namespace he::scribe
 
     FontFaceHandle ScribeContext::RegisterFontFace(const ScribeFontFace::RuntimeResource::Reader& fontFace)
     {
+        return RegisterFontFace(fontFace, {});
+    }
+
+    FontFaceHandle ScribeContext::RegisterFontFace(const ScribeFontFace::RuntimeResource::Reader& fontFace, StringView alias)
+    {
         if (!fontFace.IsValid())
         {
             return {};
@@ -382,9 +389,34 @@ namespace he::scribe
             registered->resource = registered->builder.AddStruct<ScribeFontFace::RuntimeResource>();
             registered->resource.Copy(fontFace);
             registered->hash = hash;
+            if (!alias.IsEmpty())
+            {
+                registered->aliases.PushBack(String(alias));
+            }
+        }
+        else if (!alias.IsEmpty())
+        {
+            result.entry.value->aliases.PushBack(String(alias));
         }
 
         return { hash };
+    }
+
+    bool ScribeContext::AddFontFaceAlias(FontFaceHandle handle, StringView alias)
+    {
+        if (!handle.IsValid() || alias.IsEmpty())
+        {
+            return false;
+        }
+
+        RegisteredFontFace** fontFace = m_fonts.Find(handle.value);
+        if (!fontFace || !(*fontFace))
+        {
+            return false;
+        }
+
+        (*fontFace)->aliases.PushBack(String(alias));
+        return true;
     }
 
     VectorImageHandle ScribeContext::RegisterVectorImage(const ScribeImage::RuntimeResource::Reader& image)
@@ -420,6 +452,35 @@ namespace he::scribe
 
         const RegisteredFontFace* const* fontFace = m_fonts.Find(handle.value);
         return fontFace ? (*fontFace)->resource : ScribeFontFace::RuntimeResource::Reader{};
+    }
+
+    bool ScribeContext::TryFindFontFaceByAlias(StringView alias, FontFaceHandle& out) const
+    {
+        out = {};
+        if (alias.IsEmpty())
+        {
+            return false;
+        }
+
+        for (const auto& entry : m_fonts)
+        {
+            const RegisteredFontFace* fontFace = entry.value;
+            if (fontFace == nullptr)
+            {
+                continue;
+            }
+
+            for (const String& existingAlias : fontFace->aliases)
+            {
+                if (StringView(existingAlias.Data(), existingAlias.Size()).EqualToI(alias))
+                {
+                    out = { fontFace->hash };
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     ScribeImage::RuntimeResource::Reader ScribeContext::GetVectorImage(VectorImageHandle handle) const

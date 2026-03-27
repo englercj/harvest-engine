@@ -508,6 +508,7 @@ namespace he
             scribe::editor::FillVectorImageResourceFillData(root.GetFill(), imageData);
             scribe::editor::FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
             scribe::editor::FillVectorImageResourcePaintData(root.GetPaint(), imageData);
+            scribe::editor::FillVectorImageResourceTextData(rootBuilder, root.GetText(), imageData);
             root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
             root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
             rootBuilder.SetRoot(root);
@@ -1294,10 +1295,75 @@ namespace he
             return false;
         }
 
+        auto addAlias = [&](uint32_t fontIndex, const char* alias)
+        {
+            if ((fontIndex != InvalidIndex) && (fontIndex < m_fonts.Size()))
+            {
+                m_scribeContext.AddFontFaceAlias(m_fonts[fontIndex].handle, alias);
+            }
+        };
+
+        addAlias(m_uiFontIndex, "Noto Sans");
+        addAlias(m_iconFontIndex, "Material Design Icons");
+
         if (m_scene == DemoScene::SvgGallery)
         {
-            // SVG-gallery iteration only needs the UI face for the surrounding chrome.
-            // Skip the broader demo-font set to reduce startup time while working on SVG import/rendering.
+            static const char* SvgSerifRegularCandidates[] =
+            {
+                "C:/Windows/Fonts/times.ttf",
+                "C:/Windows/Fonts/cambria.ttc",
+            };
+            static const char* SvgSerifBoldCandidates[] =
+            {
+                "C:/Windows/Fonts/timesbd.ttf",
+            };
+            static const char* SvgSerifItalicCandidates[] =
+            {
+                "C:/Windows/Fonts/timesi.ttf",
+            };
+            static const char* SvgSerifBoldItalicCandidates[] =
+            {
+                "C:/Windows/Fonts/timesbi.ttf",
+            };
+            static const char* SvgSymbolCandidates[] =
+            {
+                "C:/Windows/Fonts/symbol.ttf",
+                "C:/Windows/Fonts/seguisym.ttf",
+            };
+            static const char* SvgSansRegularCandidates[] =
+            {
+                "C:/Windows/Fonts/arial.ttf",
+                "C:/Windows/Fonts/segoeui.ttf",
+            };
+            static const char* SvgSansBoldCandidates[] =
+            {
+                "C:/Windows/Fonts/arialbd.ttf",
+                "C:/Windows/Fonts/segoeuib.ttf",
+            };
+            static const char* SvgMonoCandidates[] =
+            {
+                "C:/Windows/Fonts/consola.ttf",
+                "plugins/editor/src/fonts/NotoMono-Regular.ttf",
+            };
+
+            loadOptionalFont(m_serifRegularFontIndex, SvgSerifRegularCandidates);
+            loadOptionalFont(m_serifBoldFontIndex, SvgSerifBoldCandidates);
+            loadOptionalFont(m_serifItalicFontIndex, SvgSerifItalicCandidates);
+            loadOptionalFont(m_serifBoldItalicFontIndex, SvgSerifBoldItalicCandidates);
+            loadOptionalFont(m_symbolFontIndex, SvgSymbolCandidates);
+            loadOptionalFont(m_sansRegularFontIndex, SvgSansRegularCandidates);
+            loadOptionalFont(m_sansBoldFontIndex, SvgSansBoldCandidates);
+            loadOptionalFont(m_monoFontIndex, SvgMonoCandidates);
+
+            addAlias(m_serifRegularFontIndex, "TimesNewRomanPSMT");
+            addAlias(m_serifBoldFontIndex, "TimesNewRomanPS-BoldMT");
+            addAlias(m_serifItalicFontIndex, "TimesNewRomanPS-ItalicMT");
+            addAlias(m_serifBoldItalicFontIndex, "TimesNewRomanPS-BoldItalicMT");
+            addAlias(m_serifBoldItalicFontIndex, "TimesNewRomanPS-BoldItal");
+            addAlias(m_symbolFontIndex, "SymbolMT");
+            addAlias(m_sansRegularFontIndex, "ArialMT");
+            addAlias(m_sansBoldFontIndex, "Arial-BoldMT");
+            addAlias(m_monoFontIndex, "Consolas");
             return true;
         }
 

@@ -64,6 +64,31 @@ namespace he::scribe::editor::curve_compile
         };
     }
 
+    inline Point2 EvaluateQuadratic(const Point2& p0, const Point2& p1, const Point2& p2, float t)
+    {
+        const float mt = 1.0f - t;
+        const float w0 = mt * mt;
+        const float w1 = 2.0f * mt * t;
+        const float w2 = t * t;
+        return {
+            (p0.x * w0) + (p1.x * w1) + (p2.x * w2),
+            (p0.y * w0) + (p1.y * w1) + (p2.y * w2)
+        };
+    }
+
+    inline Point2 EvaluateCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3, float t)
+    {
+        const float mt = 1.0f - t;
+        const float w0 = mt * mt * mt;
+        const float w1 = 3.0f * mt * mt * t;
+        const float w2 = 3.0f * mt * t * t;
+        const float w3 = t * t * t;
+        return {
+            (p0.x * w0) + (p1.x * w1) + (p2.x * w2) + (p3.x * w3),
+            (p0.y * w0) + (p1.y * w1) + (p2.y * w2) + (p3.y * w3)
+        };
+    }
+
     inline Point2 TransformPoint(const Affine2D& transform, const Point2& point)
     {
         return {
@@ -86,6 +111,41 @@ namespace he::scribe::editor::curve_compile
 
         const float area = ((point.x - a.x) * dy) - ((point.y - a.y) * dx);
         return (area * area) / lenSq;
+    }
+
+    inline Point2 ReduceCubicToQuadraticControl(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3)
+    {
+        const Point2 startControl{
+            ((3.0f * p1.x) - p0.x) * 0.5f,
+            ((3.0f * p1.y) - p0.y) * 0.5f
+        };
+        const Point2 endControl{
+            ((3.0f * p2.x) - p3.x) * 0.5f,
+            ((3.0f * p2.y) - p3.y) * 0.5f
+        };
+        return MidPoint(startControl, endControl);
+    }
+
+    inline float ComputeCubicQuadraticApproximationErrorSq(
+        const Point2& p0,
+        const Point2& p1,
+        const Point2& p2,
+        const Point2& p3,
+        const Point2& quadraticControl)
+    {
+        constexpr float SampleTs[] = { 0.25f, 0.5f, 0.75f };
+
+        float maxErrorSq = 0.0f;
+        for (float t : SampleTs)
+        {
+            const Point2 cubicPoint = EvaluateCubic(p0, p1, p2, p3, t);
+            const Point2 quadraticPoint = EvaluateQuadratic(p0, quadraticControl, p3, t);
+            const float dx = cubicPoint.x - quadraticPoint.x;
+            const float dy = cubicPoint.y - quadraticPoint.y;
+            maxErrorSq = Max(maxErrorSq, (dx * dx) + (dy * dy));
+        }
+
+        return maxErrorSq;
     }
 
     inline void AppendCurveTexels(Vector<PackedCurveTexel>& out, const CurveData& curve)
@@ -185,11 +245,11 @@ namespace he::scribe::editor::curve_compile
 
         void FlattenCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3, uint32_t depth)
         {
-            const float d1 = DistanceToLineSq(p1, p0, p3);
-            const float d2 = DistanceToLineSq(p2, p0, p3);
-            if ((depth >= MaxCubicSubdivisionDepth) || (Max(d1, d2) <= m_cubicToleranceSq))
+            const Point2 quadraticControl = ReduceCubicToQuadraticControl(p0, p1, p2, p3);
+            const float errorSq = ComputeCubicQuadraticApproximationErrorSq(p0, p1, p2, p3, quadraticControl);
+            if ((depth >= MaxCubicSubdivisionDepth) || (errorSq <= m_cubicToleranceSq))
             {
-                AddLine(p0, p3);
+                AppendCurve(p0, quadraticControl, p3, false);
                 return;
             }
 

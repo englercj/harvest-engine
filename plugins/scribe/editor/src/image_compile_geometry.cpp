@@ -7,6 +7,8 @@
 
 #include "font_import_utils.h"
 
+#include "he/scribe/stroke_outline.h"
+
 #include "he/core/file.h"
 #include "he/core/log.h"
 #include "he/core/math.h"
@@ -69,6 +71,8 @@ namespace he::scribe::editor
         {
             Vector<ParsedShape> shapes{};
             Vector<CompiledVectorImageLayerEntry> layers{};
+            Vector<CompiledVectorImageFontFaceEntry> fontFaces{};
+            Vector<CompiledVectorImageTextRunEntry> textRuns{};
             float viewBoxMinX{ 0.0f };
             float viewBoxMinY{ 0.0f };
             float viewBoxWidth{ 0.0f };
@@ -91,6 +95,7 @@ namespace he::scribe::editor
             StrokeJoinKind strokeJoin{ StrokeJoinKind::Miter };
             StrokeCapKind strokeCap{ StrokeCapKind::Butt };
             float strokeMiterLimit{ 4.0f };
+            String strokeDashArray{};
         };
 
         struct ParseState
@@ -109,6 +114,8 @@ namespace he::scribe::editor
             StringView name{};
             StringView value{};
         };
+
+        bool ParseDashArray(Vector<float>& out, StringView text);
 
         float DegreesToRadians(float degrees)
         {
@@ -999,27 +1006,211 @@ namespace he::scribe::editor
             }
         }
 
-        bool BuildAuthoredStrokeShape(ParsedShape& out, const ParsedShape& source, const StyleState& style)
+        bool BuildAuthoredStrokeShape(
+            ParsedShape& out,
+            const ParsedShape& source,
+            const StyleState& style,
+            float flatteningTolerance)
         {
             out = {};
 
-            const float flattenTolerance = Max(style.strokeWidth * 0.05f, 0.25f);
-            Vector<SvgStrokePath> paths{};
-            if (!SvgDecodeStrokePaths(
-                    paths,
-                    Span<const StrokeSourcePoint>(source.strokePoints.Data(), source.strokePoints.Size()),
-                    Span<const StrokeSourceCommand>(source.strokeCommands.Data(), source.strokeCommands.Size()),
-                    flattenTolerance))
+            StrokeOutlineStyle outlineStyle{};
+            outlineStyle.width = style.strokeWidth;
+            outlineStyle.join = style.strokeJoin;
+            outlineStyle.cap = style.strokeCap;
+            outlineStyle.miterLimit = style.strokeMiterLimit;
+
+            Vector<StrokeOutlineSourcePoint> outlinePoints{};
+            Vector<StrokeOutlineSourceCommand> outlineCommands{};
+
+            Vector<float> dashPattern{};
+            const bool hasDashPattern =
+                !style.strokeDashArray.IsEmpty()
+                && ParseDashArray(dashPattern, StringView(style.strokeDashArray.Data(), style.strokeDashArray.Size()))
+                && !dashPattern.IsEmpty();
+
+            if (hasDashPattern)
+            {
+                StrokeSourceBuilder dashedBuilder(flatteningTolerance);
+                auto appendDashedLine = [&](const Point2& from, const Point2& to)
+                {
+                    const Point2 delta = to - from;
+                    const float lengthSq = (delta.x * delta.x) + (delta.y * delta.y);
+                    if (lengthSq <= 1.0e-8f)
+                    {
+                        return;
+                    }
+
+                    const float length = Sqrt(lengthSq);
+                    uint32_t dashIndex = 0;
+                    float dashConsumed = 0.0f;
+                    bool dashOn = true;
+                    float segmentStart = 0.0f;
+
+                    while (segmentStart < length)
+                    {
+                        const float dashLength = dashPattern[dashIndex];
+                        const float remainingDash = dashLength - dashConsumed;
+                        const float segmentEnd = Min(segmentStart + remainingDash, length);
+                        if (dashOn && ((segmentEnd - segmentStart) > 1.0e-5f))
+                        {
+                            const float t0 = segmentStart / length;
+                            const float t1 = segmentEnd / length;
+                            const Point2 startPoint{
+                                Lerp(from.x, to.x, t0),
+                                Lerp(from.y, to.y, t0)
+                            };
+                            const Point2 endPoint{
+                                Lerp(from.x, to.x, t1),
+                                Lerp(from.y, to.y, t1)
+                            };
+                            dashedBuilder.AppendMoveTo(startPoint);
+                            dashedBuilder.AppendLineTo(endPoint);
+                        }
+
+                        dashConsumed += segmentEnd - segmentStart;
+                        segmentStart = segmentEnd;
+                        if (dashConsumed >= (dashLength - 1.0e-5f))
+                        {
+                            dashConsumed = 0.0f;
+                            dashIndex = (dashIndex + 1) % dashPattern.Size();
+                            dashOn = !dashOn;
+                        }
+                    }
+                };
+
+                Point2 current{};
+                Point2 subpathStart{};
+                bool hasCurrent = false;
+                for (const StrokeSourceCommand& command : source.strokeCommands)
+                {
+                    switch (command.type)
+                    {
+                        case StrokeCommandType::MoveTo:
+                        {
+                            if (command.firstPoint >= source.strokePoints.Size())
+                            {
+                                return false;
+                            }
+
+                            current = {
+                                source.strokePoints[command.firstPoint].x,
+                                source.strokePoints[command.firstPoint].y
+                            };
+                            subpathStart = current;
+                            hasCurrent = true;
+                            break;
+                        }
+
+                        case StrokeCommandType::LineTo:
+                        {
+                            if (!hasCurrent || (command.firstPoint >= source.strokePoints.Size()))
+                            {
+                                return false;
+                            }
+
+                            const Point2 target{
+                                source.strokePoints[command.firstPoint].x,
+                                source.strokePoints[command.firstPoint].y
+                            };
+                            appendDashedLine(current, target);
+                            current = target;
+                            break;
+                        }
+
+                        case StrokeCommandType::Close:
+                        {
+                            if (hasCurrent)
+                            {
+                                appendDashedLine(current, subpathStart);
+                                current = subpathStart;
+                            }
+                            break;
+                        }
+
+                        case StrokeCommandType::QuadraticTo:
+                        case StrokeCommandType::CubicTo:
+                        default:
+                            // Keep current behavior for non-line dashes until we add proper curve-length dash support.
+                            dashedBuilder.Clear();
+                            dashPattern.Clear();
+                            break;
+                    }
+
+                    if (dashPattern.IsEmpty())
+                    {
+                        break;
+                    }
+                }
+
+                if (!dashPattern.IsEmpty())
+                {
+                    outlinePoints.Resize(dashedBuilder.Points().Size());
+                    for (uint32_t pointIndex = 0; pointIndex < dashedBuilder.Points().Size(); ++pointIndex)
+                    {
+                        outlinePoints[pointIndex].x = dashedBuilder.Points()[pointIndex].x;
+                        outlinePoints[pointIndex].y = dashedBuilder.Points()[pointIndex].y;
+                    }
+
+                    outlineCommands.Resize(dashedBuilder.Commands().Size());
+                    for (uint32_t commandIndex = 0; commandIndex < dashedBuilder.Commands().Size(); ++commandIndex)
+                    {
+                        outlineCommands[commandIndex].type = dashedBuilder.Commands()[commandIndex].type;
+                        outlineCommands[commandIndex].firstPoint = dashedBuilder.Commands()[commandIndex].firstPoint;
+                    }
+                }
+            }
+
+            if (outlineCommands.IsEmpty())
+            {
+                outlinePoints.Resize(source.strokePoints.Size());
+                for (uint32_t pointIndex = 0; pointIndex < source.strokePoints.Size(); ++pointIndex)
+                {
+                    outlinePoints[pointIndex].x = source.strokePoints[pointIndex].x;
+                    outlinePoints[pointIndex].y = source.strokePoints[pointIndex].y;
+                }
+
+                outlineCommands.Resize(source.strokeCommands.Size());
+                for (uint32_t commandIndex = 0; commandIndex < source.strokeCommands.Size(); ++commandIndex)
+                {
+                    outlineCommands[commandIndex].type = source.strokeCommands[commandIndex].type;
+                    outlineCommands[commandIndex].firstPoint = source.strokeCommands[commandIndex].firstPoint;
+                }
+            }
+
+            Vector<StrokeOutlineCurve> strokedCurves{};
+            if (!BuildStrokedOutlineCurves(
+                    strokedCurves,
+                    Span<const StrokeOutlineSourcePoint>(outlinePoints.Data(), outlinePoints.Size()),
+                    Span<const StrokeOutlineSourceCommand>(outlineCommands.Data(), outlineCommands.Size()),
+                    outlineStyle))
             {
                 return false;
             }
 
-            SvgBuildStrokeCurves(out.curves, paths, style);
+            curve_compile::CurveBuilder builder(flatteningTolerance);
+            for (const StrokeOutlineCurve& curve : strokedCurves)
+            {
+                const Point2 p0{ curve.x0, curve.y0 };
+                if (curve.kind == StrokeOutlineCurveKind::Line)
+                {
+                    builder.AddLine(p0, { curve.x1, curve.y1 });
+                }
+                else if (curve.kind == StrokeOutlineCurveKind::Quadratic)
+                {
+                    builder.AddQuadratic(p0, { curve.x1, curve.y1 }, { curve.x2, curve.y2 });
+                }
+                else
+                {
+                    builder.AddCubic(p0, { curve.x1, curve.y1 }, { curve.x2, curve.y2 }, { curve.x3, curve.y3 });
+                }
+            }
+
+            out.curves = Move(builder.Curves());
             if (out.curves.IsEmpty())
             {
                 return false;
             }
-
             out.fillRule = FillRule::NonZero;
             out.color = style.stroke;
             RecomputeShapeBounds(out);
@@ -1433,9 +1624,125 @@ namespace he::scribe::editor
             return TrimQuotes(value);
         }
 
-        bool ResolveSvgFontPath(String& out, StringView familyName)
+        StringView StripSvgSubsetFontPrefix(StringView familyName)
+        {
+            if (const char* plus = familyName.Find('+'))
+            {
+                familyName = familyName.Substring(static_cast<uint32_t>((plus - familyName.Data()) + 1));
+            }
+
+            return familyName;
+        }
+
+        String BuildSvgFontKey(StringView familyName, StringView fontStyle, StringView fontWeight)
         {
             familyName = GetPrimaryFontFamilyName(familyName);
+            familyName = StripSvgSubsetFontPrefix(familyName);
+            fontStyle = TrimQuotes(TrimView(fontStyle));
+            fontWeight = TrimQuotes(TrimView(fontWeight));
+
+            if (familyName.IsEmpty()
+                || familyName.EqualToI("sans-serif")
+                || familyName.EqualToI("sans")
+                || familyName.EqualToI("Noto Sans"))
+            {
+                return "Noto Sans";
+            }
+
+            if (familyName.EqualToI("monospace")
+                || familyName.EqualToI("mono")
+                || familyName.EqualToI("Noto Mono"))
+            {
+                return "Noto Mono";
+            }
+
+            if (familyName.EqualToI("Times New Roman"))
+            {
+                const bool wantsItalic = fontStyle.EqualToI("italic");
+                const bool wantsBold = fontWeight.EqualToI("bold");
+                if (wantsBold && wantsItalic) { return "TimesNewRomanPS-BoldItalicMT"; }
+                if (wantsBold) { return "TimesNewRomanPS-BoldMT"; }
+                if (wantsItalic) { return "TimesNewRomanPS-ItalicMT"; }
+                return "TimesNewRomanPSMT";
+            }
+
+            if (familyName.EqualToI("TimesNewRomanPS-BoldItal"))
+            {
+                return "TimesNewRomanPS-BoldItalicMT";
+            }
+
+            if (familyName.EqualToI("Arial") || familyName.EqualToI("ArialMT"))
+            {
+                return "ArialMT";
+            }
+
+            if (familyName.EqualToI("Arial-BoldMT"))
+            {
+                return "Arial-BoldMT";
+            }
+
+            if (familyName.EqualToI("Consolas"))
+            {
+                return "Consolas";
+            }
+
+            if (familyName.EqualToI("SymbolMT"))
+            {
+                return "SymbolMT";
+            }
+
+            return String(familyName);
+        }
+
+        uint32_t FindOrAppendSvgFontFace(Vector<CompiledVectorImageFontFaceEntry>& out, StringView key)
+        {
+            for (uint32_t fontIndex = 0; fontIndex < out.Size(); ++fontIndex)
+            {
+                if (StringView(out[fontIndex].key.Data(), out[fontIndex].key.Size()).EqualToI(key))
+                {
+                    return fontIndex;
+                }
+            }
+
+            CompiledVectorImageFontFaceEntry& entry = out.EmplaceBack();
+            entry.key = String(key);
+            return out.Size() - 1;
+        }
+
+        void ApplyAffineToTextRun(CompiledVectorImageTextRunEntry& run, const Affine2D& transform)
+        {
+            run.transformX = { transform.m00, transform.m10 };
+            run.transformY = { transform.m01, transform.m11 };
+            run.transformTranslation = { transform.tx, transform.ty };
+        }
+
+        bool ResolveWindowsFontPath(String& out, const char* fileName)
+        {
+            String path = "C:/Windows/Fonts/";
+            path += fileName;
+            if (!File::Exists(path.Data()))
+            {
+                return false;
+            }
+
+            out = path;
+            return true;
+        }
+
+        bool ResolveSvgFontPath(String& out, StringView familyName, StringView fontStyle, StringView fontWeight)
+        {
+            familyName = GetPrimaryFontFamilyName(familyName);
+            familyName = StripSvgSubsetFontPrefix(familyName);
+            fontStyle = TrimQuotes(TrimView(fontStyle));
+            fontWeight = TrimQuotes(TrimView(fontWeight));
+
+            const bool wantsItalic = fontStyle.EqualToI("italic")
+                || familyName.EqualToI("TimesNewRomanPS-ItalicMT")
+                || familyName.EqualToI("TimesNewRomanPS-BoldItalicMT");
+            const bool wantsBold = fontWeight.EqualToI("bold")
+                || familyName.EqualToI("TimesNewRomanPS-BoldMT")
+                || familyName.EqualToI("TimesNewRomanPS-BoldItalicMT");
+
             if (familyName.IsEmpty()
                 || familyName.EqualToI("sans-serif")
                 || familyName.EqualToI("sans")
@@ -1457,6 +1764,29 @@ namespace he::scribe::editor
                 }
             }
 
+            if (familyName.EqualToI("Times New Roman")
+                || familyName.EqualToI("TimesNewRomanPSMT")
+                || familyName.EqualToI("TimesNewRomanPS-ItalicMT")
+                || familyName.EqualToI("TimesNewRomanPS-BoldMT")
+                || familyName.EqualToI("TimesNewRomanPS-BoldItalicMT"))
+            {
+                const char* fileName = wantsBold
+                    ? (wantsItalic ? "timesbi.ttf" : "timesbd.ttf")
+                    : (wantsItalic ? "timesi.ttf" : "times.ttf");
+                if (ResolveWindowsFontPath(out, fileName))
+                {
+                    return true;
+                }
+            }
+
+            if (familyName.EqualToI("SymbolMT"))
+            {
+                if (ResolveWindowsFontPath(out, "symbol.ttf"))
+                {
+                    return true;
+                }
+            }
+
             if (familyName.EqualToI("Material Design Icons"))
             {
                 if (ResolveRepoFontPath(out, "materialdesignicons.ttf"))
@@ -1468,7 +1798,13 @@ namespace he::scribe::editor
             static const char* WindowsCandidates[] =
             {
                 "C:/Windows/Fonts/segoeui.ttf",
+                "C:/Windows/Fonts/segoeuib.ttf",
+                "C:/Windows/Fonts/segoeuii.ttf",
+                "C:/Windows/Fonts/segoeuiz.ttf",
                 "C:/Windows/Fonts/arial.ttf",
+                "C:/Windows/Fonts/arialbd.ttf",
+                "C:/Windows/Fonts/ariali.ttf",
+                "C:/Windows/Fonts/arialbi.ttf",
                 "C:/Windows/Fonts/calibri.ttf",
                 "C:/Windows/Fonts/tahoma.ttf",
             };
@@ -1491,6 +1827,62 @@ namespace he::scribe::editor
             const char* end = text.Data() + text.Size();
             const char* parseEnd = end;
             return StrToFloat(out, begin, &parseEnd) && (parseEnd == end);
+        }
+
+        bool ParseDashArray(Vector<float>& out, StringView text)
+        {
+            text = TrimView(text);
+            if (text.IsEmpty() || text.EqualToI("none"))
+            {
+                out.Clear();
+                return true;
+            }
+
+            out.Clear();
+            const char* cur = text.Data();
+            const char* endText = text.Data() + text.Size();
+            while (cur < endText)
+            {
+                while ((cur < endText) && (IsWhitespace(*cur) || (*cur == ',')))
+                {
+                    ++cur;
+                }
+
+                if (cur >= endText)
+                {
+                    break;
+                }
+
+                float value = 0.0f;
+                const char* parseEnd = endText;
+                if (!StrToFloat(value, cur, &parseEnd) || (parseEnd == cur))
+                {
+                    return false;
+                }
+
+                out.PushBack(value);
+                cur = parseEnd;
+            }
+
+            for (int32_t index = static_cast<int32_t>(out.Size()) - 1; index >= 0; --index)
+            {
+                if (out[static_cast<uint32_t>(index)] <= 0.0f)
+                {
+                    out.Erase(static_cast<uint32_t>(index));
+                }
+            }
+
+            if ((out.Size() & 1u) != 0u)
+            {
+                const uint32_t originalCount = out.Size();
+                out.Reserve(originalCount * 2u);
+                for (uint32_t index = 0; index < originalCount; ++index)
+                {
+                    out.PushBack(out[index]);
+                }
+            }
+
+            return true;
         }
 
         bool ParseNumberList(Vector<float>& out, StringView text)
@@ -1822,6 +2214,10 @@ namespace he::scribe::editor
                     style.strokeMiterLimit = Max(miterLimit, 0.0f);
                 }
             }
+            else if (trimmedName.EqualToI("stroke-dasharray"))
+            {
+                style.strokeDashArray = String(trimmedValue);
+            }
             else if (trimmedName.EqualToI("opacity"))
             {
                 float alpha = 1.0f;
@@ -1991,7 +2387,7 @@ namespace he::scribe::editor
                 return false;
             }
 
-            if (out.shapes.IsEmpty())
+            if (out.shapes.IsEmpty() && out.textRuns.IsEmpty())
             {
                 HE_LOG_ERROR(he_scribe, HE_MSG("SVG parser did not find any filled path geometry."));
                 return false;
@@ -2484,7 +2880,11 @@ namespace he::scribe::editor
             if (hasVisibleStroke)
             {
                 ParsedShape strokeShape{};
-                if (!BuildAuthoredStrokeShape(strokeShape, hasVisibleFill ? out.shapes[fillShapeIndex] : shape, state.style))
+                if (!BuildAuthoredStrokeShape(
+                        strokeShape,
+                        hasVisibleFill ? out.shapes[fillShapeIndex] : shape,
+                        state.style,
+                        m_flatteningTolerance))
                 {
                     return false;
                 }
@@ -3017,6 +3417,8 @@ namespace he::scribe::editor
             float y = 0.0f;
             float fontSize = 16.0f;
             StringView fontFamily("sans-serif");
+            StringView fontStyle("normal");
+            StringView fontWeight("normal");
             StringView textAnchor("start");
             StringView id{};
             for (const Attribute& attr : attrs)
@@ -3025,6 +3427,8 @@ namespace he::scribe::editor
                 else if (attr.name.EqualToI("y")) { ParseFloat(attr.value, y); }
                 else if (attr.name.EqualToI("font-size")) { ParseFloat(attr.value, fontSize); }
                 else if (attr.name.EqualToI("font-family")) { fontFamily = attr.value; }
+                else if (attr.name.EqualToI("font-style")) { fontStyle = attr.value; }
+                else if (attr.name.EqualToI("font-weight")) { fontWeight = attr.value; }
                 else if (attr.name.EqualToI("text-anchor")) { textAnchor = TrimView(attr.value); }
                 else if (attr.name.EqualToI("id")) { id = attr.value; }
             }
@@ -3158,131 +3562,43 @@ namespace he::scribe::editor
                 span.y = y;
             }
 
-            String fontPath{};
-            if (!ResolveSvgFontPath(fontPath, fontFamily))
+            const String fontKey = BuildSvgFontKey(fontFamily, fontStyle, fontWeight);
+            const uint32_t fontFaceIndex = FindOrAppendSvgFontFace(out.fontFaces, fontKey);
+            const bool hasVisibleFill = !state.style.fillNone && (state.style.fill.w > 0.0f);
+            const bool hasVisibleStroke = !state.style.strokeNone && (state.style.stroke.w > 0.0f) && (state.style.strokeWidth > 0.0f);
+            if (!hasVisibleFill && !hasVisibleStroke)
             {
-                HE_LOG_ERROR(he_scribe,
-                    HE_MSG("Failed to resolve SVG text font."),
-                    HE_KV(font_family, String(fontFamily)));
-                return false;
+                return true;
             }
 
-            Vector<uint8_t> fontBytes{};
-            if (!ReadFontSourceBytes(fontBytes, fontPath.Data()))
+            ScribeImage::TextAnchorKind anchor = ScribeImage::TextAnchorKind::Start;
+            if (textAnchor.EqualToI("middle"))
             {
-                return false;
+                anchor = ScribeImage::TextAnchorKind::Middle;
+            }
+            else if (textAnchor.EqualToI("end"))
+            {
+                anchor = ScribeImage::TextAnchorKind::End;
             }
 
-            FreeTypeLibrary library{};
-            if (!library.Initialize())
-            {
-                return false;
-            }
-
-            FreeTypeFace face{};
-            if (!face.Load(library.Get(), Span<const uint8_t>(fontBytes), 0))
-            {
-                return false;
-            }
-
-            FT_Face ftFace = face.Get();
-            const float unitsPerEm = Max(static_cast<float>(ftFace->units_per_EM), 1.0f);
-            const float scale = fontSize / unitsPerEm;
-
-            struct GlyphPlacement
-            {
-                FT_UInt glyphIndex{ 0 };
-                float penX{ 0.0f };
-            };
-
-            Vector<GlyphPlacement> glyphs{};
-            Vector<CurveData> curves{};
-            Vector<StrokeSourcePoint> strokePoints{};
-            Vector<StrokeSourceCommand> strokeCommands{};
-            SvgTextOutlineBuilder outlineBuilder(m_flatteningTolerance);
             for (const TextSpan& span : spans)
             {
-                glyphs.Clear();
-                float spanPenX = 0.0f;
-                FT_UInt spanPreviousGlyph = 0;
-                for (UTF8Iterator it(StringView(span.text.Data(), span.text.Size()));; ++it)
-                {
-                    const uint32_t codePoint = *it;
-                    if (codePoint == InvalidCodePoint)
-                    {
-                        break;
-                    }
-
-                    const FT_UInt glyphIndex = FT_Get_Char_Index(ftFace, codePoint);
-                    if ((spanPreviousGlyph != 0) && (glyphIndex != 0) && FT_HAS_KERNING(ftFace))
-                    {
-                        FT_Vector kerning{};
-                        if (FT_Get_Kerning(ftFace, spanPreviousGlyph, glyphIndex, FT_KERNING_UNSCALED, &kerning) == 0)
-                        {
-                            spanPenX += static_cast<float>(kerning.x) * scale;
-                        }
-                    }
-
-                    GlyphPlacement& placement = glyphs.EmplaceBack();
-                    placement.glyphIndex = glyphIndex;
-                    placement.penX = spanPenX;
-
-                    if (FT_Load_Glyph(
-                            ftFace,
-                            glyphIndex,
-                            FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING | FT_LOAD_IGNORE_TRANSFORM) != 0)
-                    {
-                        return false;
-                    }
-
-                    spanPenX += static_cast<float>(ftFace->glyph->advance.x) * scale;
-                    spanPreviousGlyph = glyphIndex;
-                }
-
-                float spanAnchorOffset = 0.0f;
-                if (textAnchor.EqualToI("middle"))
-                {
-                    spanAnchorOffset = spanPenX * 0.5f;
-                }
-                else if (textAnchor.EqualToI("end"))
-                {
-                    spanAnchorOffset = spanPenX;
-                }
-
-                for (const GlyphPlacement& glyph : glyphs)
-                {
-                    if (glyph.glyphIndex == 0)
-                    {
-                        continue;
-                    }
-
-                    if (FT_Load_Glyph(
-                            ftFace,
-                            glyph.glyphIndex,
-                            FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING | FT_LOAD_IGNORE_TRANSFORM) != 0)
-                    {
-                        return false;
-                    }
-
-                    if ((ftFace->glyph->format != FT_GLYPH_FORMAT_OUTLINE) || (ftFace->glyph->outline.n_points == 0))
-                    {
-                        continue;
-                    }
-
-                    Affine2D transform{};
-                    transform.m00 = scale;
-                    transform.m11 = -scale;
-                    transform.tx = span.x + glyph.penX - spanAnchorOffset;
-                    transform.ty = span.y;
-                    const Affine2D finalTransform = ComposeAffine(state.transform, transform);
-                    if (!outlineBuilder.AppendGlyph(curves, strokePoints, strokeCommands, ftFace->glyph->outline, finalTransform))
-                    {
-                        return false;
-                    }
-                }
+                CompiledVectorImageTextRunEntry& run = out.textRuns.EmplaceBack();
+                run.fontFaceIndex = fontFaceIndex;
+                run.anchor = anchor;
+                run.text = span.text;
+                run.position = { span.x, span.y };
+                run.fontSize = fontSize;
+                run.color = hasVisibleFill ? state.style.fill : Vec4f{ 0.0f, 0.0f, 0.0f, 0.0f };
+                run.strokeColor = hasVisibleStroke ? state.style.stroke : Vec4f{ 0.0f, 0.0f, 0.0f, 0.0f };
+                run.strokeWidth = hasVisibleStroke ? state.style.strokeWidth : 0.0f;
+                run.strokeJoin = state.style.strokeJoin;
+                run.strokeCap = state.style.strokeCap;
+                run.strokeMiterLimit = state.style.strokeMiterLimit;
+                ApplyAffineToTextRun(run, state.transform);
             }
 
-            return EmitParsedShape(out, state, id, curves, strokePoints, strokeCommands);
+            return true;
         }
 
         bool SvgParser::ParseUseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
@@ -3760,17 +4076,27 @@ namespace he::scribe::editor
                 return false;
             }
 
-            outShape.boundsMinX = shape.minX;
-            outShape.boundsMinY = shape.minY;
-            outShape.boundsMaxX = shape.maxX;
-            outShape.boundsMaxY = shape.maxY;
+            const Point2 localOrigin{ shape.minX, shape.minY };
+            outShape.originX = localOrigin.x;
+            outShape.originY = localOrigin.y;
+            outShape.boundsMinX = 0.0f;
+            outShape.boundsMinY = 0.0f;
+            outShape.boundsMaxX = Max(shape.maxX - localOrigin.x, 0.0f);
+            outShape.boundsMaxY = Max(shape.maxY - localOrigin.y, 0.0f);
             outShape.fillRule = shape.fillRule;
             outShape.firstStrokeCommand = outStrokeCommands.Size();
             outShape.strokeCommandCount = shape.strokeCommands.Size();
+
+            Vector<StrokeSourcePoint> localStrokePoints = shape.strokePoints;
+            for (StrokeSourcePoint& point : localStrokePoints)
+            {
+                point.x -= localOrigin.x;
+                point.y -= localOrigin.y;
+            }
             AppendCompiledStrokeData(
                 outStrokePoints,
                 outStrokeCommands,
-                Span<const StrokeSourcePoint>(shape.strokePoints.Data(), shape.strokePoints.Size()),
+                Span<const StrokeSourcePoint>(localStrokePoints.Data(), localStrokePoints.Size()),
                 Span<const StrokeSourceCommand>(shape.strokeCommands.Data(), shape.strokeCommands.Size()));
 
             if (!shape.curves.IsEmpty())
@@ -3779,22 +4105,32 @@ namespace he::scribe::editor
                 for (uint32_t curveIndex = 0; curveIndex < curves.Size(); ++curveIndex)
                 {
                     CurveData& curve = curves[curveIndex];
+                    curve.p1.x -= localOrigin.x;
+                    curve.p1.y -= localOrigin.y;
+                    curve.p2.x -= localOrigin.x;
+                    curve.p2.y -= localOrigin.y;
+                    curve.p3.x -= localOrigin.x;
+                    curve.p3.y -= localOrigin.y;
+                    curve.minX -= localOrigin.x;
+                    curve.minY -= localOrigin.y;
+                    curve.maxX -= localOrigin.x;
+                    curve.maxY -= localOrigin.y;
                     curve.curveTexelIndex = outCurveTexels.Size();
                     SvgAppendCurveTexels(outCurveTexels, curve);
                 }
 
-                const uint32_t bandCountX = SvgChooseBandCount(curves, false, shape.minX, shape.maxX, epsilon);
-                const uint32_t bandCountY = SvgChooseBandCount(curves, true, shape.minY, shape.maxY, epsilon);
+                const uint32_t bandCountX = SvgChooseBandCount(curves, false, outShape.boundsMinX, outShape.boundsMaxX, epsilon);
+                const uint32_t bandCountY = SvgChooseBandCount(curves, true, outShape.boundsMinY, outShape.boundsMaxY, epsilon);
 
                 Vector<Vector<CurveRef>> xBands{};
                 Vector<Vector<CurveRef>> yBands{};
-                SvgBuildBandRefs(xBands, curves, false, shape.minX, shape.maxX, bandCountX, epsilon);
-                SvgBuildBandRefs(yBands, curves, true, shape.minY, shape.maxY, bandCountY, epsilon);
+                SvgBuildBandRefs(xBands, curves, false, outShape.boundsMinX, outShape.boundsMaxX, bandCountX, epsilon);
+                SvgBuildBandRefs(yBands, curves, true, outShape.boundsMinY, outShape.boundsMaxY, bandCountY, epsilon);
 
-                outShape.bandScaleX = ComputeBandScale(shape.minX, shape.maxX, bandCountX);
-                outShape.bandScaleY = ComputeBandScale(shape.minY, shape.maxY, bandCountY);
-                outShape.bandOffsetX = -shape.minX * outShape.bandScaleX;
-                outShape.bandOffsetY = -shape.minY * outShape.bandScaleY;
+                outShape.bandScaleX = ComputeBandScale(outShape.boundsMinX, outShape.boundsMaxX, bandCountX);
+                outShape.bandScaleY = ComputeBandScale(outShape.boundsMinY, outShape.boundsMaxY, bandCountY);
+                outShape.bandOffsetX = -outShape.boundsMinX * outShape.bandScaleX;
+                outShape.bandOffsetY = -outShape.boundsMinY * outShape.bandScaleY;
                 outShape.glyphBandLocX = outBandTexels.Size() % ScribeBandTextureWidth;
                 outShape.glyphBandLocY = outBandTexels.Size() / ScribeBandTextureWidth;
                 outShape.bandMaxX = bandCountX > 0 ? bandCountX - 1 : 0;
@@ -3843,6 +4179,8 @@ namespace he::scribe::editor
         out.boundsMinY = parsed.boundsMinY;
         out.boundsMaxX = parsed.boundsMaxX;
         out.boundsMaxY = parsed.boundsMaxY;
+        out.fontFaces = Move(parsed.fontFaces);
+        out.textRuns = Move(parsed.textRuns);
 
         uint32_t totalStrokePointCount = 0;
         uint32_t totalStrokeCommandCount = 0;

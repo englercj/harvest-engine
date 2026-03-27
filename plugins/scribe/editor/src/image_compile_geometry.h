@@ -19,6 +19,8 @@ namespace he::scribe::editor
         float boundsMinY{ 0.0f };
         float boundsMaxX{ 0.0f };
         float boundsMaxY{ 0.0f };
+        float originX{ 0.0f };
+        float originY{ 0.0f };
         float bandScaleX{ 0.0f };
         float bandScaleY{ 0.0f };
         float bandOffsetX{ 0.0f };
@@ -46,6 +48,29 @@ namespace he::scribe::editor
         float strokeMiterLimit{ 4.0f };
     };
 
+    struct CompiledVectorImageTextRunEntry
+    {
+        uint32_t fontFaceIndex{ 0 };
+        ScribeImage::TextAnchorKind anchor{ ScribeImage::TextAnchorKind::Start };
+        String text{};
+        Vec2f position{ 0.0f, 0.0f };
+        float fontSize{ 16.0f };
+        Vec4f color{ 1.0f, 1.0f, 1.0f, 1.0f };
+        Vec4f strokeColor{ 0.0f, 0.0f, 0.0f, 0.0f };
+        Vec2f transformX{ 1.0f, 0.0f };
+        Vec2f transformY{ 0.0f, 1.0f };
+        Vec2f transformTranslation{ 0.0f, 0.0f };
+        float strokeWidth{ 0.0f };
+        StrokeJoinKind strokeJoin{ StrokeJoinKind::Round };
+        StrokeCapKind strokeCap{ StrokeCapKind::Round };
+        float strokeMiterLimit{ 4.0f };
+    };
+
+    struct CompiledVectorImageFontFaceEntry
+    {
+        String key{};
+    };
+
     struct CompiledVectorImageData
     {
         Vector<PackedCurveTexel> curveTexels{};
@@ -54,6 +79,8 @@ namespace he::scribe::editor
         Vector<CompiledStrokeCommand> strokeCommands{};
         Vector<CompiledVectorShapeRenderEntry> shapes{};
         Vector<CompiledVectorImageLayerEntry> layers{};
+        Vector<CompiledVectorImageFontFaceEntry> fontFaces{};
+        Vector<CompiledVectorImageTextRunEntry> textRuns{};
         uint32_t curveTextureWidth{ 0 };
         uint32_t curveTextureHeight{ 0 };
         uint32_t bandTextureWidth{ ScribeBandTextureWidth };

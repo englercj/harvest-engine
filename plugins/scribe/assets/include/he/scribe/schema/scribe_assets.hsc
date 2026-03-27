@@ -249,6 +249,8 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
         fillRule @12 :FillRule;
         firstStrokeCommand @13 :uint32;
         strokeCommandCount @14 :uint32;
+        originX @15 :float32;
+        originY @16 :float32;
     }
 
     struct Layer
@@ -263,6 +265,41 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
         strokeJoin @7 :StrokeJoinKind = StrokeJoinKind.Miter;
         strokeCap @8 :StrokeCapKind = StrokeCapKind.Butt;
         strokeMiterLimit @9 :float32;
+    }
+
+    enum TextAnchorKind
+    {
+        Start @0;
+        Middle @1;
+        End @2;
+    }
+
+    struct TextRun
+    {
+        fontFaceIndex @0 :uint32;
+        text @1 :String;
+        positionX @2 :float32;
+        positionY @3 :float32;
+        fontSize @4 :float32;
+        transformXX @5 :float32;
+        transformXY @6 :float32;
+        transformYX @7 :float32;
+        transformYY @8 :float32;
+        transformTx @9 :float32;
+        transformTy @10 :float32;
+        anchor @11 :TextAnchorKind = TextAnchorKind.Start;
+        red @12 :float32;
+        green @13 :float32;
+        blue @14 :float32;
+        alpha @15 :float32;
+        strokeRed @16 :float32;
+        strokeGreen @17 :float32;
+        strokeBlue @18 :float32;
+        strokeAlpha @19 :float32;
+        strokeWidth @20 :float32;
+        strokeJoin @21 :StrokeJoinKind = StrokeJoinKind.Round;
+        strokeCap @22 :StrokeCapKind = StrokeCapKind.Round;
+        strokeMiterLimit @23 :float32;
     }
 
     struct RuntimeResource
@@ -303,6 +340,12 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
             pointScale @17 :float32;
             points @18 :StrokePoint[];
             commands @19 :StrokeCommand[];
+        }
+
+        text :group
+        {
+            fontFaces @20 :String[];
+            runs @21 :TextRun[];
         }
     }
 

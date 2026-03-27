@@ -14,7 +14,7 @@ plugin he.scribe version="0.1.0" license="UNLICENSED" {
         }
 
         public {
-            dependencies { he_assets; he_core; he_schema }
+            dependencies { freetype; he_assets; he_core; he_schema }
             include_dirs { "assets/include"; "${module.gen_dir}/include" }
         }
     }

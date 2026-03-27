@@ -14,6 +14,11 @@ namespace he::scribe::editor
         dstShape.SetBoundsMinY(srcShape.boundsMinY);
         dstShape.SetBoundsMaxX(srcShape.boundsMaxX);
         dstShape.SetBoundsMaxY(srcShape.boundsMaxY);
+        if constexpr (requires { dstShape.SetOriginX(srcShape.originX); dstShape.SetOriginY(srcShape.originY); })
+        {
+            dstShape.SetOriginX(srcShape.originX);
+            dstShape.SetOriginY(srcShape.originY);
+        }
         dstShape.SetBandScaleX(srcShape.bandScaleX);
         dstShape.SetBandScaleY(srcShape.bandScaleY);
         dstShape.SetBandOffsetX(srcShape.bandOffsetX);
@@ -202,6 +207,50 @@ namespace he::scribe::editor
             dstLayer.SetStrokeJoin(srcLayer.strokeJoin);
             dstLayer.SetStrokeCap(srcLayer.strokeCap);
             dstLayer.SetStrokeMiterLimit(srcLayer.strokeMiterLimit);
+        }
+    }
+
+    inline void FillVectorImageResourceTextData(
+        schema::Builder& rootBuilder,
+        ScribeImage::RuntimeResource::Text::Builder text,
+        const CompiledVectorImageData& imageData)
+    {
+        schema::List<schema::String>::Builder fontFaces = text.InitFontFaces(imageData.fontFaces.Size());
+        for (uint32_t fontIndex = 0; fontIndex < imageData.fontFaces.Size(); ++fontIndex)
+        {
+            const CompiledVectorImageFontFaceEntry& srcFont = imageData.fontFaces[fontIndex];
+            fontFaces.Set(fontIndex, rootBuilder.AddString(StringView(srcFont.key.Data(), srcFont.key.Size())));
+        }
+
+        schema::List<ScribeImage::TextRun>::Builder runs = text.InitRuns(imageData.textRuns.Size());
+        for (uint32_t runIndex = 0; runIndex < imageData.textRuns.Size(); ++runIndex)
+        {
+            const CompiledVectorImageTextRunEntry& srcRun = imageData.textRuns[runIndex];
+            ScribeImage::TextRun::Builder dstRun = runs[runIndex];
+            dstRun.SetFontFaceIndex(srcRun.fontFaceIndex);
+            dstRun.SetText(rootBuilder.AddString(StringView(srcRun.text.Data(), srcRun.text.Size())));
+            dstRun.SetPositionX(srcRun.position.x);
+            dstRun.SetPositionY(srcRun.position.y);
+            dstRun.SetFontSize(srcRun.fontSize);
+            dstRun.SetTransformXX(srcRun.transformX.x);
+            dstRun.SetTransformXY(srcRun.transformX.y);
+            dstRun.SetTransformYX(srcRun.transformY.x);
+            dstRun.SetTransformYY(srcRun.transformY.y);
+            dstRun.SetTransformTx(srcRun.transformTranslation.x);
+            dstRun.SetTransformTy(srcRun.transformTranslation.y);
+            dstRun.SetAnchor(srcRun.anchor);
+            dstRun.SetRed(srcRun.color.x);
+            dstRun.SetGreen(srcRun.color.y);
+            dstRun.SetBlue(srcRun.color.z);
+            dstRun.SetAlpha(srcRun.color.w);
+            dstRun.SetStrokeRed(srcRun.strokeColor.x);
+            dstRun.SetStrokeGreen(srcRun.strokeColor.y);
+            dstRun.SetStrokeBlue(srcRun.strokeColor.z);
+            dstRun.SetStrokeAlpha(srcRun.strokeColor.w);
+            dstRun.SetStrokeWidth(srcRun.strokeWidth);
+            dstRun.SetStrokeJoin(srcRun.strokeJoin);
+            dstRun.SetStrokeCap(srcRun.strokeCap);
+            dstRun.SetStrokeMiterLimit(srcRun.strokeMiterLimit);
         }
     }
 }

@@ -323,8 +323,7 @@ namespace he::scribe::editor
         class GlyphStrokeCountBuilder final
         {
         public:
-            explicit GlyphStrokeCountBuilder(float cubicTolerance)
-                : m_cubicToleranceSq(cubicTolerance * cubicTolerance)
+            explicit GlyphStrokeCountBuilder([[maybe_unused]] float cubicTolerance)
             {
             }
 
@@ -383,31 +382,17 @@ namespace he::scribe::editor
                 m_current = point;
             }
 
+            void AppendCubicTo(const Point2& point)
+            {
+                ++m_commandCount;
+                m_pointCount += 3;
+                m_current = point;
+            }
+
             void AppendClose()
             {
                 ++m_commandCount;
                 m_hasContour = false;
-            }
-
-            void FlattenCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3, uint32_t depth)
-            {
-                const float d1 = curve_compile::DistanceToLineSq(p1, p0, p3);
-                const float d2 = curve_compile::DistanceToLineSq(p2, p0, p3);
-                if ((depth >= curve_compile::MaxCubicSubdivisionDepth) || (Max(d1, d2) <= m_cubicToleranceSq))
-                {
-                    AppendLineTo(p3);
-                    return;
-                }
-
-                const Point2 p01 = curve_compile::MidPoint(p0, p1);
-                const Point2 p12 = curve_compile::MidPoint(p1, p2);
-                const Point2 p23 = curve_compile::MidPoint(p2, p3);
-                const Point2 p012 = curve_compile::MidPoint(p01, p12);
-                const Point2 p123 = curve_compile::MidPoint(p12, p23);
-                const Point2 p0123 = curve_compile::MidPoint(p012, p123);
-
-                FlattenCubic(p0, p01, p012, p0123, depth + 1);
-                FlattenCubic(p0123, p123, p23, p3, depth + 1);
             }
 
             static int MoveTo(const FT_Vector* to, void* user)
@@ -440,13 +425,14 @@ namespace he::scribe::editor
             static int CubicTo(const FT_Vector* control1, const FT_Vector* control2, const FT_Vector* to, void* user)
             {
                 GlyphStrokeCountBuilder& self = *static_cast<GlyphStrokeCountBuilder*>(user);
-                self.FlattenCubic(self.m_current, ToPoint(*control1), ToPoint(*control2), ToPoint(*to), 0);
+                (void)control1;
+                (void)control2;
+                self.AppendCubicTo(ToPoint(*to));
                 return 0;
             }
 
         private:
             Point2 m_current{};
-            float m_cubicToleranceSq{ 0.0f };
             uint32_t m_pointCount{ 0 };
             uint32_t m_commandCount{ 0 };
             bool m_hasContour{ false };

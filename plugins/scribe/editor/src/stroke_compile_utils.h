@@ -10,8 +10,7 @@ namespace he::scribe::editor
     class StrokeSourceBuilder final
     {
     public:
-        explicit StrokeSourceBuilder(float cubicTolerance)
-            : m_cubicToleranceSq(cubicTolerance * cubicTolerance)
+        explicit StrokeSourceBuilder([[maybe_unused]] float cubicTolerance)
         {
         }
 
@@ -66,7 +65,9 @@ namespace he::scribe::editor
                 return;
             }
 
-            FlattenCubic(m_current, control1, control2, point, 0);
+            const curve_compile::Point2 points[] = { control1, control2, point };
+            AppendCommand(StrokeCommandType::CubicTo, points, HE_LENGTH_OF(points));
+            m_current = point;
         }
 
         void AppendClose()
@@ -95,37 +96,10 @@ namespace he::scribe::editor
             }
         }
 
-        void FlattenCubic(
-            const curve_compile::Point2& p0,
-            const curve_compile::Point2& p1,
-            const curve_compile::Point2& p2,
-            const curve_compile::Point2& p3,
-            uint32_t depth)
-        {
-            const float d1 = curve_compile::DistanceToLineSq(p1, p0, p3);
-            const float d2 = curve_compile::DistanceToLineSq(p2, p0, p3);
-            if ((depth >= curve_compile::MaxCubicSubdivisionDepth) || (Max(d1, d2) <= m_cubicToleranceSq))
-            {
-                AppendLineTo(p3);
-                return;
-            }
-
-            const curve_compile::Point2 p01 = curve_compile::MidPoint(p0, p1);
-            const curve_compile::Point2 p12 = curve_compile::MidPoint(p1, p2);
-            const curve_compile::Point2 p23 = curve_compile::MidPoint(p2, p3);
-            const curve_compile::Point2 p012 = curve_compile::MidPoint(p01, p12);
-            const curve_compile::Point2 p123 = curve_compile::MidPoint(p12, p23);
-            const curve_compile::Point2 p0123 = curve_compile::MidPoint(p012, p123);
-
-            FlattenCubic(p0, p01, p012, p0123, depth + 1);
-            FlattenCubic(p0123, p123, p23, p3, depth + 1);
-        }
-
     private:
         Vector<StrokeSourcePoint> m_points{};
         Vector<StrokeSourceCommand> m_commands{};
         curve_compile::Point2 m_current{};
-        float m_cubicToleranceSq{ 0.0f };
         bool m_hasCurrent{ false };
     };
 }

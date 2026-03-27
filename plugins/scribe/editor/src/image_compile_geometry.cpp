@@ -641,6 +641,34 @@ namespace he::scribe::editor
             SvgFlattenQuadratic(out, p012, p12, p2, toleranceSq, depth + 1);
         }
 
+        void SvgFlattenCubic(
+            Vector<Point2>& out,
+            const Point2& p0,
+            const Point2& p1,
+            const Point2& p2,
+            const Point2& p3,
+            float toleranceSq,
+            uint32_t depth)
+        {
+            const float d1 = SvgDistanceToLineSq(p1, p0, p3);
+            const float d2 = SvgDistanceToLineSq(p2, p0, p3);
+            if ((depth >= MaxCubicSubdivisionDepth) || (Max(d1, d2) <= toleranceSq))
+            {
+                SvgAppendPointUnique(out, p3);
+                return;
+            }
+
+            const Point2 p01 = SvgLerpPoint(p0, p1, 0.5f);
+            const Point2 p12 = SvgLerpPoint(p1, p2, 0.5f);
+            const Point2 p23 = SvgLerpPoint(p2, p3, 0.5f);
+            const Point2 p012 = SvgLerpPoint(p01, p12, 0.5f);
+            const Point2 p123 = SvgLerpPoint(p12, p23, 0.5f);
+            const Point2 p0123 = SvgLerpPoint(p012, p123, 0.5f);
+
+            SvgFlattenCubic(out, p0, p01, p012, p0123, toleranceSq, depth + 1);
+            SvgFlattenCubic(out, p0123, p123, p23, p3, toleranceSq, depth + 1);
+        }
+
         bool SvgDecodeStrokePaths(
             Vector<SvgStrokePath>& outPaths,
             Span<const StrokeSourcePoint> points,
@@ -727,6 +755,28 @@ namespace he::scribe::editor
                         }
 
                         SvgFlattenQuadratic(currentPath.points, currentPoint, control, point, toleranceSq, 0);
+                        currentPoint = point;
+                        break;
+                    }
+
+                    case StrokeCommandType::CubicTo:
+                    {
+                        if (!hasCurrent)
+                        {
+                            return false;
+                        }
+
+                        Point2 control1{};
+                        Point2 control2{};
+                        Point2 point{};
+                        if (!readPoint(pointIndex, control1)
+                            || !readPoint(pointIndex + 1, control2)
+                            || !readPoint(pointIndex + 2, point))
+                        {
+                            return false;
+                        }
+
+                        SvgFlattenCubic(currentPath.points, currentPoint, control1, control2, point, toleranceSq, 0);
                         currentPoint = point;
                         break;
                     }
@@ -2963,18 +3013,6 @@ namespace he::scribe::editor
                 return true;
             }
 
-            String text{};
-            if (!ReadTextContents(text, "text"))
-            {
-                return false;
-            }
-
-            const StringView trimmedText = UTF8Trim(StringView(text.Data(), text.Size()));
-            if (trimmedText.IsEmpty())
-            {
-                return true;
-            }
-
             float x = 0.0f;
             float y = 0.0f;
             float fontSize = 16.0f;
@@ -2989,6 +3027,135 @@ namespace he::scribe::editor
                 else if (attr.name.EqualToI("font-family")) { fontFamily = attr.value; }
                 else if (attr.name.EqualToI("text-anchor")) { textAnchor = TrimView(attr.value); }
                 else if (attr.name.EqualToI("id")) { id = attr.value; }
+            }
+
+            struct TextSpan
+            {
+                String text{};
+                float x{ 0.0f };
+                float y{ 0.0f };
+            };
+
+            auto parseFirstPosition = [](StringView value, float& outValue) -> bool
+            {
+                Vector<float> values{};
+                if (!ParseNumberList(values, value) || values.IsEmpty())
+                {
+                    return false;
+                }
+
+                outValue = values[0];
+                return true;
+            };
+
+            Vector<TextSpan> spans{};
+            String directText{};
+            while (m_cur < m_end)
+            {
+                if ((m_end - m_cur) >= 2 && (m_cur[0] == '<') && (m_cur[1] == '/'))
+                {
+                    m_cur += 2;
+                    const StringView tagName = ParseName();
+                    if (!tagName.EqualToI("text"))
+                    {
+                        return false;
+                    }
+
+                    SkipWhitespace();
+                    if (!Consume('>'))
+                    {
+                        return false;
+                    }
+
+                    break;
+                }
+
+                if (*m_cur != '<')
+                {
+                    const char* begin = m_cur;
+                    while ((m_cur < m_end) && (*m_cur != '<'))
+                    {
+                        ++m_cur;
+                    }
+
+                    directText += StringView(begin, static_cast<uint32_t>(m_cur - begin));
+                    continue;
+                }
+
+                ++m_cur;
+                if ((m_cur < m_end) && ((*m_cur == '!') || (*m_cur == '?')))
+                {
+                    if (!SkipMarkup())
+                    {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                const StringView tagName = ParseName();
+                if (tagName.IsEmpty())
+                {
+                    return false;
+                }
+
+                Vector<Attribute> spanAttrs{};
+                bool spanSelfClosing = false;
+                if (!ParseAttributes(spanAttrs, spanSelfClosing))
+                {
+                    return false;
+                }
+
+                if (!tagName.EqualToI("tspan"))
+                {
+                    if (!spanSelfClosing && !SkipElement(tagName))
+                    {
+                        return false;
+                    }
+                    continue;
+                }
+
+                String spanText{};
+                if (!spanSelfClosing && !ReadTextContents(spanText, "tspan"))
+                {
+                    return false;
+                }
+
+                const StringView trimmedSpanText = UTF8Trim(StringView(spanText.Data(), spanText.Size()));
+                if (trimmedSpanText.IsEmpty())
+                {
+                    continue;
+                }
+
+                TextSpan& span = spans.EmplaceBack();
+                span.text = trimmedSpanText;
+                span.x = x;
+                span.y = y;
+                for (const Attribute& spanAttr : spanAttrs)
+                {
+                    if (spanAttr.name.EqualToI("x"))
+                    {
+                        parseFirstPosition(spanAttr.value, span.x);
+                    }
+                    else if (spanAttr.name.EqualToI("y"))
+                    {
+                        parseFirstPosition(spanAttr.value, span.y);
+                    }
+                }
+            }
+
+            if (spans.IsEmpty())
+            {
+                const StringView trimmedText = UTF8Trim(StringView(directText.Data(), directText.Size()));
+                if (trimmedText.IsEmpty())
+                {
+                    return true;
+                }
+
+                TextSpan& span = spans.EmplaceBack();
+                span.text = trimmedText;
+                span.x = x;
+                span.y = y;
             }
 
             String fontPath{};
@@ -3029,85 +3196,89 @@ namespace he::scribe::editor
             };
 
             Vector<GlyphPlacement> glyphs{};
-            float penX = 0.0f;
-            FT_UInt previousGlyph = 0;
-            for (UTF8Iterator it(trimmedText);; ++it)
-            {
-                const uint32_t codePoint = *it;
-                if (codePoint == InvalidCodePoint)
-                {
-                    break;
-                }
-
-                const FT_UInt glyphIndex = FT_Get_Char_Index(ftFace, codePoint);
-                if ((previousGlyph != 0) && (glyphIndex != 0) && FT_HAS_KERNING(ftFace))
-                {
-                    FT_Vector kerning{};
-                    if (FT_Get_Kerning(ftFace, previousGlyph, glyphIndex, FT_KERNING_UNSCALED, &kerning) == 0)
-                    {
-                        penX += static_cast<float>(kerning.x) * scale;
-                    }
-                }
-
-                GlyphPlacement& placement = glyphs.EmplaceBack();
-                placement.glyphIndex = glyphIndex;
-                placement.penX = penX;
-
-                if (FT_Load_Glyph(
-                        ftFace,
-                        glyphIndex,
-                        FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING | FT_LOAD_IGNORE_TRANSFORM) != 0)
-                {
-                    return false;
-                }
-
-                penX += static_cast<float>(ftFace->glyph->advance.x) * scale;
-                previousGlyph = glyphIndex;
-            }
-
-            float anchorOffset = 0.0f;
-            if (textAnchor.EqualToI("middle"))
-            {
-                anchorOffset = penX * 0.5f;
-            }
-            else if (textAnchor.EqualToI("end"))
-            {
-                anchorOffset = penX;
-            }
-
             Vector<CurveData> curves{};
             Vector<StrokeSourcePoint> strokePoints{};
             Vector<StrokeSourceCommand> strokeCommands{};
             SvgTextOutlineBuilder outlineBuilder(m_flatteningTolerance);
-            for (const GlyphPlacement& glyph : glyphs)
+            for (const TextSpan& span : spans)
             {
-                if (glyph.glyphIndex == 0)
+                glyphs.Clear();
+                float spanPenX = 0.0f;
+                FT_UInt spanPreviousGlyph = 0;
+                for (UTF8Iterator it(StringView(span.text.Data(), span.text.Size()));; ++it)
                 {
-                    continue;
+                    const uint32_t codePoint = *it;
+                    if (codePoint == InvalidCodePoint)
+                    {
+                        break;
+                    }
+
+                    const FT_UInt glyphIndex = FT_Get_Char_Index(ftFace, codePoint);
+                    if ((spanPreviousGlyph != 0) && (glyphIndex != 0) && FT_HAS_KERNING(ftFace))
+                    {
+                        FT_Vector kerning{};
+                        if (FT_Get_Kerning(ftFace, spanPreviousGlyph, glyphIndex, FT_KERNING_UNSCALED, &kerning) == 0)
+                        {
+                            spanPenX += static_cast<float>(kerning.x) * scale;
+                        }
+                    }
+
+                    GlyphPlacement& placement = glyphs.EmplaceBack();
+                    placement.glyphIndex = glyphIndex;
+                    placement.penX = spanPenX;
+
+                    if (FT_Load_Glyph(
+                            ftFace,
+                            glyphIndex,
+                            FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING | FT_LOAD_IGNORE_TRANSFORM) != 0)
+                    {
+                        return false;
+                    }
+
+                    spanPenX += static_cast<float>(ftFace->glyph->advance.x) * scale;
+                    spanPreviousGlyph = glyphIndex;
                 }
 
-                if (FT_Load_Glyph(
-                        ftFace,
-                        glyph.glyphIndex,
-                        FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING | FT_LOAD_IGNORE_TRANSFORM) != 0)
+                float spanAnchorOffset = 0.0f;
+                if (textAnchor.EqualToI("middle"))
                 {
-                    return false;
+                    spanAnchorOffset = spanPenX * 0.5f;
+                }
+                else if (textAnchor.EqualToI("end"))
+                {
+                    spanAnchorOffset = spanPenX;
                 }
 
-                if ((ftFace->glyph->format != FT_GLYPH_FORMAT_OUTLINE) || (ftFace->glyph->outline.n_points == 0))
+                for (const GlyphPlacement& glyph : glyphs)
                 {
-                    continue;
-                }
+                    if (glyph.glyphIndex == 0)
+                    {
+                        continue;
+                    }
 
-                Affine2D transform{};
-                transform.m00 = scale;
-                transform.m11 = -scale;
-                transform.tx = x + glyph.penX - anchorOffset;
-                transform.ty = y;
-                const Affine2D finalTransform = ComposeAffine(state.transform, transform);
-                if (!outlineBuilder.AppendGlyph(curves, strokePoints, strokeCommands, ftFace->glyph->outline, finalTransform))
-                {
-                    return false;
+                    if (FT_Load_Glyph(
+                            ftFace,
+                            glyph.glyphIndex,
+                            FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING | FT_LOAD_IGNORE_TRANSFORM) != 0)
+                    {
+                        return false;
+                    }
+
+                    if ((ftFace->glyph->format != FT_GLYPH_FORMAT_OUTLINE) || (ftFace->glyph->outline.n_points == 0))
+                    {
+                        continue;
+                    }
+
+                    Affine2D transform{};
+                    transform.m00 = scale;
+                    transform.m11 = -scale;
+                    transform.tx = span.x + glyph.penX - spanAnchorOffset;
+                    transform.ty = span.y;
+                    const Affine2D finalTransform = ComposeAffine(state.transform, transform);
+                    if (!outlineBuilder.AppendGlyph(curves, strokePoints, strokeCommands, ftFace->glyph->outline, finalTransform))
+                    {
+                        return false;
+                    }
                 }
             }
 

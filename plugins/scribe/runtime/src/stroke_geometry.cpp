@@ -401,6 +401,34 @@ namespace he::scribe
             FlattenQuadratic(out, p012, p12, p2, toleranceSq, depth + 1);
         }
 
+        void FlattenCubic(
+            Vector<Point2>& out,
+            const Point2& p0,
+            const Point2& p1,
+            const Point2& p2,
+            const Point2& p3,
+            float toleranceSq,
+            uint32_t depth)
+        {
+            const float d1 = DistanceToLineSq(p1, p0, p3);
+            const float d2 = DistanceToLineSq(p2, p0, p3);
+            if ((depth >= MaxCurveSubdivisionDepth) || (Max(d1, d2) <= toleranceSq))
+            {
+                AppendPointUnique(out, p3);
+                return;
+            }
+
+            const Point2 p01 = LerpPoint(p0, p1, 0.5f);
+            const Point2 p12 = LerpPoint(p1, p2, 0.5f);
+            const Point2 p23 = LerpPoint(p2, p3, 0.5f);
+            const Point2 p012 = LerpPoint(p01, p12, 0.5f);
+            const Point2 p123 = LerpPoint(p12, p23, 0.5f);
+            const Point2 p0123 = LerpPoint(p012, p123, 0.5f);
+
+            FlattenCubic(out, p0, p01, p012, p0123, toleranceSq, depth + 1);
+            FlattenCubic(out, p0123, p123, p23, p3, toleranceSq, depth + 1);
+        }
+
         bool DecodeStrokePaths(
             Vector<StrokePath>& outPaths,
             float pointScale,
@@ -493,6 +521,28 @@ namespace he::scribe
                         }
 
                         FlattenQuadratic(currentPath.points, currentPoint, control, point, toleranceSq, 0);
+                        currentPoint = point;
+                        break;
+                    }
+
+                    case StrokeCommandType::CubicTo:
+                    {
+                        if (!hasCurrent)
+                        {
+                            return false;
+                        }
+
+                        Point2 control1{};
+                        Point2 control2{};
+                        Point2 point{};
+                        if (!readPoint(pointIndex, control1)
+                            || !readPoint(pointIndex + 1, control2)
+                            || !readPoint(pointIndex + 2, point))
+                        {
+                            return false;
+                        }
+
+                        FlattenCubic(currentPath.points, currentPoint, control1, control2, point, toleranceSq, 0);
                         currentPoint = point;
                         break;
                     }

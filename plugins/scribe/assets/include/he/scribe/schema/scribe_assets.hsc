@@ -21,7 +21,8 @@ enum StrokeCommandType
     MoveTo @0;
     LineTo @1;
     QuadraticTo @2;
-    Close @3;
+    CubicTo @3;
+    Close @4;
 }
 
 enum StrokeJoinKind

@@ -85,6 +85,13 @@ namespace
         "</g>"
         "</svg>";
 
+    constexpr const char* kSvgWithTspanPositionedText =
+        "<svg viewBox=\"0 0 120 120\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<text font-family=\"Noto Sans\" font-size=\"20\" fill=\"#111827\">"
+        "<tspan x=\"40\" y=\"70\">Hello</tspan>"
+        "</text>"
+        "</svg>";
+
     constexpr const char* kSvgWithTransformedAuthoredStroke =
         "<svg viewBox=\"0 0 100 100\" xmlns=\"http://www.w3.org/2000/svg\">"
         "<g transform=\"translate(40 20)\">"
@@ -325,6 +332,12 @@ HE_TEST(scribe, vector_image_pipeline, supports_smooth_path_commands)
     HE_EXPECT_GT(imageData.strokeCommands.Size(), 0u);
     HE_EXPECT_GT(imageData.shapes[0].strokeCommandCount, 0u);
     HE_EXPECT_GT(imageData.shapes[1].strokeCommandCount, 0u);
+    bool hasCubicCommand = false;
+    for (const CompiledStrokeCommand& command : imageData.strokeCommands)
+    {
+        hasCubicCommand |= command.type == StrokeCommandType::CubicTo;
+    }
+    HE_EXPECT(hasCubicCommand);
 }
 
 HE_TEST(scribe, vector_image_pipeline, emits_authored_stroke_layers)
@@ -388,6 +401,20 @@ HE_TEST(scribe, vector_image_pipeline, applies_group_transform_to_svg_text_geome
     HE_EXPECT_GT(imageData.shapes.Size(), 0u);
     HE_EXPECT_GT(imageData.layers.Size(), 0u);
 
+    const CompiledVectorShapeRenderEntry& shape = imageData.shapes[imageData.layers[0].shapeIndex];
+    HE_EXPECT_GT(shape.boundsMinX, 35.0f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, uses_tspan_position_for_svg_text_geometry)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithTspanPositionedText), StrLen(kSvgWithTspanPositionedText)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_GT(imageData.shapes.Size(), 0u);
     const CompiledVectorShapeRenderEntry& shape = imageData.shapes[imageData.layers[0].shapeIndex];
     HE_EXPECT_GT(shape.boundsMinX, 35.0f);
 }

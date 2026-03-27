@@ -1294,6 +1294,13 @@ namespace he
             return false;
         }
 
+        if (m_scene == DemoScene::SvgGallery)
+        {
+            // SVG-gallery iteration only needs the UI face for the surrounding chrome.
+            // Skip the broader demo-font set to reduce startup time while working on SVG import/rendering.
+            return true;
+        }
+
         static const char* SansRegularCandidates[] =
         {
             "C:/Windows/Fonts/segoeui.ttf",

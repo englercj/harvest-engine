@@ -45,6 +45,12 @@ namespace
         "<path fill=\"#22c55e\" d=\"M16 16 L48 16 L48 48 L16 48 Z\"/>"
         "</svg>";
 
+    constexpr const char* kSvgWithShapeAndUnresolvedText =
+        "<svg viewBox=\"0 0 64 64\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<path fill=\"#111827\" d=\"M4 4 L60 4 L60 60 L4 60 Z\"/>"
+        "<text x=\"8\" y=\"20\" font-family=\"Missing Font\" font-size=\"18\">SVG</text>"
+        "</svg>";
+
     constexpr const char* kSvgBasicShapes =
         "<svg viewBox=\"0 0 128 128\" xmlns=\"http://www.w3.org/2000/svg\">"
         "<g transform=\"translate(4 6)\" style=\"fill:#ef4444; opacity:0.5\">"
@@ -548,7 +554,11 @@ HE_TEST(scribe, vector_image_pipeline, compiles_dashed_authored_strokes)
         0.25f);
 
     HE_EXPECT(ok);
-    HE_EXPECT_EQ(imageData.layers.Size(), 1u);
+    HE_EXPECT_GT(imageData.layers.Size(), 1u);
+    for (const CompiledVectorImageLayerEntry& layer : imageData.layers)
+    {
+        HE_EXPECT_EQ(layer.kind, VectorLayerKind::Stroke);
+    }
     HE_EXPECT_GT(imageData.curveTexels.Size(), 16u);
 }
 
@@ -763,6 +773,43 @@ HE_TEST(scribe, retained_vector_image, builds_draws_from_svg_text_elements)
         }
     }
     HE_EXPECT(foundOffsetTextDraw);
+}
+
+HE_TEST(scribe, retained_vector_image, skips_unresolved_svg_text_runs_without_failing_shape_draws)
+{
+    CompiledVectorImageData imageData{};
+    HE_ASSERT(BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithShapeAndUnresolvedText), StrLen(kSvgWithShapeAndUnresolvedText)),
+        0.25f));
+
+    schema::Builder rootBuilder;
+    VectorImageResource::Builder root = rootBuilder.AddStruct<VectorImageResource>();
+    FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
+    FillVectorImageResourceFillData(root.GetFill(), imageData);
+    FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
+    FillVectorImageResourcePaintData(root.GetPaint(), imageData);
+    FillVectorImageResourceTextData(rootBuilder, root.GetText(), imageData);
+    root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
+    root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
+    rootBuilder.SetRoot(root);
+
+    Vector<schema::Word> storage;
+    storage = Span<const schema::Word>(rootBuilder);
+    const VectorImageResourceReader image = schema::ReadRoot<VectorImageResource>(storage.Data());
+    HE_ASSERT(image.IsValid());
+
+    RetainedVectorImageModel retainedImage;
+    ScribeContext context{};
+    const VectorImageHandle handle = context.RegisterVectorImage(image);
+    HE_ASSERT(handle.IsValid());
+
+    RetainedVectorImageBuildDesc desc{};
+    desc.context = &context;
+    desc.image = handle;
+    HE_ASSERT(retainedImage.Build(desc));
+    HE_EXPECT_EQ(retainedImage.GetShapeDrawCount(), 1u);
+    HE_EXPECT_EQ(retainedImage.GetTextDrawCount(), 0u);
 }
 
 HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_image_copy_expires)

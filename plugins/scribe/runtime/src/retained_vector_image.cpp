@@ -5,6 +5,7 @@
 #include "he/scribe/packed_data.h"
 #include "he/scribe/retained_text.h"
 
+#include "he/core/log.h"
 #include "he/core/math.h"
 
 namespace he::scribe
@@ -71,6 +72,7 @@ namespace he::scribe
             const ScribeImage::TextRun::Reader& run,
             const Vec2f& drawOffset,
             float anchorOffsetX,
+            float baselineOffsetY,
             uint32_t fontFaceIndex)
         {
             for (const RetainedTextDraw& sourceDraw : model.GetDraws())
@@ -80,7 +82,7 @@ namespace he::scribe
 
                 const Vec2f localPosition{
                     run.GetPositionX() + anchorOffsetX + sourceDraw.position.x + (sourceDraw.size.x * sourceDraw.offset.x),
-                    run.GetPositionY() + sourceDraw.position.y + (sourceDraw.size.y * sourceDraw.offset.y)
+                    (run.GetPositionY() - baselineOffsetY) + sourceDraw.position.y + (sourceDraw.size.y * sourceDraw.offset.y)
                 };
                 const Vec2f transformedPosition = TransformTextRunPoint(run, localPosition);
                 draw.position = {
@@ -131,21 +133,27 @@ namespace he::scribe
             return false;
         }
 
-        m_fontFaces.Reserve(fontFaces.Size());
+        m_fontFaces.Resize(fontFaces.Size());
         for (uint32_t fontIndex = 0; fontIndex < fontFaces.Size(); ++fontIndex)
         {
             FontFaceHandle handle{};
             if (!desc.context->TryFindFontFaceByAlias(fontFaces[fontIndex].AsView(), handle))
             {
-                return false;
+                HE_LOG_WARN(he_scribe,
+                    HE_MSG("Skipping SVG text font alias that is not registered."),
+                    HE_KV(alias, String(fontFaces[fontIndex].AsView())));
+                continue;
             }
 
             if (!handle.IsValid())
             {
-                return false;
+                HE_LOG_WARN(he_scribe,
+                    HE_MSG("Skipping SVG text font alias that resolved to an invalid handle."),
+                    HE_KV(alias, String(fontFaces[fontIndex].AsView())));
+                continue;
             }
 
-            m_fontFaces.PushBack(handle);
+            m_fontFaces[fontIndex] = handle;
         }
 
         const Vec2f drawOffset{
@@ -220,7 +228,11 @@ namespace he::scribe
             const ScribeImage::TextRun::Reader srcRun = textRuns[runIndex];
             if (!srcRun.IsValid() || (srcRun.GetFontFaceIndex() >= m_fontFaces.Size()))
             {
-                return false;
+                HE_LOG_WARN(he_scribe,
+                    HE_MSG("Skipping SVG text run with invalid font-face index."),
+                    HE_KV(font_face_index, srcRun.IsValid() ? srcRun.GetFontFaceIndex() : 0u),
+                    HE_KV(font_face_count, m_fontFaces.Size()));
+                continue;
             }
 
             const StringView runText = srcRun.GetText().AsView();
@@ -231,6 +243,14 @@ namespace he::scribe
 
             const float fontSize = Max(srcRun.GetFontSize(), 0.01f);
             const FontFaceHandle runFontFace = m_fontFaces[srcRun.GetFontFaceIndex()];
+            if (!runFontFace.IsValid())
+            {
+                HE_LOG_WARN(he_scribe,
+                    HE_MSG("Skipping SVG text run because its font alias was not resolved."),
+                    HE_KV(font_face_index, srcRun.GetFontFaceIndex()),
+                    HE_KV(text, String(runText)));
+                continue;
+            }
 
             TextStyle style{};
             style.fontFaceIndex = 0;
@@ -287,6 +307,7 @@ namespace he::scribe
             }
 
             const float anchorOffsetX = GetTextAnchorOffsetX(srcRun.GetAnchor(), layout.width);
+            const float baselineOffsetY = !layout.lines.IsEmpty() ? layout.lines[0].baselineY : 0.0f;
             AppendTransformedTextRunDraws(
                 m_textDraws,
                 m_estimatedVertexCount,
@@ -294,6 +315,7 @@ namespace he::scribe
                 srcRun,
                 drawOffset,
                 anchorOffsetX,
+                baselineOffsetY,
                 srcRun.GetFontFaceIndex());
         }
 

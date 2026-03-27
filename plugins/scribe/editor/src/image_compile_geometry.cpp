@@ -322,23 +322,6 @@ namespace he::scribe::editor
             return (a.x * b.x) + (a.y * b.y);
         }
 
-        float SvgComputeMinimalHalfFloatOffset(float value)
-        {
-            const uint16_t packedValue = PackFloat16(value);
-            float offset = 1.0f / 65536.0f;
-            while (offset < 1.0f)
-            {
-                if (PackFloat16(value + offset) != packedValue)
-                {
-                    return offset;
-                }
-
-                offset *= 2.0f;
-            }
-
-            return 1.0f;
-        }
-
         float SvgCross(const Point2& a, const Point2& b)
         {
             return (a.x * b.y) - (a.y * b.x);
@@ -385,44 +368,14 @@ namespace he::scribe::editor
             }
         }
 
-        bool SvgTryComputeStableLineQuadraticControlPoint(
-            Point2& outControl,
-            const Point2& from,
-            const Point2& to)
-        {
-            const Point2 delta = to - from;
-            const float lenSq = SvgLengthSq(delta);
-            if (lenSq <= DegenerateLineLengthSq)
-            {
-                return false;
-            }
-
-            const float invLen = 1.0f / Sqrt(lenSq);
-            const float len = lenSq * invLen;
-            const Point2 mid = SvgLerpPoint(from, to, 0.5f);
-            const float tangentOffset = Min(0.5f, len * 0.25f);
-            const Point2 tangent = delta * invLen;
-            constexpr float AxisEpsilon = 1.0e-6f;
-
-            outControl.x = mid.x + (tangent.x * tangentOffset);
-            outControl.y = mid.y + (tangent.y * tangentOffset);
-
-            if (Abs(delta.x) <= AxisEpsilon)
-            {
-                outControl.x += SvgComputeMinimalHalfFloatOffset(mid.x);
-            }
-            else if (Abs(delta.y) <= AxisEpsilon)
-            {
-                outControl.y += SvgComputeMinimalHalfFloatOffset(mid.y);
-            }
-
-            return true;
-        }
-
         void SvgAppendLineCurve(Vector<CurveData>& out, const Point2& from, const Point2& to)
         {
-            Point2 control{};
-            if (!SvgTryComputeStableLineQuadraticControlPoint(control, from, to))
+            LineCurvePoint control{};
+            if (!TryComputeStableLineQuadraticControlPoint(
+                    control,
+                    { from.x, from.y },
+                    { to.x, to.y },
+                    DegenerateLineLengthSq))
             {
                 return;
             }
@@ -438,12 +391,13 @@ namespace he::scribe::editor
 
             CurveData& curve = out.EmplaceBack();
             curve.p1 = from;
-            curve.p2 = control;
+            curve.p2 = { control.x, control.y };
             curve.p3 = to;
             curve.minX = minX;
             curve.minY = minY;
             curve.maxX = maxX;
             curve.maxY = maxY;
+            curve.isLineLike = true;
         }
 
         void SvgEmitClosedPolygon(Vector<CurveData>& outCurves, Span<const Point2> polygon)
@@ -952,6 +906,21 @@ namespace he::scribe::editor
                             end = end + (direction * halfWidth);
                         }
                     }
+                    else if (!path.closed && (style.strokeCap == StrokeCapKind::Butt))
+                    {
+                        // A tiny overlap avoids visible AA seams where SVGs place a filled
+                        // arrowhead immediately after a stroked axis line.
+                        const float seamOverlap = Min(halfWidth, 0.25f);
+                        if (segmentIndex == 0)
+                        {
+                            start = start - (direction * seamOverlap);
+                        }
+
+                        if (segmentIndex == (segmentCount - 1))
+                        {
+                            end = end + (direction * seamOverlap);
+                        }
+                    }
 
                     const Point2 normal = SvgLeftNormal(direction) * halfWidth;
                     const Point2 polygon[] =
@@ -1178,6 +1147,59 @@ namespace he::scribe::editor
                 }
             }
 
+            bool lineOnlyStroke = !outlineCommands.IsEmpty();
+            for (uint32_t commandIndex = 0; commandIndex < outlineCommands.Size(); ++commandIndex)
+            {
+                const StrokeCommandType type = outlineCommands[commandIndex].type;
+                if ((type != StrokeCommandType::MoveTo)
+                    && (type != StrokeCommandType::LineTo)
+                    && (type != StrokeCommandType::Close))
+                {
+                    lineOnlyStroke = false;
+                    break;
+                }
+            }
+
+            if (lineOnlyStroke)
+            {
+                Vector<StrokeSourcePoint> linePoints{};
+                linePoints.Resize(outlinePoints.Size());
+                for (uint32_t pointIndex = 0; pointIndex < outlinePoints.Size(); ++pointIndex)
+                {
+                    linePoints[pointIndex].x = outlinePoints[pointIndex].x;
+                    linePoints[pointIndex].y = outlinePoints[pointIndex].y;
+                }
+
+                Vector<StrokeSourceCommand> lineCommands{};
+                lineCommands.Resize(outlineCommands.Size());
+                for (uint32_t commandIndex = 0; commandIndex < outlineCommands.Size(); ++commandIndex)
+                {
+                    lineCommands[commandIndex].type = outlineCommands[commandIndex].type;
+                    lineCommands[commandIndex].firstPoint = outlineCommands[commandIndex].firstPoint;
+                }
+
+                Vector<SvgStrokePath> paths{};
+                if (!SvgDecodeStrokePaths(
+                        paths,
+                        Span<const StrokeSourcePoint>(linePoints.Data(), linePoints.Size()),
+                        Span<const StrokeSourceCommand>(lineCommands.Data(), lineCommands.Size()),
+                        flatteningTolerance))
+                {
+                    return false;
+                }
+
+                SvgBuildStrokeCurves(out.curves, Span<const SvgStrokePath>(paths.Data(), paths.Size()), style);
+                if (out.curves.IsEmpty())
+                {
+                    return false;
+                }
+
+                out.fillRule = FillRule::NonZero;
+                out.color = style.stroke;
+                RecomputeShapeBounds(out);
+                return true;
+            }
+
             Vector<StrokeOutlineCurve> strokedCurves{};
             if (!BuildStrokedOutlineCurves(
                     strokedCurves,
@@ -1215,6 +1237,170 @@ namespace he::scribe::editor
             out.color = style.stroke;
             RecomputeShapeBounds(out);
             return true;
+        }
+
+        bool IsLineOnlyStrokeSource(const ParsedShape& source)
+        {
+            for (const StrokeSourceCommand& command : source.strokeCommands)
+            {
+                if ((command.type != StrokeCommandType::MoveTo)
+                    && (command.type != StrokeCommandType::LineTo)
+                    && (command.type != StrokeCommandType::Close))
+                {
+                    return false;
+                }
+            }
+
+            return !source.strokeCommands.IsEmpty();
+        }
+
+        bool BuildAuthoredDashedLineStrokeShapes(
+            Vector<ParsedShape>& outShapes,
+            const ParsedShape& source,
+            const StyleState& style,
+            float flatteningTolerance)
+        {
+            outShapes.Clear();
+
+            Vector<float> dashPattern{};
+            if (style.strokeDashArray.IsEmpty()
+                || !ParseDashArray(dashPattern, StringView(style.strokeDashArray.Data(), style.strokeDashArray.Size()))
+                || dashPattern.IsEmpty())
+            {
+                return false;
+            }
+
+            StrokeSourceBuilder dashedBuilder(flatteningTolerance);
+            auto appendDashedLine = [&](const Point2& from, const Point2& to)
+            {
+                const Point2 delta = to - from;
+                const float lengthSq = (delta.x * delta.x) + (delta.y * delta.y);
+                if (lengthSq <= 1.0e-8f)
+                {
+                    return;
+                }
+
+                const float length = Sqrt(lengthSq);
+                uint32_t dashIndex = 0;
+                float dashConsumed = 0.0f;
+                bool dashOn = true;
+                float segmentStart = 0.0f;
+
+                while (segmentStart < length)
+                {
+                    const float dashLength = dashPattern[dashIndex];
+                    const float remainingDash = dashLength - dashConsumed;
+                    const float segmentEnd = Min(segmentStart + remainingDash, length);
+                    if (dashOn && ((segmentEnd - segmentStart) > 1.0e-5f))
+                    {
+                        const float t0 = segmentStart / length;
+                        const float t1 = segmentEnd / length;
+                        const Point2 startPoint{
+                            Lerp(from.x, to.x, t0),
+                            Lerp(from.y, to.y, t0)
+                        };
+                        const Point2 endPoint{
+                            Lerp(from.x, to.x, t1),
+                            Lerp(from.y, to.y, t1)
+                        };
+                        dashedBuilder.AppendMoveTo(startPoint);
+                        dashedBuilder.AppendLineTo(endPoint);
+                    }
+
+                    dashConsumed += segmentEnd - segmentStart;
+                    segmentStart = segmentEnd;
+                    if (dashConsumed >= (dashLength - 1.0e-5f))
+                    {
+                        dashConsumed = 0.0f;
+                        dashIndex = (dashIndex + 1) % dashPattern.Size();
+                        dashOn = !dashOn;
+                    }
+                }
+            };
+
+            Point2 current{};
+            Point2 subpathStart{};
+            bool hasCurrent = false;
+            for (const StrokeSourceCommand& command : source.strokeCommands)
+            {
+                switch (command.type)
+                {
+                    case StrokeCommandType::MoveTo:
+                    {
+                        if (command.firstPoint >= source.strokePoints.Size())
+                        {
+                            return false;
+                        }
+
+                        current = {
+                            source.strokePoints[command.firstPoint].x,
+                            source.strokePoints[command.firstPoint].y
+                        };
+                        subpathStart = current;
+                        hasCurrent = true;
+                        break;
+                    }
+
+                    case StrokeCommandType::LineTo:
+                    {
+                        if (!hasCurrent || (command.firstPoint >= source.strokePoints.Size()))
+                        {
+                            return false;
+                        }
+
+                        const Point2 target{
+                            source.strokePoints[command.firstPoint].x,
+                            source.strokePoints[command.firstPoint].y
+                        };
+                        appendDashedLine(current, target);
+                        current = target;
+                        break;
+                    }
+
+                    case StrokeCommandType::Close:
+                    {
+                        if (hasCurrent)
+                        {
+                            appendDashedLine(current, subpathStart);
+                            current = subpathStart;
+                        }
+                        break;
+                    }
+
+                    default:
+                        return false;
+                }
+            }
+
+            Vector<StrokeSourcePoint> dashedPoints = Move(dashedBuilder.Points());
+            Vector<StrokeSourceCommand> dashedCommands = Move(dashedBuilder.Commands());
+            Vector<SvgStrokePath> paths{};
+            if (!SvgDecodeStrokePaths(
+                    paths,
+                    Span<const StrokeSourcePoint>(dashedPoints.Data(), dashedPoints.Size()),
+                    Span<const StrokeSourceCommand>(dashedCommands.Data(), dashedCommands.Size()),
+                    flatteningTolerance))
+            {
+                return false;
+            }
+
+            outShapes.Reserve(paths.Size());
+            for (uint32_t pathIndex = 0; pathIndex < paths.Size(); ++pathIndex)
+            {
+                ParsedShape& dashShape = outShapes.EmplaceBack();
+                SvgBuildStrokeCurves(dashShape.curves, Span<const SvgStrokePath>(&paths[pathIndex], 1), style);
+                if (dashShape.curves.IsEmpty())
+                {
+                    outShapes.Resize(outShapes.Size() - 1);
+                    continue;
+                }
+
+                dashShape.fillRule = FillRule::NonZero;
+                dashShape.color = style.stroke;
+                RecomputeShapeBounds(dashShape);
+            }
+
+            return !outShapes.IsEmpty();
         }
 
         uint32_t AppendParsedShape(ParsedImage& out, ParsedShape&& shape)
@@ -2879,28 +3065,64 @@ namespace he::scribe::editor
 
             if (hasVisibleStroke)
             {
-                ParsedShape strokeShape{};
-                if (!BuildAuthoredStrokeShape(
-                        strokeShape,
-                        hasVisibleFill ? out.shapes[fillShapeIndex] : shape,
-                        state.style,
-                        m_flatteningTolerance))
-                {
-                    return false;
-                }
+                const ParsedShape& strokeSource = hasVisibleFill ? out.shapes[fillShapeIndex] : shape;
+                const bool splitDashedLineStrokes =
+                    !state.style.strokeDashArray.IsEmpty()
+                    && IsLineOnlyStrokeSource(strokeSource);
 
-                const uint32_t strokeShapeIndex = AppendParsedShape(out, Move(strokeShape));
-                CompiledVectorImageLayerEntry& layer = out.layers.EmplaceBack();
-                layer.shapeIndex = strokeShapeIndex;
-                layer.kind = VectorLayerKind::Stroke;
-                layer.red = state.style.stroke.x;
-                layer.green = state.style.stroke.y;
-                layer.blue = state.style.stroke.z;
-                layer.alpha = state.style.stroke.w;
-                layer.strokeWidth = state.style.strokeWidth;
-                layer.strokeJoin = state.style.strokeJoin;
-                layer.strokeCap = state.style.strokeCap;
-                layer.strokeMiterLimit = state.style.strokeMiterLimit;
+                if (splitDashedLineStrokes)
+                {
+                    Vector<ParsedShape> strokeShapes{};
+                    if (!BuildAuthoredDashedLineStrokeShapes(
+                            strokeShapes,
+                            strokeSource,
+                            state.style,
+                            m_flatteningTolerance))
+                    {
+                        return false;
+                    }
+
+                    for (uint32_t strokeShapeIndex = 0; strokeShapeIndex < strokeShapes.Size(); ++strokeShapeIndex)
+                    {
+                        const uint32_t appendedShapeIndex = AppendParsedShape(out, Move(strokeShapes[strokeShapeIndex]));
+                        CompiledVectorImageLayerEntry& layer = out.layers.EmplaceBack();
+                        layer.shapeIndex = appendedShapeIndex;
+                        layer.kind = VectorLayerKind::Stroke;
+                        layer.red = state.style.stroke.x;
+                        layer.green = state.style.stroke.y;
+                        layer.blue = state.style.stroke.z;
+                        layer.alpha = state.style.stroke.w;
+                        layer.strokeWidth = state.style.strokeWidth;
+                        layer.strokeJoin = state.style.strokeJoin;
+                        layer.strokeCap = state.style.strokeCap;
+                        layer.strokeMiterLimit = state.style.strokeMiterLimit;
+                    }
+                }
+                else
+                {
+                    ParsedShape strokeShape{};
+                    if (!BuildAuthoredStrokeShape(
+                            strokeShape,
+                            strokeSource,
+                            state.style,
+                            m_flatteningTolerance))
+                    {
+                        return false;
+                    }
+
+                    const uint32_t strokeShapeIndex = AppendParsedShape(out, Move(strokeShape));
+                    CompiledVectorImageLayerEntry& layer = out.layers.EmplaceBack();
+                    layer.shapeIndex = strokeShapeIndex;
+                    layer.kind = VectorLayerKind::Stroke;
+                    layer.red = state.style.stroke.x;
+                    layer.green = state.style.stroke.y;
+                    layer.blue = state.style.stroke.z;
+                    layer.alpha = state.style.stroke.w;
+                    layer.strokeWidth = state.style.strokeWidth;
+                    layer.strokeJoin = state.style.strokeJoin;
+                    layer.strokeCap = state.style.strokeCap;
+                    layer.strokeMiterLimit = state.style.strokeMiterLimit;
+                }
             }
 
             if (hasVisibleFill)
@@ -4115,6 +4337,18 @@ namespace he::scribe::editor
                     curve.minY -= localOrigin.y;
                     curve.maxX -= localOrigin.x;
                     curve.maxY -= localOrigin.y;
+                    if (curve.isLineLike)
+                    {
+                        LineCurvePoint localControl{};
+                        if (TryComputeStableLineQuadraticControlPoint(
+                                localControl,
+                                { curve.p1.x, curve.p1.y },
+                                { curve.p3.x, curve.p3.y },
+                                DegenerateLineLengthSq))
+                        {
+                            curve.p2 = { localControl.x, localControl.y };
+                        }
+                    }
                     curve.curveTexelIndex = outCurveTexels.Size();
                     SvgAppendCurveTexels(outCurveTexels, curve);
                 }

@@ -70,28 +70,32 @@ namespace he::scribe
             uint32_t& estimatedVertexCount,
             const ScribeContext& context,
             const RetainedTextModel& model,
+            Span<const FontFaceHandle> layoutFontFaces,
+            Span<const uint32_t> layoutFontFaceIndices,
             const ScribeImage::TextRun::Reader& run,
             const Vec2f& drawOffset,
             float anchorOffsetX,
-            float baselineOffsetY,
-            uint32_t fontFaceIndex,
-            FontFaceHandle fontFaceHandle)
+            float baselineOffsetY)
         {
-            const ScribeFontFace::RuntimeResource::Reader fontFace = context.GetFontFace(fontFaceHandle);
-            const FontFaceFillData::Reader fill = fontFace.IsValid() ? fontFace.GetFill() : FontFaceFillData::Reader{};
-            const schema::List<FontFaceGlyphRenderData>::Reader glyphs = fill.IsValid() ? fill.GetGlyphs() : schema::List<FontFaceGlyphRenderData>::Reader{};
-
             for (const RetainedTextDraw& sourceDraw : model.GetDraws())
             {
                 RetainedTextDraw& draw = out.EmplaceBack(sourceDraw);
-                draw.fontFaceIndex = fontFaceIndex;
+                const uint32_t mappedFontFaceIndex =
+                    (sourceDraw.fontFaceIndex < layoutFontFaceIndices.Size())
+                    ? layoutFontFaceIndices[sourceDraw.fontFaceIndex]
+                    : run.GetFontFaceIndex();
+                draw.fontFaceIndex = mappedFontFaceIndex;
 
                 float glyphOriginOffsetX = 0.0f;
-                if (run.GetPositionUsesGlyphOriginX()
-                    && glyphs.IsValid()
-                    && (sourceDraw.glyphIndex < glyphs.Size()))
+                if (run.GetPositionUsesGlyphOriginX() && (sourceDraw.fontFaceIndex < layoutFontFaces.Size()))
                 {
-                    glyphOriginOffsetX = glyphs[sourceDraw.glyphIndex].GetBoundsMinX() * sourceDraw.size.x;
+                    const ScribeFontFace::RuntimeResource::Reader fontFace = context.GetFontFace(layoutFontFaces[sourceDraw.fontFaceIndex]);
+                    const FontFaceFillData::Reader fill = fontFace.IsValid() ? fontFace.GetFill() : FontFaceFillData::Reader{};
+                    const schema::List<FontFaceGlyphRenderData>::Reader glyphs = fill.IsValid() ? fill.GetGlyphs() : schema::List<FontFaceGlyphRenderData>::Reader{};
+                    if (glyphs.IsValid() && (sourceDraw.glyphIndex < glyphs.Size()))
+                    {
+                        glyphOriginOffsetX = glyphs[sourceDraw.glyphIndex].GetBoundsMinX() * sourceDraw.size.x;
+                    }
                 }
 
                 const Vec2f localPosition{
@@ -266,8 +270,42 @@ namespace he::scribe
                 continue;
             }
 
+            Vector<FontFaceHandle> layoutFontFaces{};
+            Vector<uint32_t> layoutFontFaceIndices{};
+            uint32_t primaryLayoutFontFaceIndex = 0;
+            for (uint32_t fontIndex = 0; fontIndex < m_fontFaces.Size(); ++fontIndex)
+            {
+                const FontFaceHandle handle = m_fontFaces[fontIndex];
+                if (!handle.IsValid())
+                {
+                    continue;
+                }
+
+                uint32_t existingIndex = Limits<uint32_t>::Max;
+                for (uint32_t layoutIndex = 0; layoutIndex < layoutFontFaces.Size(); ++layoutIndex)
+                {
+                    if (layoutFontFaces[layoutIndex] == handle)
+                    {
+                        existingIndex = layoutIndex;
+                        break;
+                    }
+                }
+
+                if (existingIndex == Limits<uint32_t>::Max)
+                {
+                    existingIndex = layoutFontFaces.Size();
+                    layoutFontFaces.PushBack(handle);
+                    layoutFontFaceIndices.PushBack(fontIndex);
+                }
+
+                if (fontIndex == srcRun.GetFontFaceIndex())
+                {
+                    primaryLayoutFontFaceIndex = existingIndex;
+                }
+            }
+
             TextStyle style{};
-            style.fontFaceIndex = 0;
+            style.fontFaceIndex = primaryLayoutFontFaceIndex;
             style.color = {
                 srcRun.GetRed(),
                 srcRun.GetGreen(),
@@ -294,7 +332,7 @@ namespace he::scribe
             styleSpan.styleIndex = 0;
 
             StyledTextLayoutDesc layoutDesc{};
-            layoutDesc.fontFaces = Span<const FontFaceHandle>(&runFontFace, 1);
+            layoutDesc.fontFaces = layoutFontFaces;
             layoutDesc.text = runText;
             layoutDesc.options.fontSize = fontSize;
             layoutDesc.options.wrap = false;
@@ -309,7 +347,7 @@ namespace he::scribe
 
             RetainedTextBuildDesc textBuildDesc{};
             textBuildDesc.context = desc.context;
-            textBuildDesc.fontFaces = Span<const FontFaceHandle>(&runFontFace, 1);
+            textBuildDesc.fontFaces = layoutFontFaces;
             textBuildDesc.layout = &layout;
             textBuildDesc.fontSize = fontSize;
             textBuildDesc.styles = Span<const TextStyle>(&style, 1);
@@ -327,12 +365,12 @@ namespace he::scribe
                 m_estimatedVertexCount,
                 *desc.context,
                 model,
+                layoutFontFaces,
+                layoutFontFaceIndices,
                 srcRun,
                 drawOffset,
                 anchorOffsetX,
-                baselineOffsetY,
-                srcRun.GetFontFaceIndex(),
-                runFontFace);
+                baselineOffsetY);
         }
 
         return !m_draws.IsEmpty() || !m_textDraws.IsEmpty();

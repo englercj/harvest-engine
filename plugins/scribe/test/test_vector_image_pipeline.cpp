@@ -849,6 +849,67 @@ HE_TEST(scribe, retained_vector_image, builds_draws_from_svg_text_elements)
     HE_EXPECT(foundOffsetTextDraw);
 }
 
+HE_TEST(scribe, retained_vector_image, falls_back_to_other_registered_svg_font_faces_for_missing_glyphs)
+{
+    CompiledVectorImageData imageData{};
+    imageData.viewBoxWidth = 64.0f;
+    imageData.viewBoxHeight = 32.0f;
+    imageData.boundsMaxX = 64.0f;
+    imageData.boundsMaxY = 32.0f;
+    imageData.fontFaces.Resize(2);
+    imageData.fontFaces[0].key = "Material Design Icons";
+    imageData.fontFaces[1].key = "ArialMT";
+    CompiledVectorImageTextRunEntry& run = imageData.textRuns.EmplaceBack();
+    run.fontFaceIndex = 0;
+    run.text = StringView("\xE2\x88\x92", 3);
+    run.position = { 12.0f, 20.0f };
+    run.fontSize = 18.0f;
+    run.color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+    schema::Builder rootBuilder;
+    VectorImageResource::Builder root = rootBuilder.AddStruct<VectorImageResource>();
+    FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
+    FillVectorImageResourceFillData(root.GetFill(), imageData);
+    FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
+    FillVectorImageResourcePaintData(root.GetPaint(), imageData);
+    FillVectorImageResourceTextData(rootBuilder, root.GetText(), imageData);
+    rootBuilder.SetRoot(root);
+
+    Vector<schema::Word> storage;
+    storage = Span<const schema::Word>(rootBuilder);
+    const VectorImageResourceReader image = schema::ReadRoot<VectorImageResource>(storage.Data());
+    HE_ASSERT(image.IsValid());
+
+    ScribeContext context{};
+    Vector<schema::Word> iconFontStorage{};
+    FontFaceResourceReader iconFontFace{};
+    HE_ASSERT(BuildLoadedFontFace(
+        iconFontStorage,
+        iconFontFace,
+        "C:/Users/engle/source/repos/harvest-engine/plugins/editor/src/fonts/materialdesignicons.ttf"));
+    HE_ASSERT(context.RegisterFontFace(iconFontFace, "Material Design Icons").IsValid());
+
+    Vector<schema::Word> textFontStorage{};
+    FontFaceResourceReader textFontFace{};
+    HE_ASSERT(BuildLoadedFontFace(
+        textFontStorage,
+        textFontFace,
+        "C:/Windows/Fonts/arial.ttf"));
+    HE_ASSERT(context.RegisterFontFace(textFontFace, "ArialMT").IsValid());
+
+    const VectorImageHandle handle = context.RegisterVectorImage(image);
+    HE_ASSERT(handle.IsValid());
+
+    RetainedVectorImageModel retainedImage{};
+    RetainedVectorImageBuildDesc desc{};
+    desc.context = &context;
+    desc.image = handle;
+    HE_ASSERT(retainedImage.Build(desc));
+
+    HE_EXPECT_GT(retainedImage.GetTextDrawCount(), 0u);
+    HE_EXPECT_EQ(retainedImage.GetTextDraws()[0].fontFaceIndex, 1u);
+}
+
 HE_TEST(scribe, retained_vector_image, skips_unresolved_svg_text_runs_without_failing_shape_draws)
 {
     CompiledVectorImageData imageData{};

@@ -13,10 +13,14 @@
 
 #include "he/core/assert.h"
 #include "he/core/clock.h"
+#include "he/core/directory.h"
 #include "he/core/file.h"
+#include "he/core/hash.h"
 #include "he/core/log.h"
 #include "he/core/macros.h"
 #include "he/core/math.h"
+#include "he/core/path.h"
+#include "he/core/process.h"
 #include "he/core/result_fmt.h"
 #include "he/core/string_ops.h"
 #include "he/core/string_fmt.h"
@@ -36,6 +40,8 @@ namespace he
 {
     namespace
     {
+        constexpr uint32_t DemoAssetCacheVersion = 1;
+        constexpr float DemoSvgFlatteningTolerance = 0.25f;
         constexpr uint32_t GpuGraphTickCount = 5;
         constexpr float GpuGraphMaxMs = 2.0f;
         constexpr const char* TestIconAccount = "\xf3\xb0\x80\x84";
@@ -347,6 +353,222 @@ namespace he
             return false;
         }
 
+        bool ResolveDemoAssetCacheDir(String& out)
+        {
+            if (!GetCurrentProcessFilename(out))
+            {
+                out.Clear();
+                return false;
+            }
+
+            RemoveBaseName(out);
+            ConcatPath(out, "resource_cache");
+            NormalizePath(out);
+            return !!Directory::Create(out.Data(), true);
+        }
+
+        bool TryGetFileWriteTime(SystemTime& out, const char* path)
+        {
+            FileAttributes attributes{};
+            if (!File::GetAttributes(path, attributes))
+            {
+                out = {};
+                return false;
+            }
+
+            out = attributes.writeTime;
+            return true;
+        }
+
+        bool IsDemoAssetCacheFresh(const char* sourcePath, const char* cachePath)
+        {
+            if (!File::Exists(cachePath))
+            {
+                return false;
+            }
+
+            SystemTime sourceWriteTime{};
+            SystemTime cacheWriteTime{};
+            return TryGetFileWriteTime(sourceWriteTime, sourcePath)
+                && TryGetFileWriteTime(cacheWriteTime, cachePath)
+                && (sourceWriteTime <= cacheWriteTime);
+        }
+
+        void BuildDemoAssetCachePath(String& out, const char* kind, StringView sourcePath, uint32_t variantHash)
+        {
+            out.Clear();
+
+            String cacheDir{};
+            if (!ResolveDemoAssetCacheDir(cacheDir))
+            {
+                return;
+            }
+
+            const uint32_t pathHash = FNV32::String(sourcePath);
+            const uint32_t cacheKey = CombineHash32(
+                CombineHash32(FNV32::String(kind), pathHash),
+                CombineHash32(variantHash, DemoAssetCacheVersion));
+
+            const StringView baseName = GetBaseName(GetPathWithoutExtension(sourcePath));
+            String fileName{};
+            FormatTo(fileName, "{}_{}_{}.bin", kind, cacheKey, baseName);
+            ConcatPath(cacheDir, fileName);
+            out = Move(cacheDir);
+        }
+
+        bool TryReadCachedSchemaWords(Vector<schema::Word>& out, const char* path)
+        {
+            out.Clear();
+            return File::ReadAll(out, path).IsOk();
+        }
+
+        bool TryWriteCachedSchemaWords(Span<const schema::Word> words, const char* path)
+        {
+            const Span<const uint8_t> bytes = words.AsBytes();
+            return File::WriteAll(bytes.Data(), bytes.Size(), path).IsOk();
+        }
+
+        bool TryLoadCachedFontFace(
+            Vector<schema::Word>& storage,
+            scribe::FontFaceResourceReader& out,
+            const char* sourcePath,
+            const char* cachePath)
+        {
+            if (!IsDemoAssetCacheFresh(sourcePath, cachePath)
+                || !TryReadCachedSchemaWords(storage, cachePath))
+            {
+                return false;
+            }
+
+            out = schema::ReadRoot<scribe::FontFaceResource>(storage.Data());
+            if (!out.IsValid())
+            {
+                storage.Clear();
+                return false;
+            }
+
+            return true;
+        }
+
+        bool TryLoadCachedVectorImage(
+            Vector<schema::Word>& storage,
+            scribe::VectorImageResourceReader& out,
+            const char* sourcePath,
+            const char* cachePath)
+        {
+            if (!IsDemoAssetCacheFresh(sourcePath, cachePath)
+                || !TryReadCachedSchemaWords(storage, cachePath))
+            {
+                return false;
+            }
+
+            out = schema::ReadRoot<scribe::VectorImageResource>(storage.Data());
+            if (!out.IsValid())
+            {
+                storage.Clear();
+                return false;
+            }
+
+            return true;
+        }
+
+        bool BuildLoadedFontFaceFromResolvedPath(const char* path, Vector<schema::Word>& storage, scribe::FontFaceResourceReader& out)
+        {
+            const scribe::FontSourceFormat sourceFormat = scribe::editor::DeduceFontSourceFormat(path);
+            if (sourceFormat == scribe::FontSourceFormat::Unknown)
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Unsupported demo font format."),
+                    HE_KV(path, path));
+                return false;
+            }
+
+            Vector<uint8_t> fontBytes;
+            if (!scribe::editor::ReadFontSourceBytes(fontBytes, path))
+            {
+                return false;
+            }
+
+            scribe::editor::FontFaceInfo faceInfo{};
+            if (!scribe::editor::InspectFontFace(fontBytes, 0, faceInfo))
+            {
+                return false;
+            }
+
+            scribe::editor::CompiledFontRenderData renderData{};
+            if (!scribe::editor::BuildCompiledFontRenderData(renderData, fontBytes, 0))
+            {
+                return false;
+            }
+
+            schema::Builder rootBuilder;
+            scribe::FontFaceResource::Builder root = rootBuilder.AddStruct<scribe::FontFaceResource>();
+            Vector<uint8_t> shapingBytes{};
+            if (!scribe::editor::BuildFontFaceShapingBytes(shapingBytes, Span<const uint8_t>(fontBytes), faceInfo.faceIndex))
+            {
+                return false;
+            }
+            scribe::FontFaceShapingData::Builder shaping = root.GetShaping();
+            shaping.SetFaceIndex(faceInfo.faceIndex);
+            shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(shapingBytes)));
+
+            scribe::editor::FillFontFaceRuntimeMetadata(
+                root.GetMetadata(),
+                renderData.glyphs.Size(),
+                faceInfo.unitsPerEm,
+                faceInfo.ascender,
+                faceInfo.descender,
+                faceInfo.lineHeight,
+                faceInfo.capHeight,
+                faceInfo.hasColorGlyphs);
+
+            scribe::editor::FillFontFaceResourceFillData(root.GetFill(), renderData);
+            scribe::editor::FillFontFaceResourceStrokeData(root.GetStroke(), renderData);
+            scribe::editor::FillFontFaceResourcePaintData(root.GetPaint(), renderData.paint);
+            root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
+            root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
+            rootBuilder.SetRoot(root);
+
+            storage = Span<const schema::Word>(rootBuilder);
+            out = schema::ReadRoot<scribe::FontFaceResource>(storage.Data());
+            return out.IsValid();
+        }
+
+        bool BuildLoadedVectorImageFromResolvedPath(const char* path, Vector<schema::Word>& storage, scribe::VectorImageResourceReader& out)
+        {
+            Vector<uint8_t> imageBytes;
+            Result readResult = File::ReadAll(imageBytes, path);
+            if (!readResult)
+            {
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Failed to read demo SVG source."),
+                    HE_KV(path, path),
+                    HE_KV(result, readResult));
+                return false;
+            }
+
+            scribe::editor::CompiledVectorImageData imageData{};
+            if (!scribe::editor::BuildCompiledVectorImageData(imageData, imageBytes, DemoSvgFlatteningTolerance))
+            {
+                return false;
+            }
+
+            schema::Builder rootBuilder;
+            scribe::VectorImageResource::Builder root = rootBuilder.AddStruct<scribe::VectorImageResource>();
+            scribe::editor::FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
+            scribe::editor::FillVectorImageResourceFillData(root.GetFill(), imageData);
+            scribe::editor::FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
+            scribe::editor::FillVectorImageResourcePaintData(root.GetPaint(), imageData);
+            scribe::editor::FillVectorImageResourceTextData(rootBuilder, root.GetText(), imageData);
+            root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
+            root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
+            rootBuilder.SetRoot(root);
+
+            storage = Span<const schema::Word>(rootBuilder);
+            out = schema::ReadRoot<scribe::VectorImageResource>(storage.Data());
+            return out.IsValid();
+        }
+
         bool FindSubstringRange(
             StringView text,
             StringView needle,
@@ -414,64 +636,30 @@ namespace he
                 return false;
             }
 
-            const scribe::FontSourceFormat sourceFormat = scribe::editor::DeduceFontSourceFormat(fileName);
-            if (sourceFormat == scribe::FontSourceFormat::Unknown)
-            {
-                HE_LOG_ERROR(he_scribe,
-                    HE_MSG("Unsupported demo font format."),
-                    HE_KV(path, path));
-                return false;
-            }
-
-            Vector<uint8_t> fontBytes;
-            if (!scribe::editor::ReadFontSourceBytes(fontBytes, path.Data()))
+            if (!MakeAbsolute(path))
             {
                 return false;
             }
+            NormalizePath(path);
 
-            scribe::editor::FontFaceInfo faceInfo{};
-            if (!scribe::editor::InspectFontFace(fontBytes, 0, faceInfo))
+            String cachePath{};
+            BuildDemoAssetCachePath(cachePath, "font", path, 0u);
+            if (!cachePath.IsEmpty() && TryLoadCachedFontFace(storage, out, path.Data(), cachePath.Data()))
+            {
+                return true;
+            }
+
+            if (!BuildLoadedFontFaceFromResolvedPath(path.Data(), storage, out))
             {
                 return false;
             }
 
-            scribe::editor::CompiledFontRenderData renderData{};
-            if (!scribe::editor::BuildCompiledFontRenderData(renderData, fontBytes, 0))
+            if (!cachePath.IsEmpty())
             {
-                return false;
+                TryWriteCachedSchemaWords(Span<const schema::Word>(storage), cachePath.Data());
             }
 
-            schema::Builder rootBuilder;
-            scribe::FontFaceResource::Builder root = rootBuilder.AddStruct<scribe::FontFaceResource>();
-            Vector<uint8_t> shapingBytes{};
-            if (!scribe::editor::BuildFontFaceShapingBytes(shapingBytes, Span<const uint8_t>(fontBytes), faceInfo.faceIndex))
-            {
-                return false;
-            }
-            scribe::FontFaceShapingData::Builder shaping = root.GetShaping();
-            shaping.SetFaceIndex(faceInfo.faceIndex);
-            shaping.SetSourceBytes(rootBuilder.AddBlob(Span<const uint8_t>(shapingBytes)));
-
-            scribe::editor::FillFontFaceRuntimeMetadata(
-                root.GetMetadata(),
-                renderData.glyphs.Size(),
-                faceInfo.unitsPerEm,
-                faceInfo.ascender,
-                faceInfo.descender,
-                faceInfo.lineHeight,
-                faceInfo.capHeight,
-                faceInfo.hasColorGlyphs);
-
-            scribe::editor::FillFontFaceResourceFillData(root.GetFill(), renderData);
-            scribe::editor::FillFontFaceResourceStrokeData(root.GetStroke(), renderData);
-            scribe::editor::FillFontFaceResourcePaintData(root.GetPaint(), renderData.paint);
-            root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(renderData.curveTexels.Data(), renderData.curveTexels.Size()).AsBytes()));
-            root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(renderData.bandTexels.Data(), renderData.bandTexels.Size()).AsBytes()));
-            rootBuilder.SetRoot(root);
-
-            storage = Span<const schema::Word>(rootBuilder);
-            out = schema::ReadRoot<scribe::FontFaceResource>(storage.Data());
-            return out.IsValid();
+            return true;
         }
 
         bool BuildLoadedVectorImageFromFile(const char* fileName, Vector<schema::Word>& storage, scribe::VectorImageResourceReader& out)
@@ -485,37 +673,31 @@ namespace he
                 return false;
             }
 
-            Vector<uint8_t> imageBytes;
-            Result readResult = File::ReadAll(imageBytes, path.Data());
-            if (!readResult)
-            {
-                HE_LOG_ERROR(he_scribe,
-                    HE_MSG("Failed to read demo SVG source."),
-                    HE_KV(path, path),
-                    HE_KV(result, readResult));
-                return false;
-            }
-
-            scribe::editor::CompiledVectorImageData imageData{};
-            if (!scribe::editor::BuildCompiledVectorImageData(imageData, imageBytes, 0.25f))
+            if (!MakeAbsolute(path))
             {
                 return false;
             }
+            NormalizePath(path);
 
-            schema::Builder rootBuilder;
-            scribe::VectorImageResource::Builder root = rootBuilder.AddStruct<scribe::VectorImageResource>();
-            scribe::editor::FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
-            scribe::editor::FillVectorImageResourceFillData(root.GetFill(), imageData);
-            scribe::editor::FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
-            scribe::editor::FillVectorImageResourcePaintData(root.GetPaint(), imageData);
-            scribe::editor::FillVectorImageResourceTextData(rootBuilder, root.GetText(), imageData);
-            root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const scribe::PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
-            root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const scribe::PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
-            rootBuilder.SetRoot(root);
+            const uint32_t flatteningHash = static_cast<uint32_t>(Round(DemoSvgFlatteningTolerance * 1000.0f));
+            String cachePath{};
+            BuildDemoAssetCachePath(cachePath, "svg", path, flatteningHash);
+            if (!cachePath.IsEmpty() && TryLoadCachedVectorImage(storage, out, path.Data(), cachePath.Data()))
+            {
+                return true;
+            }
 
-            storage = Span<const schema::Word>(rootBuilder);
-            out = schema::ReadRoot<scribe::VectorImageResource>(storage.Data());
-            return out.IsValid();
+            if (!BuildLoadedVectorImageFromResolvedPath(path.Data(), storage, out))
+            {
+                return false;
+            }
+
+            if (!cachePath.IsEmpty())
+            {
+                TryWriteCachedSchemaWords(Span<const schema::Word>(storage), cachePath.Data());
+            }
+
+            return true;
         }
     }
 
@@ -1306,66 +1488,62 @@ namespace he
         addAlias(m_uiFontIndex, "Noto Sans");
         addAlias(m_iconFontIndex, "Material Design Icons");
 
-        if (m_scene == DemoScene::SvgGallery)
+        static const char* SvgSerifRegularCandidates[] =
         {
-            static const char* SvgSerifRegularCandidates[] =
-            {
-                "C:/Windows/Fonts/times.ttf",
-                "C:/Windows/Fonts/cambria.ttc",
-            };
-            static const char* SvgSerifBoldCandidates[] =
-            {
-                "C:/Windows/Fonts/timesbd.ttf",
-            };
-            static const char* SvgSerifItalicCandidates[] =
-            {
-                "C:/Windows/Fonts/timesi.ttf",
-            };
-            static const char* SvgSerifBoldItalicCandidates[] =
-            {
-                "C:/Windows/Fonts/timesbi.ttf",
-            };
-            static const char* SvgSymbolCandidates[] =
-            {
-                "C:/Windows/Fonts/symbol.ttf",
-                "C:/Windows/Fonts/seguisym.ttf",
-            };
-            static const char* SvgSansRegularCandidates[] =
-            {
-                "C:/Windows/Fonts/arial.ttf",
-                "C:/Windows/Fonts/segoeui.ttf",
-            };
-            static const char* SvgSansBoldCandidates[] =
-            {
-                "C:/Windows/Fonts/arialbd.ttf",
-                "C:/Windows/Fonts/segoeuib.ttf",
-            };
-            static const char* SvgMonoCandidates[] =
-            {
-                "C:/Windows/Fonts/consola.ttf",
-                "plugins/editor/src/fonts/NotoMono-Regular.ttf",
-            };
+            "C:/Windows/Fonts/times.ttf",
+            "C:/Windows/Fonts/cambria.ttc",
+        };
+        static const char* SvgSerifBoldCandidates[] =
+        {
+            "C:/Windows/Fonts/timesbd.ttf",
+        };
+        static const char* SvgSerifItalicCandidates[] =
+        {
+            "C:/Windows/Fonts/timesi.ttf",
+        };
+        static const char* SvgSerifBoldItalicCandidates[] =
+        {
+            "C:/Windows/Fonts/timesbi.ttf",
+        };
+        static const char* SvgSymbolCandidates[] =
+        {
+            "C:/Windows/Fonts/symbol.ttf",
+            "C:/Windows/Fonts/seguisym.ttf",
+        };
+        static const char* SvgSansRegularCandidates[] =
+        {
+            "C:/Windows/Fonts/arial.ttf",
+            "C:/Windows/Fonts/segoeui.ttf",
+        };
+        static const char* SvgSansBoldCandidates[] =
+        {
+            "C:/Windows/Fonts/arialbd.ttf",
+            "C:/Windows/Fonts/segoeuib.ttf",
+        };
+        static const char* SvgMonoCandidates[] =
+        {
+            "C:/Windows/Fonts/consola.ttf",
+            "plugins/editor/src/fonts/NotoMono-Regular.ttf",
+        };
 
-            loadOptionalFont(m_serifRegularFontIndex, SvgSerifRegularCandidates);
-            loadOptionalFont(m_serifBoldFontIndex, SvgSerifBoldCandidates);
-            loadOptionalFont(m_serifItalicFontIndex, SvgSerifItalicCandidates);
-            loadOptionalFont(m_serifBoldItalicFontIndex, SvgSerifBoldItalicCandidates);
-            loadOptionalFont(m_symbolFontIndex, SvgSymbolCandidates);
-            loadOptionalFont(m_sansRegularFontIndex, SvgSansRegularCandidates);
-            loadOptionalFont(m_sansBoldFontIndex, SvgSansBoldCandidates);
-            loadOptionalFont(m_monoFontIndex, SvgMonoCandidates);
+        loadOptionalFont(m_serifRegularFontIndex, SvgSerifRegularCandidates);
+        loadOptionalFont(m_serifBoldFontIndex, SvgSerifBoldCandidates);
+        loadOptionalFont(m_serifItalicFontIndex, SvgSerifItalicCandidates);
+        loadOptionalFont(m_serifBoldItalicFontIndex, SvgSerifBoldItalicCandidates);
+        loadOptionalFont(m_symbolFontIndex, SvgSymbolCandidates);
+        loadOptionalFont(m_sansRegularFontIndex, SvgSansRegularCandidates);
+        loadOptionalFont(m_sansBoldFontIndex, SvgSansBoldCandidates);
+        loadOptionalFont(m_monoFontIndex, SvgMonoCandidates);
 
-            addAlias(m_serifRegularFontIndex, "TimesNewRomanPSMT");
-            addAlias(m_serifBoldFontIndex, "TimesNewRomanPS-BoldMT");
-            addAlias(m_serifItalicFontIndex, "TimesNewRomanPS-ItalicMT");
-            addAlias(m_serifBoldItalicFontIndex, "TimesNewRomanPS-BoldItalicMT");
-            addAlias(m_serifBoldItalicFontIndex, "TimesNewRomanPS-BoldItal");
-            addAlias(m_symbolFontIndex, "SymbolMT");
-            addAlias(m_sansRegularFontIndex, "ArialMT");
-            addAlias(m_sansBoldFontIndex, "Arial-BoldMT");
-            addAlias(m_monoFontIndex, "Consolas");
-            return true;
-        }
+        addAlias(m_serifRegularFontIndex, "TimesNewRomanPSMT");
+        addAlias(m_serifBoldFontIndex, "TimesNewRomanPS-BoldMT");
+        addAlias(m_serifItalicFontIndex, "TimesNewRomanPS-ItalicMT");
+        addAlias(m_serifBoldItalicFontIndex, "TimesNewRomanPS-BoldItalicMT");
+        addAlias(m_serifBoldItalicFontIndex, "TimesNewRomanPS-BoldItal");
+        addAlias(m_symbolFontIndex, "SymbolMT");
+        addAlias(m_sansRegularFontIndex, "ArialMT");
+        addAlias(m_sansBoldFontIndex, "Arial-BoldMT");
+        addAlias(m_monoFontIndex, "Consolas");
 
         static const char* SansRegularCandidates[] =
         {

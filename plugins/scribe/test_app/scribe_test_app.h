@@ -196,7 +196,7 @@ namespace he
         scribe::HitTestResult m_caretHit{};
         Vec2f m_lastPointerPos{ 0.0f, 0.0f };
         MonotonicTime m_lastFrameTime{};
-        DemoScene m_scene{ DemoScene::SvgGallery };
+        DemoScene m_scene{ DemoScene::FeatureOverview };
         Vec2f m_scenePan{ 0.0f, 0.0f };
         float m_sceneZoom{ 1.0f };
         float m_bodyFontSize{ 24.0f };

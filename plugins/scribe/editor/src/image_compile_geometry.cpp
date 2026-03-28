@@ -2757,6 +2757,7 @@ namespace he::scribe::editor
                 Vector<StrokeSourcePoint>& outPoints,
                 Vector<StrokeSourceCommand>& outCommands,
                 const Affine2D& strokeTransform,
+                bool closeOpenSubpathsForFill,
                 StringView text);
             bool ReadTextContents(String& outText, StringView closingTag);
             bool EmitParsedShape(
@@ -3395,7 +3396,8 @@ namespace he::scribe::editor
             builder.SetTransform(state.transform);
             Vector<StrokeSourcePoint> strokePoints{};
             Vector<StrokeSourceCommand> strokeCommands{};
-            if (!ParsePathData(builder, strokePoints, strokeCommands, state.transform, d))
+            const bool closeOpenSubpathsForFill = !state.style.fillNone && (state.style.fill.w > 0.0f);
+            if (!ParsePathData(builder, strokePoints, strokeCommands, state.transform, closeOpenSubpathsForFill, d))
             {
                 HE_LOG_ERROR(he_scribe, HE_MSG("Failed to parse SVG path data for scribe image compile."));
                 return false;
@@ -4308,6 +4310,7 @@ namespace he::scribe::editor
             Vector<StrokeSourcePoint>& outPoints,
             Vector<StrokeSourceCommand>& outCommands,
             const Affine2D& strokeTransform,
+            bool closeOpenSubpathsForFill,
             StringView text)
         {
             const char* cur = text.Data();
@@ -4405,7 +4408,10 @@ namespace he::scribe::editor
 
                         if (hasCurrent && !subpathClosed)
                         {
-                            // Leave the previous contour open when a new move starts without a close.
+                            if (closeOpenSubpathsForFill)
+                            {
+                                builder.AddLine(current, subpathStart);
+                            }
                         }
 
                         strokeBuilder.AppendMoveTo(ToStrokePoint(point));
@@ -4576,6 +4582,11 @@ namespace he::scribe::editor
                     default:
                         return false;
                 }
+            }
+
+            if (hasCurrent && !subpathClosed && closeOpenSubpathsForFill)
+            {
+                builder.AddLine(current, subpathStart);
             }
 
             outPoints = Move(strokeBuilder.Points());

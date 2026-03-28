@@ -143,6 +143,11 @@ namespace
         "<path fill=\"none\" stroke=\"#030404\" stroke-width=\"0.5\" stroke-linecap=\"butt\" d=\"M0 0 5.232 -5.465\"/>"
         "</svg>";
 
+    constexpr const char* kSvgWithImplicitlyClosedFillPath =
+        "<svg viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<path fill=\"#e5e7eb\" d=\"M1 1 L15 1 L15 15 L1 15\"/>"
+        "</svg>";
+
     constexpr const char* kSvgWithDashedStroke =
         "<svg viewBox=\"0 0 64 24\" xmlns=\"http://www.w3.org/2000/svg\">"
         "<path fill=\"none\" stroke=\"#1475bc\" stroke-width=\"2\" stroke-dasharray=\"4,4\" d=\"M4 12 L60 12\"/>"
@@ -537,6 +542,22 @@ HE_TEST(scribe, vector_image_pipeline, keeps_diagonal_butt_strokes_at_authored_l
     HE_EXPECT_LE(actualMinY, expectedMinY + 0.001f);
     HE_EXPECT_GE(actualMaxY, expectedMaxY - 0.001f);
     HE_EXPECT_LE(actualMaxY, expectedMaxY + 0.001f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, implicitly_closes_open_fill_subpaths)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithImplicitlyClosedFillPath), StrLen(kSvgWithImplicitlyClosedFillPath)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 1u);
+    HE_EXPECT_EQ(imageData.layers.Size(), 1u);
+    HE_EXPECT_EQ(imageData.layers[0].kind, VectorLayerKind::Fill);
+    HE_EXPECT_GE(imageData.shapes[0].boundsMaxX, 13.999f);
+    HE_EXPECT_GE(imageData.shapes[0].boundsMaxY, 13.999f);
 }
 
 HE_TEST(scribe, vector_image_pipeline, skips_shapes_outside_simple_clip_paths)

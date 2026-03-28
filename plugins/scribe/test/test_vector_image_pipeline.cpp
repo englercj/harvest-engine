@@ -458,10 +458,10 @@ HE_TEST(scribe, vector_image_pipeline, emits_authored_stroke_layers)
     HE_EXPECT_EQ(imageData.layers[0].kind, VectorLayerKind::Stroke);
     HE_EXPECT_EQ(imageData.layers[0].strokeJoin, StrokeJoinKind::Round);
     HE_EXPECT_EQ(imageData.layers[0].strokeWidth, 6.0f);
-    HE_EXPECT_EQ(imageData.layers[1].kind, VectorLayerKind::Stroke);
-    HE_EXPECT_EQ(imageData.layers[2].kind, VectorLayerKind::Fill);
-    HE_EXPECT_NE(imageData.layers[0].shapeIndex, imageData.layers[2].shapeIndex);
-    HE_EXPECT_NE(imageData.layers[1].shapeIndex, imageData.layers[2].shapeIndex);
+    HE_EXPECT_EQ(imageData.layers[1].kind, VectorLayerKind::Fill);
+    HE_EXPECT_EQ(imageData.layers[2].kind, VectorLayerKind::Stroke);
+    HE_EXPECT_NE(imageData.layers[0].shapeIndex, imageData.layers[1].shapeIndex);
+    HE_EXPECT_NE(imageData.layers[2].shapeIndex, imageData.layers[1].shapeIndex);
 }
 
 HE_TEST(scribe, vector_image_pipeline, skips_shapes_outside_simple_clip_paths)
@@ -608,11 +608,11 @@ HE_TEST(scribe, vector_image_pipeline, applies_group_transform_to_authored_path_
 
     HE_EXPECT(ok);
     HE_EXPECT_EQ(imageData.layers.Size(), 2u);
-    HE_EXPECT_EQ(imageData.layers[0].kind, VectorLayerKind::Stroke);
-    HE_EXPECT_EQ(imageData.layers[1].kind, VectorLayerKind::Fill);
+    HE_EXPECT_EQ(imageData.layers[0].kind, VectorLayerKind::Fill);
+    HE_EXPECT_EQ(imageData.layers[1].kind, VectorLayerKind::Stroke);
 
-    const CompiledVectorShapeRenderEntry& strokeShape = imageData.shapes[imageData.layers[0].shapeIndex];
-    const CompiledVectorShapeRenderEntry& fillShape = imageData.shapes[imageData.layers[1].shapeIndex];
+    const CompiledVectorShapeRenderEntry& fillShape = imageData.shapes[imageData.layers[0].shapeIndex];
+    const CompiledVectorShapeRenderEntry& strokeShape = imageData.shapes[imageData.layers[1].shapeIndex];
     HE_EXPECT_GT(strokeShape.originX, 35.0f);
     HE_EXPECT_GT(fillShape.originX, 35.0f);
     HE_EXPECT_GE(strokeShape.boundsMinX, 0.0f);

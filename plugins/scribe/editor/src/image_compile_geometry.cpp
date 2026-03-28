@@ -3225,6 +3225,17 @@ namespace he::scribe::editor
                 fillShapeIndex = AppendParsedShape(out, Move(shape));
             }
 
+            if (hasVisibleFill)
+            {
+                CompiledVectorImageLayerEntry& layer = out.layers.EmplaceBack();
+                layer.shapeIndex = fillShapeIndex;
+                layer.kind = VectorLayerKind::Fill;
+                layer.red = state.style.fill.x;
+                layer.green = state.style.fill.y;
+                layer.blue = state.style.fill.z;
+                layer.alpha = state.style.fill.w;
+            }
+
             if (hasVisibleStroke)
             {
                 const ParsedShape& strokeSource = hasVisibleFill ? out.shapes[fillShapeIndex] : shape;
@@ -3285,17 +3296,6 @@ namespace he::scribe::editor
                     layer.strokeCap = state.style.strokeCap;
                     layer.strokeMiterLimit = state.style.strokeMiterLimit;
                 }
-            }
-
-            if (hasVisibleFill)
-            {
-                CompiledVectorImageLayerEntry& layer = out.layers.EmplaceBack();
-                layer.shapeIndex = fillShapeIndex;
-                layer.kind = VectorLayerKind::Fill;
-                layer.red = state.style.fill.x;
-                layer.green = state.style.fill.y;
-                layer.blue = state.style.fill.z;
-                layer.alpha = state.style.fill.w;
             }
 
             return true;

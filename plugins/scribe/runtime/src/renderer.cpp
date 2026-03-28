@@ -72,6 +72,16 @@ namespace he::scribe
             };
         }
 
+        Vec4f PremultiplyColor(const Vec4f& color)
+        {
+            return {
+                color.x * color.w,
+                color.y * color.w,
+                color.z * color.w,
+                color.w
+            };
+        }
+
         void BuildFrameConstants(
             float* outConstants,
             const Vec2u& targetSize)
@@ -145,7 +155,7 @@ namespace he::scribe
                 out.jac = in.jac;
             }
 
-            out.col = MultiplyColor(in.col, draw.color);
+            out.col = PremultiplyColor(MultiplyColor(in.col, draw.color));
             return out;
         }
 
@@ -153,7 +163,7 @@ namespace he::scribe
         {
             PackedQuadVertex vertex{};
             vertex.pos = { x, y };
-            vertex.col = color;
+            vertex.col = PremultiplyColor(color);
             return vertex;
         }
     }

@@ -69,7 +69,6 @@ namespace he
         struct LoadedDemoFont
         {
             String name{};
-            Vector<schema::Word> blobWords{};
             scribe::FontFaceResourceReader blob{};
             scribe::FontFaceHandle handle{};
         };
@@ -77,7 +76,6 @@ namespace he
         struct LoadedDemoImage
         {
             String name{};
-            Vector<schema::Word> blobWords{};
             scribe::VectorImageResourceReader blob{};
             scribe::VectorImageHandle handle{};
         };

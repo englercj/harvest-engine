@@ -10,6 +10,7 @@
 #include "glyph_atlas.h"
 #include "glyph_atlas_utils.h"
 
+#include "he/assets/types.h"
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
 #include "he/core/hash.h"
@@ -74,15 +75,10 @@ namespace he::scribe
 
     struct ScribeContext::RegisteredFontFace
     {
-        RegisteredFontFace() noexcept
-            : builder()
-        {
-        }
-
-        schema::Builder builder;
-        ScribeFontFace::RuntimeResource::Builder resource;
-        uint64_t hash{ 0 };
-        Vector<String> aliases{};
+        assets::AssetUuid key;
+        Vector<schema::Word> data;
+        ScribeFontFace::RuntimeResource::Reader resource;
+        Vector<String> aliases;
 
         ::hb_blob_t* blob{ nullptr };
         ::hb_face_t* face{ nullptr };
@@ -94,14 +90,9 @@ namespace he::scribe
 
     struct ScribeContext::RegisteredVectorImage
     {
-        RegisteredVectorImage() noexcept
-            : builder()
-        {
-        }
-
-        schema::Builder builder;
-        ScribeImage::RuntimeResource::Builder resource;
-        uint64_t hash{ 0 };
+        assets::AssetUuid key;
+        Vector<schema::Word> data;
+        ScribeImage::RuntimeResource::Reader resource;
 
         GlyphAtlas* atlas{ nullptr };
         HashMap<uint32_t, GlyphResource> resources{};
@@ -208,7 +199,7 @@ namespace he::scribe
                 return true;
             }
 
-            if (!EnsureRegisteredAtlas(device, registered.resource.AsReader(), registered.atlas))
+            if (!EnsureRegisteredAtlas(device, registered.resource, registered.atlas))
             {
                 return false;
             }
@@ -291,7 +282,7 @@ namespace he::scribe
 
         if (m_device)
         {
-            for (HashMapEntry<uint64_t, RegisteredFontFace*>& hashAndFont : m_fonts)
+            for (auto& hashAndFont : m_fonts)
             {
                 RegisteredFontFace& font = *hashAndFont.value;
 
@@ -318,7 +309,7 @@ namespace he::scribe
                 }
             }
 
-            for (HashMapEntry<uint64_t, RegisteredVectorImage*>& hashAndImage : m_images)
+            for (auto& hashAndImage : m_images)
             {
                 RegisteredVectorImage& image = *hashAndImage.value;
                 DestroyAtlas(*m_device, image.atlas);
@@ -330,12 +321,12 @@ namespace he::scribe
             }
         }
 
-        for (HashMapEntry<uint64_t, RegisteredFontFace*>& hashAndFont : m_fonts)
+        for (auto& hashAndFont : m_fonts)
         {
             Allocator::GetDefault().Delete(hashAndFont.value);
         }
 
-        for (HashMapEntry<uint64_t, RegisteredVectorImage*>& hashAndImage : m_images)
+        for (auto& hashAndImage : m_images)
         {
             Allocator::GetDefault().Delete(hashAndImage.value);
         }
@@ -365,30 +356,34 @@ namespace he::scribe
         return *m_layoutEngine;
     }
 
-    FontFaceHandle ScribeContext::RegisterFontFace(const ScribeFontFace::RuntimeResource::Reader& fontFace)
+    FontFaceHandle ScribeContext::RegisterFontFace(Vector<schema::Word>&& fontFaceWords, assets::AssetUuid resourceId)
     {
-        return RegisterFontFace(fontFace, {});
+        return RegisterFontFace(Move(fontFaceWords), resourceId, {});
     }
 
-    FontFaceHandle ScribeContext::RegisterFontFace(const ScribeFontFace::RuntimeResource::Reader& fontFace, StringView alias)
+    FontFaceHandle ScribeContext::RegisterFontFace(Vector<schema::Word>&& fontFaceWords, assets::AssetUuid resourceId, StringView alias)
     {
-        if (!fontFace.IsValid())
+        if ((resourceId == assets::AssetUuid{}) || fontFaceWords.IsEmpty())
         {
             return {};
         }
 
-        Hash<WyHash> hasher;
-        CalculateHash(hasher, fontFace);
-        const uint64_t hash = hasher.Final();
-        auto result = m_fonts.Emplace(hash);
+        auto result = m_fonts.Emplace(resourceId);
 
         if (result.inserted)
         {
             RegisteredFontFace* registered = Allocator::GetDefault().New<RegisteredFontFace>();
             result.entry.value = registered;
-            registered->resource = registered->builder.AddStruct<ScribeFontFace::RuntimeResource>();
-            registered->resource.Copy(fontFace);
-            registered->hash = hash;
+            registered->data = Move(fontFaceWords);
+            registered->resource = schema::ReadRoot<ScribeFontFace::RuntimeResource>(registered->data.Data());
+            if (!registered->resource.IsValid())
+            {
+                Allocator::GetDefault().Delete(registered);
+                result.entry.value = nullptr;
+                m_fonts.Erase(resourceId);
+                return {};
+            }
+            registered->key = resourceId;
             if (!alias.IsEmpty())
             {
                 registered->aliases.PushBack(String(alias));
@@ -399,7 +394,7 @@ namespace he::scribe
             result.entry.value->aliases.PushBack(String(alias));
         }
 
-        return { hash };
+        return { resourceId };
     }
 
     bool ScribeContext::AddFontFaceAlias(FontFaceHandle handle, StringView alias)
@@ -419,28 +414,32 @@ namespace he::scribe
         return true;
     }
 
-    VectorImageHandle ScribeContext::RegisterVectorImage(const ScribeImage::RuntimeResource::Reader& image)
+    VectorImageHandle ScribeContext::RegisterVectorImage(Vector<schema::Word>&& imageWords, assets::AssetUuid resourceId)
     {
-        if (!image.IsValid())
+        if ((resourceId == assets::AssetUuid{}) || imageWords.IsEmpty())
         {
             return {};
         }
 
-        Hash<WyHash> hasher;
-        CalculateHash(hasher, image);
-        const uint64_t hash = hasher.Final();
-        auto result = m_images.Emplace(hash);
+        auto result = m_images.Emplace(resourceId);
 
         if (result.inserted)
         {
             RegisteredVectorImage* registered = Allocator::GetDefault().New<RegisteredVectorImage>();
             result.entry.value = registered;
-            registered->resource = registered->builder.AddStruct<ScribeImage::RuntimeResource>();
-            registered->resource.Copy(image);
-            registered->hash = hash;
+            registered->data = Move(imageWords);
+            registered->resource = schema::ReadRoot<ScribeImage::RuntimeResource>(registered->data.Data());
+            if (!registered->resource.IsValid())
+            {
+                Allocator::GetDefault().Delete(registered);
+                result.entry.value = nullptr;
+                m_images.Erase(resourceId);
+                return {};
+            }
+            registered->key = resourceId;
         }
 
-        return { hash };
+        return { resourceId };
     }
 
     ScribeFontFace::RuntimeResource::Reader ScribeContext::GetFontFace(FontFaceHandle handle) const
@@ -474,7 +473,7 @@ namespace he::scribe
             {
                 if (StringView(existingAlias.Data(), existingAlias.Size()).EqualToI(alias))
                 {
-                    out = { fontFace->hash };
+                    out = { fontFace->key };
                     return true;
                 }
             }

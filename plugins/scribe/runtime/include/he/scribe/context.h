@@ -4,10 +4,12 @@
 
 #include "he/scribe/schema_types.h"
 
+#include "he/assets/types.h"
 #include "he/core/string_view.h"
 #include "he/core/hash_table.h"
 #include "he/core/span.h"
 #include "he/core/types.h"
+#include "he/core/vector.h"
 
 namespace he::rhi
 {
@@ -62,10 +64,10 @@ namespace he::scribe
 
     struct FontFaceHandle
     {
-        uint64_t value{ 0 };
+        assets::AssetUuid value{};
 
-        [[nodiscard]] bool IsValid() const { return value != 0; }
-        [[nodiscard]] uint64_t HashCode() const { return value; }
+        [[nodiscard]] bool IsValid() const { return value != assets::AssetUuid{}; }
+        [[nodiscard]] uint64_t HashCode() const { return value.HashCode(); }
 
         bool operator==(const FontFaceHandle& x) const = default;
         bool operator<(const FontFaceHandle& x) const = default;
@@ -73,10 +75,10 @@ namespace he::scribe
 
     struct VectorImageHandle
     {
-        uint64_t value{ 0 };
+        assets::AssetUuid value{};
 
-        [[nodiscard]] bool IsValid() const { return value != 0; }
-        [[nodiscard]] uint64_t HashCode() const { return value; }
+        [[nodiscard]] bool IsValid() const { return value != assets::AssetUuid{}; }
+        [[nodiscard]] uint64_t HashCode() const { return value.HashCode(); }
 
         bool operator==(const VectorImageHandle& x) const = default;
         bool operator<(const VectorImageHandle& x) const = default;
@@ -102,10 +104,10 @@ namespace he::scribe
         bool IsInitialized() const { return m_device != nullptr; }
         [[nodiscard]] rhi::Device* GetDevice() const { return m_device; }
 
-        FontFaceHandle RegisterFontFace(const ScribeFontFace::RuntimeResource::Reader& fontFace);
-        FontFaceHandle RegisterFontFace(const ScribeFontFace::RuntimeResource::Reader& fontFace, StringView alias);
+        FontFaceHandle RegisterFontFace(Vector<schema::Word>&& fontFaceWords, assets::AssetUuid resourceId);
+        FontFaceHandle RegisterFontFace(Vector<schema::Word>&& fontFaceWords, assets::AssetUuid resourceId, StringView alias);
         bool AddFontFaceAlias(FontFaceHandle handle, StringView alias);
-        VectorImageHandle RegisterVectorImage(const ScribeImage::RuntimeResource::Reader& image);
+        VectorImageHandle RegisterVectorImage(Vector<schema::Word>&& imageWords, assets::AssetUuid resourceId);
 
         [[nodiscard]] ScribeFontFace::RuntimeResource::Reader GetFontFace(FontFaceHandle handle) const;
         [[nodiscard]] ScribeImage::RuntimeResource::Reader GetVectorImage(VectorImageHandle handle) const;
@@ -137,8 +139,8 @@ namespace he::scribe
         struct RegisteredVectorImage;
 
         rhi::Device* m_device{ nullptr };
-        HashMap<uint64_t, RegisteredFontFace*> m_fonts;
-        HashMap<uint64_t, RegisteredVectorImage*> m_images;
+        HashMap<assets::AssetUuid, RegisteredFontFace*> m_fonts;
+        HashMap<assets::AssetUuid, RegisteredVectorImage*> m_images;
         Renderer* m_renderer{ nullptr };
         LayoutEngine* m_layoutEngine{ nullptr };
     };

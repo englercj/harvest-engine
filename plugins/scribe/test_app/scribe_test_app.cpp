@@ -416,6 +416,17 @@ namespace he
             out = Move(cacheDir);
         }
 
+        assets::AssetUuid BuildDemoRuntimeResourceId(const char* kind, const char* fileName)
+        {
+            String stableName{};
+            stableName = kind;
+            stableName += ":";
+            stableName += fileName;
+            return assets::AssetUuid(Uuid::CreateV5(
+                StringView(stableName.Data(), stableName.Size()),
+                Uuid_NamespaceURL));
+        }
+
         bool TryReadCachedSchemaWords(Vector<schema::Word>& out, const char* path)
         {
             out.Clear();
@@ -1670,13 +1681,23 @@ namespace he
     {
         out = {};
         out.name = fileName;
-        if (!BuildLoadedFontFaceFromFile(fileName, out.blobWords, out.blob))
+        Vector<schema::Word> blobWords{};
+        scribe::FontFaceResourceReader blob{};
+        if (!BuildLoadedFontFaceFromFile(fileName, blobWords, blob))
         {
             return false;
         }
 
-        out.handle = m_scribeContext.RegisterFontFace(out.blob);
-        return out.handle.IsValid();
+        out.handle = m_scribeContext.RegisterFontFace(
+            Move(blobWords),
+            BuildDemoRuntimeResourceId("font", fileName));
+        if (!out.handle.IsValid())
+        {
+            return false;
+        }
+
+        out.blob = m_scribeContext.GetFontFace(out.handle);
+        return out.blob.IsValid();
     }
 
     bool ScribeTestApp::LoadOptionalDemoFont(LoadedDemoFont& out, Span<const char*> fileNames)
@@ -1698,13 +1719,23 @@ namespace he
     {
         out = {};
         out.name = fileName;
-        if (!BuildLoadedVectorImageFromFile(fileName, out.blobWords, out.blob))
+        Vector<schema::Word> blobWords{};
+        scribe::VectorImageResourceReader blob{};
+        if (!BuildLoadedVectorImageFromFile(fileName, blobWords, blob))
         {
             return false;
         }
 
-        out.handle = m_scribeContext.RegisterVectorImage(out.blob);
-        return out.handle.IsValid();
+        out.handle = m_scribeContext.RegisterVectorImage(
+            Move(blobWords),
+            BuildDemoRuntimeResourceId("svg", fileName));
+        if (!out.handle.IsValid())
+        {
+            return false;
+        }
+
+        out.blob = m_scribeContext.GetVectorImage(out.handle);
+        return out.blob.IsValid();
     }
 
     bool ScribeTestApp::RebuildLayouts()

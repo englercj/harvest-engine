@@ -148,6 +148,29 @@ namespace
         "<path fill=\"#e5e7eb\" d=\"M1 1 L15 1 L15 15 L1 15\"/>"
         "</svg>";
 
+    constexpr const char* kSvgWithExplicitClosedQuadPath =
+        "<svg viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<path fill=\"#ef4444\" d=\"M1 1 L15 1 L15 15 L1 15 L1 1 z\"/>"
+        "</svg>";
+
+    constexpr const char* kSvgWithExplicitClosedSlantedQuadPath =
+        "<svg viewBox=\"420 120 20 20\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<path fill=\"#ff2d00\" d=\"M428.044701 132.077347L432.841962 126.491452L426.940855 123.25305L422.149018 128.862084L428.044701 132.077347z\"/>"
+        "</svg>";
+
+    constexpr const char* kSvgWithClosedSlantedQuadPolygon =
+        "<svg viewBox=\"420 120 20 20\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<polygon fill=\"#ff2d00\" points=\"428.044701,132.077347 432.841962,126.491452 426.940855,123.25305 422.149018,128.862084\"/>"
+        "</svg>";
+
+    constexpr const char* kSvgWithReferencedClosedSlantedQuadPath =
+        "<svg viewBox=\"420 120 20 20\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">"
+        "<defs>"
+        "<path id=\"quad\" d=\"M428.044701 -299.922653L432.841962 -305.508548L426.940855 -308.746950L422.149018 -303.137916L428.044701 -299.922653z\"/>"
+        "</defs>"
+        "<use fill=\"#ff2d00\" xlink:href=\"#quad\" x=\"0\" y=\"432\"/>"
+        "</svg>";
+
     constexpr const char* kSvgWithDashedStroke =
         "<svg viewBox=\"0 0 64 24\" xmlns=\"http://www.w3.org/2000/svg\">"
         "<path fill=\"none\" stroke=\"#1475bc\" stroke-width=\"2\" stroke-dasharray=\"4,4\" d=\"M4 12 L60 12\"/>"
@@ -558,6 +581,70 @@ HE_TEST(scribe, vector_image_pipeline, implicitly_closes_open_fill_subpaths)
     HE_EXPECT_EQ(imageData.layers[0].kind, VectorLayerKind::Fill);
     HE_EXPECT_GE(imageData.shapes[0].boundsMaxX, 13.999f);
     HE_EXPECT_GE(imageData.shapes[0].boundsMaxY, 13.999f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, compiles_explicit_closed_line_only_path_quads)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithExplicitClosedQuadPath), StrLen(kSvgWithExplicitClosedQuadPath)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 1u);
+    HE_EXPECT_EQ(imageData.layers.Size(), 1u);
+    HE_EXPECT_EQ(imageData.layers[0].kind, VectorLayerKind::Fill);
+    HE_EXPECT_GE(imageData.shapes[0].boundsMaxX, 13.999f);
+    HE_EXPECT_GE(imageData.shapes[0].boundsMaxY, 13.999f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, closed_slanted_quad_paths_match_polygon_and_use_shapes)
+{
+    CompiledVectorImageData pathData{};
+    CompiledVectorImageData polygonData{};
+    CompiledVectorImageData useData{};
+
+    const bool pathOk = BuildCompiledVectorImageData(
+        pathData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithExplicitClosedSlantedQuadPath), StrLen(kSvgWithExplicitClosedSlantedQuadPath)),
+        0.25f);
+    const bool polygonOk = BuildCompiledVectorImageData(
+        polygonData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithClosedSlantedQuadPolygon), StrLen(kSvgWithClosedSlantedQuadPolygon)),
+        0.25f);
+    const bool useOk = BuildCompiledVectorImageData(
+        useData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithReferencedClosedSlantedQuadPath), StrLen(kSvgWithReferencedClosedSlantedQuadPath)),
+        0.25f);
+
+    HE_EXPECT(pathOk);
+    HE_EXPECT(polygonOk);
+    HE_EXPECT(useOk);
+    HE_EXPECT_EQ(pathData.shapes.Size(), 1u);
+    HE_EXPECT_EQ(polygonData.shapes.Size(), 1u);
+    HE_EXPECT_EQ(useData.shapes.Size(), 1u);
+    HE_EXPECT_EQ(pathData.curveTexels.Size(), polygonData.curveTexels.Size());
+    HE_EXPECT_EQ(pathData.curveTexels.Size(), useData.curveTexels.Size());
+
+    for (uint32_t texelIndex = 0; texelIndex < pathData.curveTexels.Size(); ++texelIndex)
+    {
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].x, polygonData.curveTexels[texelIndex].x);
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].y, polygonData.curveTexels[texelIndex].y);
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].z, polygonData.curveTexels[texelIndex].z);
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].w, polygonData.curveTexels[texelIndex].w);
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].x, useData.curveTexels[texelIndex].x);
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].y, useData.curveTexels[texelIndex].y);
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].z, useData.curveTexels[texelIndex].z);
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].w, useData.curveTexels[texelIndex].w);
+    }
+
+    HE_EXPECT_EQ(pathData.shapes[0].bandMaxX, 0u);
+    HE_EXPECT_EQ(pathData.shapes[0].bandMaxY, 0u);
+    HE_EXPECT_EQ(polygonData.shapes[0].bandMaxX, 0u);
+    HE_EXPECT_EQ(polygonData.shapes[0].bandMaxY, 0u);
+    HE_EXPECT_EQ(useData.shapes[0].bandMaxX, 0u);
+    HE_EXPECT_EQ(useData.shapes[0].bandMaxY, 0u);
 }
 
 HE_TEST(scribe, vector_image_pipeline, skips_shapes_outside_simple_clip_paths)

@@ -387,34 +387,6 @@ namespace he::scribe::editor
             };
         }
 
-        float SvgSignedArea(Span<const Point2> points)
-        {
-            if (points.Size() < 3)
-            {
-                return 0.0f;
-            }
-
-            float area = 0.0f;
-            for (uint32_t pointIndex = 0; pointIndex < points.Size(); ++pointIndex)
-            {
-                const Point2& a = points[pointIndex];
-                const Point2& b = points[(pointIndex + 1) % points.Size()];
-                area += (a.x * b.y) - (b.x * a.y);
-            }
-
-            return area * 0.5f;
-        }
-
-        void SvgReversePoints(Vector<Point2>& points)
-        {
-            for (uint32_t i = 0, j = points.Size() > 0 ? points.Size() - 1 : 0; i < j; ++i, --j)
-            {
-                const Point2 tmp = points[i];
-                points[i] = points[j];
-                points[j] = tmp;
-            }
-        }
-
         void SvgAppendLineCurve(Vector<CurveData>& out, const Point2& from, const Point2& to)
         {
             LineCurvePoint control{};
@@ -454,24 +426,95 @@ namespace he::scribe::editor
                 return;
             }
 
-            Vector<Point2> points{};
-            points.Reserve(polygon.Size());
-            for (uint32_t pointIndex = 0; pointIndex < polygon.Size(); ++pointIndex)
+            curve_compile::CurveBuilder builder(0.25f);
+            Point2 previous = polygon[0];
+            for (uint32_t pointIndex = 1; pointIndex < polygon.Size(); ++pointIndex)
             {
-                points.PushBack(polygon[pointIndex]);
+                const Point2 current = polygon[pointIndex];
+                builder.AddLine(previous, current);
+                previous = current;
             }
 
-            if (SvgSignedArea(points) < 0.0f)
+            builder.AddLine(previous, polygon[0]);
+
+            const Vector<CurveData>& curves = builder.Curves();
+            outCurves.Insert(outCurves.Size(), curves.Data(), curves.Size());
+        }
+
+        bool TryBuildClosedLineOnlyPathFillCurves(
+            Vector<CurveData>& outCurves,
+            Span<const StrokeSourcePoint> points,
+            Span<const StrokeSourceCommand> commands)
+        {
+            outCurves.Clear();
+
+            Vector<Point2> polygon{};
+            polygon.Reserve(commands.Size());
+
+            bool hasContour = false;
+            bool closed = false;
+            for (const StrokeSourceCommand& command : commands)
             {
-                SvgReversePoints(points);
+                switch (command.type)
+                {
+                    case StrokeCommandType::MoveTo:
+                    {
+                        if (hasContour || (command.firstPoint >= points.Size()))
+                        {
+                            return false;
+                        }
+
+                        polygon.PushBack({ points[command.firstPoint].x, points[command.firstPoint].y });
+                        hasContour = true;
+                        break;
+                    }
+
+                    case StrokeCommandType::LineTo:
+                    {
+                        if (!hasContour || (command.firstPoint >= points.Size()))
+                        {
+                            return false;
+                        }
+
+                        polygon.PushBack({ points[command.firstPoint].x, points[command.firstPoint].y });
+                        break;
+                    }
+
+                    case StrokeCommandType::Close:
+                    {
+                        if (!hasContour)
+                        {
+                            return false;
+                        }
+
+                        closed = true;
+                        break;
+                    }
+
+                    default:
+                        return false;
+                }
             }
 
-            for (uint32_t pointIndex = 0; pointIndex < points.Size(); ++pointIndex)
+            if (!closed || (polygon.Size() < 3u))
             {
-                const Point2& from = points[pointIndex];
-                const Point2& to = points[(pointIndex + 1) % points.Size()];
-                SvgAppendLineCurve(outCurves, from, to);
+                return false;
             }
+
+            const Point2& first = polygon[0];
+            const Point2& last = polygon.Back();
+            if ((Abs(first.x - last.x) <= 1.0e-5f) && (Abs(first.y - last.y) <= 1.0e-5f))
+            {
+                polygon.Resize(polygon.Size() - 1u);
+            }
+
+            if (polygon.Size() < 3u)
+            {
+                return false;
+            }
+
+            SvgEmitClosedPolygon(outCurves, Span<const Point2>(polygon.Data(), polygon.Size()));
+            return !outCurves.IsEmpty();
         }
 
         float SvgNormalizeAngle(float angle)
@@ -3403,6 +3446,18 @@ namespace he::scribe::editor
                 return false;
             }
 
+            if (closeOpenSubpathsForFill)
+            {
+                Vector<CurveData> polygonCurves{};
+                if (TryBuildClosedLineOnlyPathFillCurves(
+                        polygonCurves,
+                        Span<const StrokeSourcePoint>(strokePoints.Data(), strokePoints.Size()),
+                        Span<const StrokeSourceCommand>(strokeCommands.Data(), strokeCommands.Size())))
+                {
+                    builder.Curves() = Move(polygonCurves);
+                }
+            }
+
             return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
         }
 
@@ -4780,8 +4835,16 @@ namespace he::scribe::editor
                     SvgAppendCurveTexels(outCurveTexels, curve);
                 }
 
-                const uint32_t bandCountX = SvgChooseBandCount(curves, false, outShape.boundsMinX, outShape.boundsMaxX, epsilon);
-                const uint32_t bandCountY = SvgChooseBandCount(curves, true, outShape.boundsMinY, outShape.boundsMaxY, epsilon);
+                const bool useSingleBandForSmallShape =
+                    (curves.Size() <= 4u)
+                    && (outShape.fillRule == FillRule::NonZero);
+
+                const uint32_t bandCountX = useSingleBandForSmallShape
+                    ? 1u
+                    : SvgChooseBandCount(curves, false, outShape.boundsMinX, outShape.boundsMaxX, epsilon);
+                const uint32_t bandCountY = useSingleBandForSmallShape
+                    ? 1u
+                    : SvgChooseBandCount(curves, true, outShape.boundsMinY, outShape.boundsMaxY, epsilon);
 
                 Vector<Vector<CurveRef>> xBands{};
                 Vector<Vector<CurveRef>> yBands{};

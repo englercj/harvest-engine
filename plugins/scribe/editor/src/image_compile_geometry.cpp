@@ -1902,6 +1902,177 @@ namespace he::scribe::editor
             run.transformTranslation = { transform.tx, transform.ty };
         }
 
+        bool ParseSvgNumericEntity(uint32_t& outCodePoint, StringView text, uint32_t base)
+        {
+            if (text.IsEmpty())
+            {
+                return false;
+            }
+
+            uint32_t value = 0;
+            for (char ch : text)
+            {
+                uint32_t digit = 0;
+                if ((ch >= '0') && (ch <= '9'))
+                {
+                    digit = static_cast<uint32_t>(ch - '0');
+                }
+                else if ((base == 16) && (ch >= 'a') && (ch <= 'f'))
+                {
+                    digit = 10u + static_cast<uint32_t>(ch - 'a');
+                }
+                else if ((base == 16) && (ch >= 'A') && (ch <= 'F'))
+                {
+                    digit = 10u + static_cast<uint32_t>(ch - 'A');
+                }
+                else
+                {
+                    return false;
+                }
+
+                if (digit >= base)
+                {
+                    return false;
+                }
+
+                value = (value * base) + digit;
+            }
+
+            if (value > 0x10FFFFu)
+            {
+                return false;
+            }
+
+            outCodePoint = value;
+            return true;
+        }
+
+        bool TryDecodeSvgEntity(String& out, StringView entity)
+        {
+            if (entity.IsEmpty())
+            {
+                return false;
+            }
+
+            if (entity[0] == '#')
+            {
+                uint32_t codePoint = InvalidCodePoint;
+                if ((entity.Size() > 2) && ((entity[1] == 'x') || (entity[1] == 'X')))
+                {
+                    if (!ParseSvgNumericEntity(codePoint, entity.Substring(2), 16))
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (!ParseSvgNumericEntity(codePoint, entity.Substring(1), 10))
+                    {
+                        return false;
+                    }
+                }
+
+                UTF8Encode(out, codePoint);
+                return true;
+            }
+
+            if (entity.EqualTo("amp"))
+            {
+                out.PushBack('&');
+                return true;
+            }
+
+            if (entity.EqualTo("lt"))
+            {
+                out.PushBack('<');
+                return true;
+            }
+
+            if (entity.EqualTo("gt"))
+            {
+                out.PushBack('>');
+                return true;
+            }
+
+            if (entity.EqualTo("quot"))
+            {
+                out.PushBack('"');
+                return true;
+            }
+
+            if (entity.EqualTo("apos"))
+            {
+                out.PushBack('\'');
+                return true;
+            }
+
+            return false;
+        }
+
+        void AppendDecodedSvgText(String& out, StringView rawText)
+        {
+            const char* cur = rawText.Begin();
+            const char* end = rawText.End();
+            while (cur < end)
+            {
+                if (*cur != '&')
+                {
+                    out.PushBack(*cur);
+                    ++cur;
+                    continue;
+                }
+
+                const char* entityBegin = cur + 1;
+                const char* entityEnd = entityBegin;
+                while ((entityEnd < end) && (*entityEnd != ';') && (*entityEnd != '&') && (*entityEnd != '<'))
+                {
+                    ++entityEnd;
+                }
+
+                if ((entityEnd >= end) || (*entityEnd != ';'))
+                {
+                    out.PushBack(*cur);
+                    ++cur;
+                    continue;
+                }
+
+                String entityText{};
+                entityText += StringView(entityBegin, static_cast<uint32_t>(entityEnd - entityBegin));
+                if (!TryDecodeSvgEntity(out, StringView(entityText.Data(), entityText.Size())))
+                {
+                    out.PushBack(*cur);
+                    ++cur;
+                    continue;
+                }
+
+                cur = entityEnd + 1;
+            }
+        }
+
+        bool ShouldPreserveSvgTextWhitespace(Span<const Attribute> attrs, bool defaultValue)
+        {
+            for (const Attribute& attr : attrs)
+            {
+                if (!attr.name.EqualToI("xml:space"))
+                {
+                    continue;
+                }
+
+                const StringView value = TrimQuotes(TrimView(attr.value));
+                if (value.EqualToI("preserve"))
+                {
+                    return true;
+                }
+
+                if (value.EqualToI("default"))
+                {
+                    return false;
+                }
+            }
+
+            return defaultValue;
+        }
+
         bool ResolveWindowsFontPath(String& out, const char* fileName)
         {
             String path = "C:/Windows/Fonts/";
@@ -3569,7 +3740,7 @@ namespace he::scribe::editor
 
                     if (m_cur > textBegin)
                     {
-                        outText += StringView(textBegin, static_cast<uint32_t>(m_cur - textBegin));
+                        AppendDecodedSvgText(outText, StringView(textBegin, static_cast<uint32_t>(m_cur - textBegin)));
                     }
                     continue;
                 }
@@ -3643,10 +3814,35 @@ namespace he::scribe::editor
             StringView fontWeight("normal");
             StringView textAnchor("start");
             StringView id{};
+            Vector<float> textXPositions{};
+            Vector<float> textYPositions{};
+            Vector<float> textDxPositions{};
+            Vector<float> textDyPositions{};
+            bool preserveWhitespace = ShouldPreserveSvgTextWhitespace(attrs, false);
             for (const Attribute& attr : attrs)
             {
-                if (attr.name.EqualToI("x")) { ParseFloat(attr.value, x); }
-                else if (attr.name.EqualToI("y")) { ParseFloat(attr.value, y); }
+                if (attr.name.EqualToI("x"))
+                {
+                    if (ParseNumberList(textXPositions, attr.value) && !textXPositions.IsEmpty())
+                    {
+                        x = textXPositions[0];
+                    }
+                }
+                else if (attr.name.EqualToI("y"))
+                {
+                    if (ParseNumberList(textYPositions, attr.value) && !textYPositions.IsEmpty())
+                    {
+                        y = textYPositions[0];
+                    }
+                }
+                else if (attr.name.EqualToI("dx"))
+                {
+                    ParseNumberList(textDxPositions, attr.value);
+                }
+                else if (attr.name.EqualToI("dy"))
+                {
+                    ParseNumberList(textDyPositions, attr.value);
+                }
                 else if (attr.name.EqualToI("font-size")) { ParseFloat(attr.value, fontSize); }
                 else if (attr.name.EqualToI("font-family")) { fontFamily = attr.value; }
                 else if (attr.name.EqualToI("font-style")) { fontStyle = attr.value; }
@@ -3660,22 +3856,66 @@ namespace he::scribe::editor
                 String text{};
                 float x{ 0.0f };
                 float y{ 0.0f };
-            };
-
-            auto parseFirstPosition = [](StringView value, float& outValue) -> bool
-            {
-                Vector<float> values{};
-                if (!ParseNumberList(values, value) || values.IsEmpty())
-                {
-                    return false;
-                }
-
-                outValue = values[0];
-                return true;
+                float fontSize{ 16.0f };
+                String fontKey{};
+                Vector<float> xPositions{};
+                Vector<float> yPositions{};
+                Vector<float> dxPositions{};
+                Vector<float> dyPositions{};
             };
 
             Vector<TextSpan> spans{};
-            String directText{};
+            auto appendSpan = [&spans](String&& decodedText,
+                float spanX,
+                float spanY,
+                float spanFontSize,
+                StringView spanFontFamily,
+                StringView spanFontStyle,
+                StringView spanFontWeight,
+                const Vector<float>& spanXPositions,
+                const Vector<float>& spanYPositions,
+                const Vector<float>& spanDxPositions,
+                const Vector<float>& spanDyPositions,
+                bool preserveSpace) -> void
+            {
+                if (preserveSpace)
+                {
+                    if (decodedText.IsEmpty())
+                    {
+                        return;
+                    }
+
+                    TextSpan& span = spans.EmplaceBack();
+                    span.text = Move(decodedText);
+                    span.x = spanX;
+                    span.y = spanY;
+                    span.fontSize = spanFontSize;
+                    span.fontKey = BuildSvgFontKey(spanFontFamily, spanFontStyle, spanFontWeight);
+                    span.xPositions = spanXPositions;
+                    span.yPositions = spanYPositions;
+                    span.dxPositions = spanDxPositions;
+                    span.dyPositions = spanDyPositions;
+                    return;
+                }
+
+                const StringView trimmedText = UTF8Trim(StringView(decodedText.Data(), decodedText.Size()));
+                if (trimmedText.IsEmpty())
+                {
+                    return;
+                }
+
+                TextSpan& span = spans.EmplaceBack();
+                span.text = trimmedText;
+                span.x = spanX;
+                span.y = spanY;
+                span.fontSize = spanFontSize;
+                span.fontKey = BuildSvgFontKey(spanFontFamily, spanFontStyle, spanFontWeight);
+                span.xPositions = spanXPositions;
+                span.yPositions = spanYPositions;
+                span.dxPositions = spanDxPositions;
+                span.dyPositions = spanDyPositions;
+            };
+
             while (m_cur < m_end)
             {
                 if ((m_end - m_cur) >= 2 && (m_cur[0] == '<') && (m_cur[1] == '/'))
@@ -3704,7 +3944,21 @@ namespace he::scribe::editor
                         ++m_cur;
                     }
 
-                    directText += StringView(begin, static_cast<uint32_t>(m_cur - begin));
+                    String directText{};
+                    AppendDecodedSvgText(directText, StringView(begin, static_cast<uint32_t>(m_cur - begin)));
+                    appendSpan(
+                        Move(directText),
+                        x,
+                        y,
+                        fontSize,
+                        fontFamily,
+                        fontStyle,
+                        fontWeight,
+                        textXPositions,
+                        textYPositions,
+                        textDxPositions,
+                        textDyPositions,
+                        preserveWhitespace);
                     continue;
                 }
 
@@ -3747,45 +4001,74 @@ namespace he::scribe::editor
                     return false;
                 }
 
-                const StringView trimmedSpanText = UTF8Trim(StringView(spanText.Data(), spanText.Size()));
-                if (trimmedSpanText.IsEmpty())
-                {
-                    continue;
-                }
-
-                TextSpan& span = spans.EmplaceBack();
-                span.text = trimmedSpanText;
-                span.x = x;
-                span.y = y;
+                float spanX = x;
+                float spanY = y;
+                float spanFontSize = fontSize;
+                StringView spanFontFamily = fontFamily;
+                StringView spanFontStyle = fontStyle;
+                StringView spanFontWeight = fontWeight;
+                Vector<float> spanXPositions = textXPositions;
+                Vector<float> spanYPositions = textYPositions;
+                Vector<float> spanDxPositions = textDxPositions;
+                Vector<float> spanDyPositions = textDyPositions;
+                const bool spanPreserveWhitespace = ShouldPreserveSvgTextWhitespace(spanAttrs, preserveWhitespace);
                 for (const Attribute& spanAttr : spanAttrs)
                 {
                     if (spanAttr.name.EqualToI("x"))
                     {
-                        parseFirstPosition(spanAttr.value, span.x);
+                        if (ParseNumberList(spanXPositions, spanAttr.value) && !spanXPositions.IsEmpty())
+                        {
+                            spanX = spanXPositions[0];
+                        }
                     }
                     else if (spanAttr.name.EqualToI("y"))
                     {
-                        parseFirstPosition(spanAttr.value, span.y);
+                        if (ParseNumberList(spanYPositions, spanAttr.value) && !spanYPositions.IsEmpty())
+                        {
+                            spanY = spanYPositions[0];
+                        }
+                    }
+                    else if (spanAttr.name.EqualToI("dx"))
+                    {
+                        ParseNumberList(spanDxPositions, spanAttr.value);
+                    }
+                    else if (spanAttr.name.EqualToI("dy"))
+                    {
+                        ParseNumberList(spanDyPositions, spanAttr.value);
+                    }
+                    else if (spanAttr.name.EqualToI("font-size"))
+                    {
+                        ParseFloat(spanAttr.value, spanFontSize);
+                    }
+                    else if (spanAttr.name.EqualToI("font-family"))
+                    {
+                        spanFontFamily = spanAttr.value;
+                    }
+                    else if (spanAttr.name.EqualToI("font-style"))
+                    {
+                        spanFontStyle = spanAttr.value;
+                    }
+                    else if (spanAttr.name.EqualToI("font-weight"))
+                    {
+                        spanFontWeight = spanAttr.value;
                     }
                 }
+
+                appendSpan(
+                    Move(spanText),
+                    spanX,
+                    spanY,
+                    spanFontSize,
+                    spanFontFamily,
+                    spanFontStyle,
+                    spanFontWeight,
+                    spanXPositions,
+                    spanYPositions,
+                    spanDxPositions,
+                    spanDyPositions,
+                    spanPreserveWhitespace);
             }
 
-            if (spans.IsEmpty())
-            {
-                const StringView trimmedText = UTF8Trim(StringView(directText.Data(), directText.Size()));
-                if (trimmedText.IsEmpty())
-                {
-                    return true;
-                }
-
-                TextSpan& span = spans.EmplaceBack();
-                span.text = trimmedText;
-                span.x = x;
-                span.y = y;
-            }
-
-            const String fontKey = BuildSvgFontKey(fontFamily, fontStyle, fontWeight);
-            const uint32_t fontFaceIndex = FindOrAppendSvgFontFace(out.fontFaces, fontKey);
             const bool hasVisibleFill = !state.style.fillNone && (state.style.fill.w > 0.0f);
             const bool hasVisibleStroke = !state.style.strokeNone && (state.style.stroke.w > 0.0f) && (state.style.strokeWidth > 0.0f);
             if (!hasVisibleFill && !hasVisibleStroke)
@@ -3803,21 +4086,94 @@ namespace he::scribe::editor
                 anchor = ScribeImage::TextAnchorKind::End;
             }
 
-            for (const TextSpan& span : spans)
+            auto appendCompiledTextRun = [&](uint32_t fontFaceIndex,
+                ScribeImage::TextAnchorKind runAnchor,
+                StringView runText,
+                float runX,
+                float runY,
+                float runFontSize,
+                bool positionUsesGlyphOriginX) -> void
             {
                 CompiledVectorImageTextRunEntry& run = out.textRuns.EmplaceBack();
                 run.fontFaceIndex = fontFaceIndex;
-                run.anchor = anchor;
-                run.text = span.text;
-                run.position = { span.x, span.y };
-                run.fontSize = fontSize;
+                run.anchor = runAnchor;
+                run.text = runText;
+                run.position = { runX, runY };
+                run.fontSize = runFontSize;
                 run.color = hasVisibleFill ? state.style.fill : Vec4f{ 0.0f, 0.0f, 0.0f, 0.0f };
                 run.strokeColor = hasVisibleStroke ? state.style.stroke : Vec4f{ 0.0f, 0.0f, 0.0f, 0.0f };
                 run.strokeWidth = hasVisibleStroke ? state.style.strokeWidth : 0.0f;
                 run.strokeJoin = state.style.strokeJoin;
                 run.strokeCap = state.style.strokeCap;
                 run.strokeMiterLimit = state.style.strokeMiterLimit;
+                run.positionUsesGlyphOriginX = positionUsesGlyphOriginX;
                 ApplyAffineToTextRun(run, state.transform);
+            };
+
+            for (const TextSpan& span : spans)
+            {
+                const uint32_t fontFaceIndex = FindOrAppendSvgFontFace(out.fontFaces, span.fontKey);
+                const uint32_t codePointCount = UTF8Length(span.text.Data(), span.text.Size());
+                const bool hasExplicitGlyphX = !span.xPositions.IsEmpty() && ((span.xPositions.Size() == codePointCount) || (span.xPositions.Size() == 1u));
+                const bool hasExplicitGlyphY = !span.yPositions.IsEmpty() && ((span.yPositions.Size() == codePointCount) || (span.yPositions.Size() == 1u));
+                const bool hasExplicitGlyphDx = !span.dxPositions.IsEmpty() && (span.dxPositions.Size() == codePointCount);
+                const bool hasExplicitGlyphDy = !span.dyPositions.IsEmpty() && (span.dyPositions.Size() == codePointCount);
+                const bool useExplicitGlyphRuns =
+                    (codePointCount > 0u)
+                    && (hasExplicitGlyphX || hasExplicitGlyphY || hasExplicitGlyphDx || hasExplicitGlyphDy)
+                    && (span.xPositions.IsEmpty() || hasExplicitGlyphX)
+                    && (span.yPositions.IsEmpty() || hasExplicitGlyphY)
+                    && (span.dxPositions.IsEmpty() || hasExplicitGlyphDx)
+                    && (span.dyPositions.IsEmpty() || hasExplicitGlyphDy);
+                if (!useExplicitGlyphRuns)
+                {
+                    appendCompiledTextRun(fontFaceIndex, anchor, StringView(span.text.Data(), span.text.Size()), span.x, span.y, span.fontSize, false);
+                    continue;
+                }
+
+                const char* cur = span.text.Data();
+                const char* end = span.text.End();
+                uint32_t glyphIndex = 0;
+                while (cur < end)
+                {
+                    uint32_t codePoint = InvalidCodePoint;
+                    const uint32_t sequenceLength = UTF8Decode(codePoint, cur, static_cast<uint32_t>(end - cur));
+                    if ((sequenceLength == 0) || (sequenceLength == InvalidCodePoint))
+                    {
+                        break;
+                    }
+
+                    float glyphX = span.x;
+                    if (hasExplicitGlyphX)
+                    {
+                        glyphX = span.xPositions[(span.xPositions.Size() == 1u) ? 0u : glyphIndex];
+                    }
+
+                    float glyphY = span.y;
+                    if (hasExplicitGlyphY)
+                    {
+                        glyphY = span.yPositions[(span.yPositions.Size() == 1u) ? 0u : glyphIndex];
+                    }
+                    if (hasExplicitGlyphDx)
+                    {
+                        glyphX += span.dxPositions[glyphIndex];
+                    }
+                    if (hasExplicitGlyphDy)
+                    {
+                        glyphY += span.dyPositions[glyphIndex];
+                    }
+
+                    appendCompiledTextRun(
+                        fontFaceIndex,
+                        ScribeImage::TextAnchorKind::Start,
+                        StringView(cur, sequenceLength),
+                        glyphX,
+                        glyphY,
+                        span.fontSize,
+                        true);
+                    cur += sequenceLength;
+                    ++glyphIndex;
+                }
             }
 
             return true;

@@ -64,6 +64,7 @@ namespace he::scribe::editor
         StrokeJoinKind strokeJoin{ StrokeJoinKind::Round };
         StrokeCapKind strokeCap{ StrokeCapKind::Round };
         float strokeMiterLimit{ 4.0f };
+        bool positionUsesGlyphOriginX{ false };
     };
 
     struct CompiledVectorImageFontFaceEntry

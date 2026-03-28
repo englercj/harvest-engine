@@ -251,6 +251,7 @@ namespace he::scribe::editor
             dstRun.SetStrokeJoin(srcRun.strokeJoin);
             dstRun.SetStrokeCap(srcRun.strokeCap);
             dstRun.SetStrokeMiterLimit(srcRun.strokeMiterLimit);
+            dstRun.SetPositionUsesGlyphOriginX(srcRun.positionUsesGlyphOriginX);
         }
     }
 }

@@ -101,6 +101,29 @@ namespace
         "</text>"
         "</svg>";
 
+    constexpr const char* kSvgWithExplicitGlyphPositionText =
+        "<svg viewBox=\"0 0 120 120\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<text xml:space=\"preserve\" font-family=\"Noto Sans\" font-size=\"20\" fill=\"#111827\">"
+        "<tspan x=\"12 32 64\" y=\"70\">A+B</tspan>"
+        "</text>"
+        "</svg>";
+
+    constexpr const char* kSvgWithEncodedEntityText =
+        "<svg viewBox=\"0 0 120 120\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<text xml:space=\"preserve\" font-family=\"Times New Roman\" font-size=\"20\" fill=\"#111827\">"
+        "<tspan x=\"12 32\">&#x2212;+</tspan>"
+        "<tspan x=\"52\">&#x02c6;</tspan>"
+        "<tspan x=\"72\">&#x00a9;</tspan>"
+        "</text>"
+        "</svg>";
+
+    constexpr const char* kSvgWithPreservedLeadingWhitespaceText =
+        "<svg viewBox=\"0 0 120 120\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<text xml:space=\"preserve\" font-family=\"Noto Sans\" font-size=\"20\" fill=\"#111827\">"
+        "<tspan x=\"12 24\"> A</tspan>"
+        "</text>"
+        "</svg>";
+
     constexpr const char* kSvgWithTransformedAuthoredStroke =
         "<svg viewBox=\"0 0 100 100\" xmlns=\"http://www.w3.org/2000/svg\">"
         "<g transform=\"translate(40 20)\">"
@@ -494,6 +517,57 @@ HE_TEST(scribe, vector_image_pipeline, uses_tspan_position_for_svg_text_geometry
     HE_EXPECT(ok);
     HE_EXPECT_GT(imageData.textRuns.Size(), 0u);
     HE_EXPECT_GT(imageData.textRuns[0].position.x, 35.0f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, splits_svg_text_into_explicit_glyph_runs_when_x_positions_are_per_glyph)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithExplicitGlyphPositionText), StrLen(kSvgWithExplicitGlyphPositionText)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.textRuns.Size(), 3u);
+    HE_EXPECT_EQ(StringView(imageData.textRuns[0].text.Data(), imageData.textRuns[0].text.Size()), "A");
+    HE_EXPECT_EQ(StringView(imageData.textRuns[1].text.Data(), imageData.textRuns[1].text.Size()), "+");
+    HE_EXPECT_EQ(StringView(imageData.textRuns[2].text.Data(), imageData.textRuns[2].text.Size()), "B");
+    HE_EXPECT_EQ(imageData.textRuns[0].position.x, 12.0f);
+    HE_EXPECT_EQ(imageData.textRuns[1].position.x, 32.0f);
+    HE_EXPECT_EQ(imageData.textRuns[2].position.x, 64.0f);
+    HE_EXPECT(imageData.textRuns[0].positionUsesGlyphOriginX);
+    HE_EXPECT(imageData.textRuns[1].positionUsesGlyphOriginX);
+    HE_EXPECT(imageData.textRuns[2].positionUsesGlyphOriginX);
+}
+
+HE_TEST(scribe, vector_image_pipeline, decodes_svg_text_entities_before_emitting_text_runs)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithEncodedEntityText), StrLen(kSvgWithEncodedEntityText)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.textRuns.Size(), 4u);
+    HE_EXPECT_EQ(StringView(imageData.textRuns[0].text.Data(), imageData.textRuns[0].text.Size()), StringView("\xE2\x88\x92", 3));
+    HE_EXPECT_EQ(StringView(imageData.textRuns[1].text.Data(), imageData.textRuns[1].text.Size()), "+");
+    HE_EXPECT_EQ(StringView(imageData.textRuns[2].text.Data(), imageData.textRuns[2].text.Size()), StringView("\xCB\x86", 2));
+    HE_EXPECT_EQ(StringView(imageData.textRuns[3].text.Data(), imageData.textRuns[3].text.Size()), StringView("\xC2\xA9", 2));
+}
+
+HE_TEST(scribe, vector_image_pipeline, preserves_svg_whitespace_when_xml_space_is_preserve)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithPreservedLeadingWhitespaceText), StrLen(kSvgWithPreservedLeadingWhitespaceText)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.textRuns.Size(), 2u);
+    HE_EXPECT_EQ(StringView(imageData.textRuns[0].text.Data(), imageData.textRuns[0].text.Size()), " ");
+    HE_EXPECT_EQ(StringView(imageData.textRuns[1].text.Data(), imageData.textRuns[1].text.Size()), "A");
 }
 
 HE_TEST(scribe, vector_image_pipeline, compiles_svg_text_with_postscript_font_names)

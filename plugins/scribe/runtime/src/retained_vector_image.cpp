@@ -68,20 +68,34 @@ namespace he::scribe
         void AppendTransformedTextRunDraws(
             Vector<RetainedTextDraw>& out,
             uint32_t& estimatedVertexCount,
+            const ScribeContext& context,
             const RetainedTextModel& model,
             const ScribeImage::TextRun::Reader& run,
             const Vec2f& drawOffset,
             float anchorOffsetX,
             float baselineOffsetY,
-            uint32_t fontFaceIndex)
+            uint32_t fontFaceIndex,
+            FontFaceHandle fontFaceHandle)
         {
+            const ScribeFontFace::RuntimeResource::Reader fontFace = context.GetFontFace(fontFaceHandle);
+            const FontFaceFillData::Reader fill = fontFace.IsValid() ? fontFace.GetFill() : FontFaceFillData::Reader{};
+            const schema::List<FontFaceGlyphRenderData>::Reader glyphs = fill.IsValid() ? fill.GetGlyphs() : schema::List<FontFaceGlyphRenderData>::Reader{};
+
             for (const RetainedTextDraw& sourceDraw : model.GetDraws())
             {
                 RetainedTextDraw& draw = out.EmplaceBack(sourceDraw);
                 draw.fontFaceIndex = fontFaceIndex;
 
+                float glyphOriginOffsetX = 0.0f;
+                if (run.GetPositionUsesGlyphOriginX()
+                    && glyphs.IsValid()
+                    && (sourceDraw.glyphIndex < glyphs.Size()))
+                {
+                    glyphOriginOffsetX = glyphs[sourceDraw.glyphIndex].GetBoundsMinX() * sourceDraw.size.x;
+                }
+
                 const Vec2f localPosition{
-                    run.GetPositionX() + anchorOffsetX + sourceDraw.position.x + (sourceDraw.size.x * sourceDraw.offset.x),
+                    run.GetPositionX() + anchorOffsetX + sourceDraw.position.x + (sourceDraw.size.x * sourceDraw.offset.x) - glyphOriginOffsetX,
                     (run.GetPositionY() - baselineOffsetY) + sourceDraw.position.y + (sourceDraw.size.y * sourceDraw.offset.y)
                 };
                 const Vec2f transformedPosition = TransformTextRunPoint(run, localPosition);
@@ -311,12 +325,14 @@ namespace he::scribe
             AppendTransformedTextRunDraws(
                 m_textDraws,
                 m_estimatedVertexCount,
+                *desc.context,
                 model,
                 srcRun,
                 drawOffset,
                 anchorOffsetX,
                 baselineOffsetY,
-                srcRun.GetFontFaceIndex());
+                srcRun.GetFontFaceIndex(),
+                runFontFace);
         }
 
         return !m_draws.IsEmpty() || !m_textDraws.IsEmpty();

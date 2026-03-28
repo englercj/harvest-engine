@@ -300,6 +300,7 @@ struct ScribeImage $he.assets.AssetType $Display.ImportOnly $Display.Description
         strokeJoin @21 :StrokeJoinKind = StrokeJoinKind.Round;
         strokeCap @22 :StrokeCapKind = StrokeCapKind.Round;
         strokeMiterLimit @23 :float32;
+        positionUsesGlyphOriginX @24 :bool = false;
     }
 
     struct RuntimeResource

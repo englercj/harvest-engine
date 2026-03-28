@@ -419,37 +419,73 @@ namespace he::scribe::editor
             curve.isLineLike = true;
         }
 
-        void SvgEmitClosedPolygon(Vector<CurveData>& outCurves, Span<const Point2> polygon)
+        void SvgBuildLineOnlyCurves(
+            Vector<CurveData>& outCurves,
+            Span<const Point2> points,
+            bool closed)
         {
-            if (polygon.Size() < 3)
+            outCurves.Clear();
+
+            if (points.Size() < (closed ? 3u : 2u))
             {
                 return;
             }
 
             curve_compile::CurveBuilder builder(0.25f);
-            Point2 previous = polygon[0];
-            for (uint32_t pointIndex = 1; pointIndex < polygon.Size(); ++pointIndex)
+            Point2 previous = points[0];
+            for (uint32_t pointIndex = 1; pointIndex < points.Size(); ++pointIndex)
             {
-                const Point2 current = polygon[pointIndex];
+                const Point2 current = points[pointIndex];
                 builder.AddLine(previous, current);
                 previous = current;
             }
 
-            builder.AddLine(previous, polygon[0]);
+            if (closed)
+            {
+                builder.AddLine(previous, points[0]);
+            }
 
             const Vector<CurveData>& curves = builder.Curves();
             outCurves.Insert(outCurves.Size(), curves.Data(), curves.Size());
         }
 
-        bool TryBuildClosedLineOnlyPathFillCurves(
-            Vector<CurveData>& outCurves,
+        void SvgBuildLineOnlyStrokeSource(
+            Vector<StrokeSourcePoint>& outPoints,
+            Vector<StrokeSourceCommand>& outCommands,
+            Span<const Point2> points,
+            bool closed,
+            float flatteningTolerance)
+        {
+            outPoints.Clear();
+            outCommands.Clear();
+            if (points.IsEmpty())
+            {
+                return;
+            }
+
+            StrokeSourceBuilder strokeBuilder(flatteningTolerance);
+            strokeBuilder.AppendMoveTo(points[0]);
+            for (uint32_t pointIndex = 1; pointIndex < points.Size(); ++pointIndex)
+            {
+                strokeBuilder.AppendLineTo(points[pointIndex]);
+            }
+
+            if (closed)
+            {
+                strokeBuilder.AppendClose();
+            }
+
+            outPoints = Move(strokeBuilder.Points());
+            outCommands = Move(strokeBuilder.Commands());
+        }
+
+        bool TryExtractClosedLineOnlyPathPolygon(
+            Vector<Point2>& outPolygon,
             Span<const StrokeSourcePoint> points,
             Span<const StrokeSourceCommand> commands)
         {
-            outCurves.Clear();
-
-            Vector<Point2> polygon{};
-            polygon.Reserve(commands.Size());
+            outPolygon.Clear();
+            outPolygon.Reserve(commands.Size());
 
             bool hasContour = false;
             bool closed = false;
@@ -464,7 +500,7 @@ namespace he::scribe::editor
                             return false;
                         }
 
-                        polygon.PushBack({ points[command.firstPoint].x, points[command.firstPoint].y });
+                        outPolygon.PushBack({ points[command.firstPoint].x, points[command.firstPoint].y });
                         hasContour = true;
                         break;
                     }
@@ -476,7 +512,7 @@ namespace he::scribe::editor
                             return false;
                         }
 
-                        polygon.PushBack({ points[command.firstPoint].x, points[command.firstPoint].y });
+                        outPolygon.PushBack({ points[command.firstPoint].x, points[command.firstPoint].y });
                         break;
                     }
 
@@ -496,24 +532,33 @@ namespace he::scribe::editor
                 }
             }
 
-            if (!closed || (polygon.Size() < 3u))
+            if (!closed || (outPolygon.Size() < 3u))
             {
                 return false;
             }
 
-            const Point2& first = polygon[0];
-            const Point2& last = polygon.Back();
+            const Point2& first = outPolygon[0];
+            const Point2& last = outPolygon.Back();
             if ((Abs(first.x - last.x) <= 1.0e-5f) && (Abs(first.y - last.y) <= 1.0e-5f))
             {
-                polygon.Resize(polygon.Size() - 1u);
+                outPolygon.Resize(outPolygon.Size() - 1u);
             }
 
-            if (polygon.Size() < 3u)
+            return outPolygon.Size() >= 3u;
+        }
+
+        bool TryBuildClosedLineOnlyPathFillCurves(
+            Vector<CurveData>& outCurves,
+            Span<const StrokeSourcePoint> points,
+            Span<const StrokeSourceCommand> commands)
+        {
+            Vector<Point2> polygon{};
+            if (!TryExtractClosedLineOnlyPathPolygon(polygon, points, commands))
             {
                 return false;
             }
 
-            SvgEmitClosedPolygon(outCurves, Span<const Point2>(polygon.Data(), polygon.Size()));
+            SvgBuildLineOnlyCurves(outCurves, Span<const Point2>(polygon.Data(), polygon.Size()), true);
             return !outCurves.IsEmpty();
         }
 
@@ -887,7 +932,7 @@ namespace he::scribe::editor
 
             Vector<Point2> polygon{};
             SvgBuildArcPolygon(polygon, center, startPoint, endPoint, radius, ccw);
-            SvgEmitClosedPolygon(outCurves, polygon);
+            SvgBuildLineOnlyCurves(outCurves, Span<const Point2>(polygon.Data(), polygon.Size()), true);
         }
 
         void SvgEmitJoinPatch(
@@ -920,7 +965,7 @@ namespace he::scribe::editor
             {
                 case StrokeJoinKind::Round:
                     SvgBuildArcPolygon(polygon, vertex, outerStart, outerEnd, halfWidth, turn > 0.0f);
-                    SvgEmitClosedPolygon(outCurves, polygon);
+                    SvgBuildLineOnlyCurves(outCurves, Span<const Point2>(polygon.Data(), polygon.Size()), true);
                     return;
 
                 case StrokeJoinKind::Miter:
@@ -935,7 +980,7 @@ namespace he::scribe::editor
                             polygon.PushBack(outerStart);
                             polygon.PushBack(intersection);
                             polygon.PushBack(outerEnd);
-                            SvgEmitClosedPolygon(outCurves, polygon);
+                            SvgBuildLineOnlyCurves(outCurves, Span<const Point2>(polygon.Data(), polygon.Size()), true);
                             return;
                         }
                     }
@@ -950,7 +995,7 @@ namespace he::scribe::editor
             polygon.PushBack(vertex);
             polygon.PushBack(outerStart);
             polygon.PushBack(outerEnd);
-            SvgEmitClosedPolygon(outCurves, polygon);
+            SvgBuildLineOnlyCurves(outCurves, Span<const Point2>(polygon.Data(), polygon.Size()), true);
         }
 
         void SvgBuildStrokeCurves(
@@ -1026,7 +1071,7 @@ namespace he::scribe::editor
                         end - normal,
                         end + normal,
                     };
-                    SvgEmitClosedPolygon(outCurves, Span<const Point2>(polygon, HE_LENGTH_OF(polygon)));
+                    SvgBuildLineOnlyCurves(outCurves, Span<const Point2>(polygon, HE_LENGTH_OF(polygon)), true);
                 }
 
                 const uint32_t joinStart = path.closed ? 0u : 1u;
@@ -1815,6 +1860,13 @@ namespace he::scribe::editor
             return static_cast<float>(bandCount) / span;
         }
 
+        bool ShouldUseSingleBandForVectorShape(Span<const CurveData> curves, FillRule fillRule)
+        {
+            // Tiny non-zero polygons such as the Matplotlib mesh cells in the SVG gallery are more
+            // stable when we keep them in a single band rather than splitting them across band edges.
+            return (fillRule == FillRule::NonZero) && (curves.Size() <= 4u);
+        }
+
         void PadCurveTexture(Vector<PackedCurveTexel>& texels, uint32_t width, uint32_t& outHeight)
         {
             const uint32_t texelCount = Max(texels.Size(), 1u);
@@ -2364,6 +2416,28 @@ namespace he::scribe::editor
 
                 out.PushBack(value);
                 cur = parseEnd;
+            }
+
+            return true;
+        }
+
+        bool TryBuildTransformedPointList(
+            Vector<Point2>& outPoints,
+            StringView text,
+            const Affine2D& transform,
+            uint32_t minPointCount)
+        {
+            Vector<float> values{};
+            if (!ParseNumberList(values, text) || (values.Size() < (minPointCount * 2u)) || ((values.Size() & 1u) != 0u))
+            {
+                return false;
+            }
+
+            outPoints.Clear();
+            outPoints.Reserve(values.Size() / 2u);
+            for (uint32_t pointIndex = 0; pointIndex < values.Size(); pointIndex += 2)
+            {
+                outPoints.PushBack(TransformPoint(transform, { values[pointIndex], values[pointIndex + 1] }));
             }
 
             return true;
@@ -3754,33 +3828,19 @@ namespace he::scribe::editor
                 return true;
             }
 
-            Vector<float> values{};
-            if (!ParseNumberList(values, pointsAttr) || (values.Size() < 4) || ((values.Size() & 1u) != 0u))
+            Vector<Point2> points{};
+            if (!TryBuildTransformedPointList(points, pointsAttr, state.transform, 2u))
             {
                 return false;
             }
 
-            CurveBuilder builder(m_flatteningTolerance);
-            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
-            Point2 first = TransformPoint(state.transform, { values[0], values[1] });
-            Point2 previous = first;
-            strokeBuilder.AppendMoveTo(first);
-            for (uint32_t pointIndex = 2; pointIndex < values.Size(); pointIndex += 2)
-            {
-                const Point2 current = TransformPoint(state.transform, { values[pointIndex], values[pointIndex + 1] });
-                builder.AddLine(previous, current);
-                strokeBuilder.AppendLineTo(current);
-                previous = current;
-            }
-
-            if (!state.style.fillNone && (state.style.fill.w > 0.0f))
-            {
-                builder.AddLine(previous, first);
-            }
-
-            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
-            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
-            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+            Vector<CurveData> curves{};
+            Vector<StrokeSourcePoint> strokePoints{};
+            Vector<StrokeSourceCommand> strokeCommands{};
+            const bool closeForFill = !state.style.fillNone && (state.style.fill.w > 0.0f);
+            SvgBuildLineOnlyCurves(curves, Span<const Point2>(points.Data(), points.Size()), closeForFill);
+            SvgBuildLineOnlyStrokeSource(strokePoints, strokeCommands, Span<const Point2>(points.Data(), points.Size()), false, m_flatteningTolerance);
+            return EmitParsedShape(out, state, id, curves, strokePoints, strokeCommands);
         }
 
         bool SvgParser::ParsePolygonElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
@@ -3798,31 +3858,18 @@ namespace he::scribe::editor
                 return true;
             }
 
-            Vector<float> values{};
-            if (!ParseNumberList(values, pointsAttr) || (values.Size() < 6) || ((values.Size() & 1u) != 0u))
+            Vector<Point2> points{};
+            if (!TryBuildTransformedPointList(points, pointsAttr, state.transform, 3u))
             {
                 return false;
             }
 
-            CurveBuilder builder(m_flatteningTolerance);
-            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
-            Point2 first = TransformPoint(state.transform, { values[0], values[1] });
-            Point2 previous = first;
-            strokeBuilder.AppendMoveTo(first);
-            for (uint32_t pointIndex = 2; pointIndex < values.Size(); pointIndex += 2)
-            {
-                const Point2 current = TransformPoint(state.transform, { values[pointIndex], values[pointIndex + 1] });
-                builder.AddLine(previous, current);
-                strokeBuilder.AppendLineTo(current);
-                previous = current;
-            }
-
-            builder.AddLine(previous, first);
-            strokeBuilder.AppendClose();
-
-            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
-            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
-            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+            Vector<CurveData> curves{};
+            Vector<StrokeSourcePoint> strokePoints{};
+            Vector<StrokeSourceCommand> strokeCommands{};
+            SvgBuildLineOnlyCurves(curves, Span<const Point2>(points.Data(), points.Size()), true);
+            SvgBuildLineOnlyStrokeSource(strokePoints, strokeCommands, Span<const Point2>(points.Data(), points.Size()), true, m_flatteningTolerance);
+            return EmitParsedShape(out, state, id, curves, strokePoints, strokeCommands);
         }
 
         bool SvgParser::ReadTextContents(String& outText, StringView closingTag)
@@ -4836,8 +4883,9 @@ namespace he::scribe::editor
                 }
 
                 const bool useSingleBandForSmallShape =
-                    (curves.Size() <= 4u)
-                    && (outShape.fillRule == FillRule::NonZero);
+                    ShouldUseSingleBandForVectorShape(
+                        Span<const CurveData>(curves.Data(), curves.Size()),
+                        outShape.fillRule);
 
                 const uint32_t bandCountX = useSingleBandForSmallShape
                     ? 1u

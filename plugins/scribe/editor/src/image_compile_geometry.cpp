@@ -114,6 +114,27 @@ namespace he::scribe::editor
         };
 
         bool ParseDashArray(Vector<float>& out, StringView text);
+        void CopyStrokeSourceToOutlineSource(
+            Vector<StrokeOutlineSourcePoint>& outPoints,
+            Vector<StrokeOutlineSourceCommand>& outCommands,
+            Span<const StrokeSourcePoint> sourcePoints,
+            Span<const StrokeSourceCommand> sourceCommands);
+        void CopyOutlineSourceToStrokeSource(
+            Vector<StrokeSourcePoint>& outPoints,
+            Vector<StrokeSourceCommand>& outCommands,
+            Span<const StrokeOutlineSourcePoint> sourcePoints,
+            Span<const StrokeOutlineSourceCommand> sourceCommands);
+        void AppendDashedLineSegments(
+            StrokeSourceBuilder& builder,
+            Span<const float> dashPattern,
+            const Point2& from,
+            const Point2& to);
+        bool TryBuildDashedLineStrokeSource(
+            Vector<StrokeSourcePoint>& outPoints,
+            Vector<StrokeSourceCommand>& outCommands,
+            const ParsedShape& source,
+            Span<const float> dashPattern,
+            float flatteningTolerance);
 
         bool ParseDashArrayScaled(Vector<float>& out, StringView text, float scale)
         {
@@ -989,151 +1010,30 @@ namespace he::scribe::editor
 
             if (hasDashPattern)
             {
-                StrokeSourceBuilder dashedBuilder(flatteningTolerance);
-                auto appendDashedLine = [&](const Point2& from, const Point2& to)
+                Vector<StrokeSourcePoint> dashedPoints{};
+                Vector<StrokeSourceCommand> dashedCommands{};
+                if (TryBuildDashedLineStrokeSource(
+                        dashedPoints,
+                        dashedCommands,
+                        source,
+                        Span<const float>(dashPattern.Data(), dashPattern.Size()),
+                        flatteningTolerance))
                 {
-                    const Point2 delta = to - from;
-                    const float lengthSq = (delta.x * delta.x) + (delta.y * delta.y);
-                    if (lengthSq <= 1.0e-8f)
-                    {
-                        return;
-                    }
-
-                    const float length = Sqrt(lengthSq);
-                    uint32_t dashIndex = 0;
-                    float dashConsumed = 0.0f;
-                    bool dashOn = true;
-                    float segmentStart = 0.0f;
-
-                    while (segmentStart < length)
-                    {
-                        const float dashLength = dashPattern[dashIndex];
-                        const float remainingDash = dashLength - dashConsumed;
-                        const float segmentEnd = Min(segmentStart + remainingDash, length);
-                        if (dashOn && ((segmentEnd - segmentStart) > 1.0e-5f))
-                        {
-                            const float t0 = segmentStart / length;
-                            const float t1 = segmentEnd / length;
-                            const Point2 startPoint{
-                                Lerp(from.x, to.x, t0),
-                                Lerp(from.y, to.y, t0)
-                            };
-                            const Point2 endPoint{
-                                Lerp(from.x, to.x, t1),
-                                Lerp(from.y, to.y, t1)
-                            };
-                            dashedBuilder.AppendMoveTo(startPoint);
-                            dashedBuilder.AppendLineTo(endPoint);
-                        }
-
-                        dashConsumed += segmentEnd - segmentStart;
-                        segmentStart = segmentEnd;
-                        if (dashConsumed >= (dashLength - 1.0e-5f))
-                        {
-                            dashConsumed = 0.0f;
-                            dashIndex = (dashIndex + 1) % dashPattern.Size();
-                            dashOn = !dashOn;
-                        }
-                    }
-                };
-
-                Point2 current{};
-                Point2 subpathStart{};
-                bool hasCurrent = false;
-                for (const StrokeSourceCommand& command : source.strokeCommands)
-                {
-                    switch (command.type)
-                    {
-                        case StrokeCommandType::MoveTo:
-                        {
-                            if (command.firstPoint >= source.strokePoints.Size())
-                            {
-                                return false;
-                            }
-
-                            current = {
-                                source.strokePoints[command.firstPoint].x,
-                                source.strokePoints[command.firstPoint].y
-                            };
-                            subpathStart = current;
-                            hasCurrent = true;
-                            break;
-                        }
-
-                        case StrokeCommandType::LineTo:
-                        {
-                            if (!hasCurrent || (command.firstPoint >= source.strokePoints.Size()))
-                            {
-                                return false;
-                            }
-
-                            const Point2 target{
-                                source.strokePoints[command.firstPoint].x,
-                                source.strokePoints[command.firstPoint].y
-                            };
-                            appendDashedLine(current, target);
-                            current = target;
-                            break;
-                        }
-
-                        case StrokeCommandType::Close:
-                        {
-                            if (hasCurrent)
-                            {
-                                appendDashedLine(current, subpathStart);
-                                current = subpathStart;
-                            }
-                            break;
-                        }
-
-                        case StrokeCommandType::QuadraticTo:
-                        case StrokeCommandType::CubicTo:
-                        default:
-                            // Keep current behavior for non-line dashes until we add proper curve-length dash support.
-                            dashedBuilder.Clear();
-                            dashPattern.Clear();
-                            break;
-                    }
-
-                    if (dashPattern.IsEmpty())
-                    {
-                        break;
-                    }
-                }
-
-                if (!dashPattern.IsEmpty())
-                {
-                    outlinePoints.Resize(dashedBuilder.Points().Size());
-                    for (uint32_t pointIndex = 0; pointIndex < dashedBuilder.Points().Size(); ++pointIndex)
-                    {
-                        outlinePoints[pointIndex].x = dashedBuilder.Points()[pointIndex].x;
-                        outlinePoints[pointIndex].y = dashedBuilder.Points()[pointIndex].y;
-                    }
-
-                    outlineCommands.Resize(dashedBuilder.Commands().Size());
-                    for (uint32_t commandIndex = 0; commandIndex < dashedBuilder.Commands().Size(); ++commandIndex)
-                    {
-                        outlineCommands[commandIndex].type = dashedBuilder.Commands()[commandIndex].type;
-                        outlineCommands[commandIndex].firstPoint = dashedBuilder.Commands()[commandIndex].firstPoint;
-                    }
+                    CopyStrokeSourceToOutlineSource(
+                        outlinePoints,
+                        outlineCommands,
+                        Span<const StrokeSourcePoint>(dashedPoints.Data(), dashedPoints.Size()),
+                        Span<const StrokeSourceCommand>(dashedCommands.Data(), dashedCommands.Size()));
                 }
             }
 
             if (outlineCommands.IsEmpty())
             {
-                outlinePoints.Resize(source.strokePoints.Size());
-                for (uint32_t pointIndex = 0; pointIndex < source.strokePoints.Size(); ++pointIndex)
-                {
-                    outlinePoints[pointIndex].x = source.strokePoints[pointIndex].x;
-                    outlinePoints[pointIndex].y = source.strokePoints[pointIndex].y;
-                }
-
-                outlineCommands.Resize(source.strokeCommands.Size());
-                for (uint32_t commandIndex = 0; commandIndex < source.strokeCommands.Size(); ++commandIndex)
-                {
-                    outlineCommands[commandIndex].type = source.strokeCommands[commandIndex].type;
-                    outlineCommands[commandIndex].firstPoint = source.strokeCommands[commandIndex].firstPoint;
-                }
+                CopyStrokeSourceToOutlineSource(
+                    outlinePoints,
+                    outlineCommands,
+                    Span<const StrokeSourcePoint>(source.strokePoints.Data(), source.strokePoints.Size()),
+                    Span<const StrokeSourceCommand>(source.strokeCommands.Data(), source.strokeCommands.Size()));
             }
 
             bool singleOpenLineStroke = (outlineCommands.Size() == 2u)
@@ -1143,20 +1043,12 @@ namespace he::scribe::editor
             if (singleOpenLineStroke)
             {
                 Vector<StrokeSourcePoint> linePoints{};
-                linePoints.Resize(outlinePoints.Size());
-                for (uint32_t pointIndex = 0; pointIndex < outlinePoints.Size(); ++pointIndex)
-                {
-                    linePoints[pointIndex].x = outlinePoints[pointIndex].x;
-                    linePoints[pointIndex].y = outlinePoints[pointIndex].y;
-                }
-
                 Vector<StrokeSourceCommand> lineCommands{};
-                lineCommands.Resize(outlineCommands.Size());
-                for (uint32_t commandIndex = 0; commandIndex < outlineCommands.Size(); ++commandIndex)
-                {
-                    lineCommands[commandIndex].type = outlineCommands[commandIndex].type;
-                    lineCommands[commandIndex].firstPoint = outlineCommands[commandIndex].firstPoint;
-                }
+                CopyOutlineSourceToStrokeSource(
+                    linePoints,
+                    lineCommands,
+                    Span<const StrokeOutlineSourcePoint>(outlinePoints.Data(), outlinePoints.Size()),
+                    Span<const StrokeOutlineSourceCommand>(outlineCommands.Data(), outlineCommands.Size()));
 
                 Vector<SvgStrokePath> paths{};
                 if (!SvgDecodeStrokePaths(
@@ -1254,110 +1146,18 @@ namespace he::scribe::editor
                 return false;
             }
 
-            StrokeSourceBuilder dashedBuilder(flatteningTolerance);
-            auto appendDashedLine = [&](const Point2& from, const Point2& to)
+            Vector<StrokeSourcePoint> dashedPoints{};
+            Vector<StrokeSourceCommand> dashedCommands{};
+            if (!TryBuildDashedLineStrokeSource(
+                    dashedPoints,
+                    dashedCommands,
+                    source,
+                    Span<const float>(dashPattern.Data(), dashPattern.Size()),
+                    flatteningTolerance))
             {
-                const Point2 delta = to - from;
-                const float lengthSq = (delta.x * delta.x) + (delta.y * delta.y);
-                if (lengthSq <= 1.0e-8f)
-                {
-                    return;
-                }
-
-                const float length = Sqrt(lengthSq);
-                uint32_t dashIndex = 0;
-                float dashConsumed = 0.0f;
-                bool dashOn = true;
-                float segmentStart = 0.0f;
-
-                while (segmentStart < length)
-                {
-                    const float dashLength = dashPattern[dashIndex];
-                    const float remainingDash = dashLength - dashConsumed;
-                    const float segmentEnd = Min(segmentStart + remainingDash, length);
-                    if (dashOn && ((segmentEnd - segmentStart) > 1.0e-5f))
-                    {
-                        const float t0 = segmentStart / length;
-                        const float t1 = segmentEnd / length;
-                        const Point2 startPoint{
-                            Lerp(from.x, to.x, t0),
-                            Lerp(from.y, to.y, t0)
-                        };
-                        const Point2 endPoint{
-                            Lerp(from.x, to.x, t1),
-                            Lerp(from.y, to.y, t1)
-                        };
-                        dashedBuilder.AppendMoveTo(startPoint);
-                        dashedBuilder.AppendLineTo(endPoint);
-                    }
-
-                    dashConsumed += segmentEnd - segmentStart;
-                    segmentStart = segmentEnd;
-                    if (dashConsumed >= (dashLength - 1.0e-5f))
-                    {
-                        dashConsumed = 0.0f;
-                        dashIndex = (dashIndex + 1) % dashPattern.Size();
-                        dashOn = !dashOn;
-                    }
-                }
-            };
-
-            Point2 current{};
-            Point2 subpathStart{};
-            bool hasCurrent = false;
-            for (const StrokeSourceCommand& command : source.strokeCommands)
-            {
-                switch (command.type)
-                {
-                    case StrokeCommandType::MoveTo:
-                    {
-                        if (command.firstPoint >= source.strokePoints.Size())
-                        {
-                            return false;
-                        }
-
-                        current = {
-                            source.strokePoints[command.firstPoint].x,
-                            source.strokePoints[command.firstPoint].y
-                        };
-                        subpathStart = current;
-                        hasCurrent = true;
-                        break;
-                    }
-
-                    case StrokeCommandType::LineTo:
-                    {
-                        if (!hasCurrent || (command.firstPoint >= source.strokePoints.Size()))
-                        {
-                            return false;
-                        }
-
-                        const Point2 target{
-                            source.strokePoints[command.firstPoint].x,
-                            source.strokePoints[command.firstPoint].y
-                        };
-                        appendDashedLine(current, target);
-                        current = target;
-                        break;
-                    }
-
-                    case StrokeCommandType::Close:
-                    {
-                        if (hasCurrent)
-                        {
-                            appendDashedLine(current, subpathStart);
-                            current = subpathStart;
-                        }
-                        break;
-                    }
-
-                    default:
-                        return false;
-                }
+                return false;
             }
 
-            Vector<StrokeSourcePoint> dashedPoints = Move(dashedBuilder.Points());
-            Vector<StrokeSourceCommand> dashedCommands = Move(dashedBuilder.Commands());
             Vector<SvgStrokePath> paths{};
             if (!SvgDecodeStrokePaths(
                     paths,
@@ -1410,44 +1210,166 @@ namespace he::scribe::editor
             return out.shapes.Size() - 1;
         }
 
-        class CurveBuilder final
+        void CopyStrokeSourceToOutlineSource(
+            Vector<StrokeOutlineSourcePoint>& outPoints,
+            Vector<StrokeOutlineSourceCommand>& outCommands,
+            Span<const StrokeSourcePoint> sourcePoints,
+            Span<const StrokeSourceCommand> sourceCommands)
         {
-        public:
-            explicit CurveBuilder(float flatteningTolerance)
-                : m_builder(flatteningTolerance)
+            outPoints.Resize(sourcePoints.Size());
+            for (uint32_t pointIndex = 0; pointIndex < sourcePoints.Size(); ++pointIndex)
             {
+                outPoints[pointIndex].x = sourcePoints[pointIndex].x;
+                outPoints[pointIndex].y = sourcePoints[pointIndex].y;
             }
 
-            void Clear()
+            outCommands.Resize(sourceCommands.Size());
+            for (uint32_t commandIndex = 0; commandIndex < sourceCommands.Size(); ++commandIndex)
             {
-                m_builder.Clear();
+                outCommands[commandIndex].type = sourceCommands[commandIndex].type;
+                outCommands[commandIndex].firstPoint = sourceCommands[commandIndex].firstPoint;
+            }
+        }
+
+        void CopyOutlineSourceToStrokeSource(
+            Vector<StrokeSourcePoint>& outPoints,
+            Vector<StrokeSourceCommand>& outCommands,
+            Span<const StrokeOutlineSourcePoint> sourcePoints,
+            Span<const StrokeOutlineSourceCommand> sourceCommands)
+        {
+            outPoints.Resize(sourcePoints.Size());
+            for (uint32_t pointIndex = 0; pointIndex < sourcePoints.Size(); ++pointIndex)
+            {
+                outPoints[pointIndex].x = sourcePoints[pointIndex].x;
+                outPoints[pointIndex].y = sourcePoints[pointIndex].y;
             }
 
-            void SetTransform(const Affine2D& transform)
+            outCommands.Resize(sourceCommands.Size());
+            for (uint32_t commandIndex = 0; commandIndex < sourceCommands.Size(); ++commandIndex)
             {
-                m_builder.SetTransform(transform);
+                outCommands[commandIndex].type = sourceCommands[commandIndex].type;
+                outCommands[commandIndex].firstPoint = sourceCommands[commandIndex].firstPoint;
+            }
+        }
+
+        void AppendDashedLineSegments(
+            StrokeSourceBuilder& builder,
+            Span<const float> dashPattern,
+            const Point2& from,
+            const Point2& to)
+        {
+            const Point2 delta = to - from;
+            const float lengthSq = (delta.x * delta.x) + (delta.y * delta.y);
+            if (lengthSq <= 1.0e-8f)
+            {
+                return;
             }
 
-            void AddLine(const Point2& from, const Point2& to)
+            const float length = Sqrt(lengthSq);
+            uint32_t dashIndex = 0;
+            float dashConsumed = 0.0f;
+            bool dashOn = true;
+            float segmentStart = 0.0f;
+
+            while (segmentStart < length)
             {
-                m_builder.AddLine(from, to);
+                const float dashLength = dashPattern[dashIndex];
+                const float remainingDash = dashLength - dashConsumed;
+                const float segmentEnd = Min(segmentStart + remainingDash, length);
+                if (dashOn && ((segmentEnd - segmentStart) > 1.0e-5f))
+                {
+                    const float t0 = segmentStart / length;
+                    const float t1 = segmentEnd / length;
+                    const Point2 startPoint{
+                        Lerp(from.x, to.x, t0),
+                        Lerp(from.y, to.y, t0)
+                    };
+                    const Point2 endPoint{
+                        Lerp(from.x, to.x, t1),
+                        Lerp(from.y, to.y, t1)
+                    };
+                    builder.AppendMoveTo(startPoint);
+                    builder.AppendLineTo(endPoint);
+                }
+
+                dashConsumed += segmentEnd - segmentStart;
+                segmentStart = segmentEnd;
+                if (dashConsumed >= (dashLength - 1.0e-5f))
+                {
+                    dashConsumed = 0.0f;
+                    dashIndex = (dashIndex + 1) % dashPattern.Size();
+                    dashOn = !dashOn;
+                }
+            }
+        }
+
+        bool TryBuildDashedLineStrokeSource(
+            Vector<StrokeSourcePoint>& outPoints,
+            Vector<StrokeSourceCommand>& outCommands,
+            const ParsedShape& source,
+            Span<const float> dashPattern,
+            float flatteningTolerance)
+        {
+            StrokeSourceBuilder dashedBuilder(flatteningTolerance);
+
+            Point2 current{};
+            Point2 subpathStart{};
+            bool hasCurrent = false;
+            for (const StrokeSourceCommand& command : source.strokeCommands)
+            {
+                switch (command.type)
+                {
+                    case StrokeCommandType::MoveTo:
+                        if (command.firstPoint >= source.strokePoints.Size())
+                        {
+                            return false;
+                        }
+
+                        current = {
+                            source.strokePoints[command.firstPoint].x,
+                            source.strokePoints[command.firstPoint].y
+                        };
+                        subpathStart = current;
+                        hasCurrent = true;
+                        break;
+
+                    case StrokeCommandType::LineTo:
+                        if (!hasCurrent || (command.firstPoint >= source.strokePoints.Size()))
+                        {
+                            return false;
+                        }
+
+                        AppendDashedLineSegments(
+                            dashedBuilder,
+                            dashPattern,
+                            current,
+                            {
+                                source.strokePoints[command.firstPoint].x,
+                                source.strokePoints[command.firstPoint].y
+                            });
+                        current = {
+                            source.strokePoints[command.firstPoint].x,
+                            source.strokePoints[command.firstPoint].y
+                        };
+                        break;
+
+                    case StrokeCommandType::Close:
+                        if (hasCurrent)
+                        {
+                            AppendDashedLineSegments(dashedBuilder, dashPattern, current, subpathStart);
+                            current = subpathStart;
+                        }
+                        break;
+
+                    default:
+                        return false;
+                }
             }
 
-            void AddQuadratic(const Point2& p1, const Point2& p2, const Point2& p3)
-            {
-                m_builder.AddQuadratic(p1, p2, p3);
-            }
-
-            void AddCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3)
-            {
-                m_builder.AddCubic(p0, p1, p2, p3);
-            }
-
-            Vector<CurveData>& Curves() { return m_builder.Curves(); }
-
-        private:
-            curve_compile::CurveBuilder m_builder;
-        };
+            outPoints = Move(dashedBuilder.Points());
+            outCommands = Move(dashedBuilder.Commands());
+            return true;
+        }
 
         class FreeTypeLibrary final
         {

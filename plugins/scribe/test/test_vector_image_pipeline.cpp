@@ -153,6 +153,11 @@ namespace
         "<path fill=\"#ef4444\" d=\"M1 1 L15 1 L15 15 L1 15 L1 1 z\"/>"
         "</svg>";
 
+    constexpr const char* kSvgWithClosedQuadPolygon =
+        "<svg viewBox=\"0 0 16 16\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<polygon fill=\"#ef4444\" points=\"1,1 15,1 15,15 1,15\"/>"
+        "</svg>";
+
     constexpr const char* kSvgWithExplicitClosedSlantedQuadPath =
         "<svg viewBox=\"420 120 20 20\" xmlns=\"http://www.w3.org/2000/svg\">"
         "<path fill=\"#ff2d00\" d=\"M428.044701 132.077347L432.841962 126.491452L426.940855 123.25305L422.149018 128.862084L428.044701 132.077347z\"/>"
@@ -597,6 +602,35 @@ HE_TEST(scribe, vector_image_pipeline, compiles_explicit_closed_line_only_path_q
     HE_EXPECT_EQ(imageData.layers[0].kind, VectorLayerKind::Fill);
     HE_EXPECT_GE(imageData.shapes[0].boundsMaxX, 13.999f);
     HE_EXPECT_GE(imageData.shapes[0].boundsMaxY, 13.999f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, axis_aligned_closed_quad_path_matches_polygon_shape)
+{
+    CompiledVectorImageData pathData{};
+    CompiledVectorImageData polygonData{};
+
+    const bool pathOk = BuildCompiledVectorImageData(
+        pathData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithExplicitClosedQuadPath), StrLen(kSvgWithExplicitClosedQuadPath)),
+        0.25f);
+    const bool polygonOk = BuildCompiledVectorImageData(
+        polygonData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithClosedQuadPolygon), StrLen(kSvgWithClosedQuadPolygon)),
+        0.25f);
+
+    HE_EXPECT(pathOk);
+    HE_EXPECT(polygonOk);
+    HE_EXPECT_EQ(pathData.shapes.Size(), 1u);
+    HE_EXPECT_EQ(polygonData.shapes.Size(), 1u);
+    HE_EXPECT_EQ(pathData.curveTexels.Size(), polygonData.curveTexels.Size());
+
+    for (uint32_t texelIndex = 0; texelIndex < pathData.curveTexels.Size(); ++texelIndex)
+    {
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].x, polygonData.curveTexels[texelIndex].x);
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].y, polygonData.curveTexels[texelIndex].y);
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].z, polygonData.curveTexels[texelIndex].z);
+        HE_EXPECT_EQ(pathData.curveTexels[texelIndex].w, polygonData.curveTexels[texelIndex].w);
+    }
 }
 
 HE_TEST(scribe, vector_image_pipeline, closed_slanted_quad_paths_match_polygon_and_use_shapes)

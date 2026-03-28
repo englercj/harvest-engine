@@ -3,7 +3,8 @@
 #include "font_compile_geometry.h"
 
 #include "curve_compile_utils.h"
-#include "stroke_compile_utils.h"
+#include "outline_build_utils.h"
+#include "packed_geometry_compile_utils.h"
 
 #include "he/core/log.h"
 #include "he/core/math.h"
@@ -22,13 +23,7 @@ namespace he::scribe::editor
     namespace
     {
         using curve_compile::Affine2D;
-        using curve_compile::AppendCurveTexels;
-        using curve_compile::BuildBandRefs;
-        using curve_compile::ChooseBandCount;
-        using curve_compile::CurveBuilder;
         using curve_compile::CurveData;
-        using curve_compile::CurveRef;
-        using curve_compile::CurveTextureWidth;
         using curve_compile::Point2;
 
         class FreeTypeLibrary final
@@ -203,7 +198,6 @@ namespace he::scribe::editor
         public:
             explicit GlyphOutlineBuilder(float cubicTolerance)
                 : m_builder(cubicTolerance)
-                , m_strokeBuilder(cubicTolerance)
             {
             }
 
@@ -217,9 +211,6 @@ namespace he::scribe::editor
                 outPoints.Clear();
                 outCommands.Clear();
                 m_builder.Clear();
-                m_strokeBuilder.Clear();
-                m_hasCurrent = false;
-                m_hasContour = false;
 
                 FT_Outline_Funcs funcs{};
                 funcs.move_to = &MoveTo;
@@ -230,94 +221,53 @@ namespace he::scribe::editor
                 funcs.delta = 0;
 
                 const FT_Error err = FT_Outline_Decompose(const_cast<FT_Outline*>(&outline), &funcs, this);
-                if (m_hasContour)
+                if (m_builder.HasOpenSubpath())
                 {
-                    AppendClose();
+                    m_builder.CloseSubpath(false);
                 }
 
                 outCurves = Move(m_builder.Curves());
-                outPoints = Move(m_strokeBuilder.Points());
-                outCommands = Move(m_strokeBuilder.Commands());
-                m_hasCurrent = false;
-                m_hasContour = false;
+                outPoints = Move(m_builder.Points());
+                outCommands = Move(m_builder.Commands());
                 return err == 0;
             }
 
         private:
-            void AppendClose()
-            {
-                m_strokeBuilder.AppendClose();
-            }
-
             static int MoveTo(const FT_Vector* to, void* user)
             {
                 GlyphOutlineBuilder& self = *static_cast<GlyphOutlineBuilder*>(user);
-                if (self.m_hasContour)
+                if (self.m_builder.HasOpenSubpath())
                 {
-                    self.AppendClose();
+                    self.m_builder.CloseSubpath(false);
                 }
 
-                self.m_current = ToPoint(*to);
-                self.m_hasCurrent = true;
-                self.m_hasContour = true;
-                self.m_strokeBuilder.AppendMoveTo(self.m_current);
+                self.m_builder.BeginSubpath(ToPoint(*to));
                 return 0;
             }
 
             static int LineTo(const FT_Vector* to, void* user)
             {
                 GlyphOutlineBuilder& self = *static_cast<GlyphOutlineBuilder*>(user);
-                const Point2 target = ToPoint(*to);
-                self.AddLine(self.m_current, target);
-                self.m_strokeBuilder.AppendLineTo(target);
-                self.m_current = target;
+                self.m_builder.LineTo(ToPoint(*to));
                 return 0;
             }
 
             static int ConicTo(const FT_Vector* control, const FT_Vector* to, void* user)
             {
                 GlyphOutlineBuilder& self = *static_cast<GlyphOutlineBuilder*>(user);
-                const Point2 p2 = ToPoint(*control);
-                const Point2 p3 = ToPoint(*to);
-                self.AddQuadratic(self.m_current, p2, p3);
-                self.m_strokeBuilder.AppendQuadraticTo(p2, p3);
-                self.m_current = p3;
+                self.m_builder.QuadraticTo(ToPoint(*control), ToPoint(*to));
                 return 0;
             }
 
             static int CubicTo(const FT_Vector* control1, const FT_Vector* control2, const FT_Vector* to, void* user)
             {
                 GlyphOutlineBuilder& self = *static_cast<GlyphOutlineBuilder*>(user);
-                const Point2 p1 = ToPoint(*control1);
-                const Point2 p2 = ToPoint(*control2);
-                const Point2 p3 = ToPoint(*to);
-                self.AddCubic(self.m_current, p1, p2, p3);
-                self.m_strokeBuilder.AppendCubicTo(p1, p2, p3);
-                self.m_current = p3;
+                self.m_builder.CubicTo(ToPoint(*control1), ToPoint(*control2), ToPoint(*to));
                 return 0;
             }
 
-            void AddLine(const Point2& from, const Point2& to)
-            {
-                m_builder.AddLine(from, to);
-            }
-
-            void AddQuadratic(const Point2& p1, const Point2& p2, const Point2& p3)
-            {
-                m_builder.AddQuadratic(p1, p2, p3);
-            }
-
-            void AddCubic(const Point2& p0, const Point2& p1, const Point2& p2, const Point2& p3)
-            {
-                m_builder.AddCubic(p0, p1, p2, p3);
-            }
-
         private:
-            CurveBuilder m_builder;
-            StrokeSourceBuilder m_strokeBuilder;
-            Point2 m_current{};
-            bool m_hasCurrent{ false };
-            bool m_hasContour{ false };
+            OutlineBuilder m_builder;
         };
 
         class GlyphStrokeCountBuilder final
@@ -482,36 +432,6 @@ namespace he::scribe::editor
             }
 
             return true;
-        }
-
-        float ComputeBandScale(float minBound, float maxBound, uint32_t bandCount)
-        {
-            if (bandCount <= 1)
-            {
-                return 0.0f;
-            }
-
-            const float span = maxBound - minBound;
-            if (span <= 0.0f)
-            {
-                return 0.0f;
-            }
-
-            return static_cast<float>(bandCount) / span;
-        }
-
-        void PadCurveTexture(Vector<PackedCurveTexel>& texels, uint32_t width, uint32_t& outHeight)
-        {
-            const uint32_t texelCount = Max(texels.Size(), 1u);
-            outHeight = (texelCount + (width - 1)) / width;
-            texels.Resize(width * outHeight);
-        }
-
-        void PadBandTexture(Vector<PackedBandTexel>& texels, uint32_t width, uint32_t& outHeight)
-        {
-            const uint32_t texelCount = Max(texels.Size(), width);
-            outHeight = (texelCount + (width - 1)) / width;
-            texels.Resize(width * outHeight);
         }
 
         CompiledFontPaletteColor ToPaletteColor(const FT_Color& color)
@@ -954,8 +874,10 @@ namespace he::scribe::editor
             }
 
             CompiledGlyphRenderEntry& glyphEntry = out.glyphs[glyphIndex];
-            glyphEntry.advanceX = static_cast<int32_t>(ftFace->glyph->advance.x);
-            glyphEntry.advanceY = static_cast<int32_t>(ftFace->glyph->advance.y);
+            const int32_t advanceX = static_cast<int32_t>(ftFace->glyph->advance.x);
+            const int32_t advanceY = static_cast<int32_t>(ftFace->glyph->advance.y);
+            glyphEntry.advanceX = advanceX;
+            glyphEntry.advanceY = advanceY;
             glyphEntry.fillRule = FillRule::NonZero;
 
             if ((ftFace->glyph->format != FT_GLYPH_FORMAT_OUTLINE) || (ftFace->glyph->outline.n_points == 0))
@@ -981,85 +903,43 @@ namespace he::scribe::editor
                 continue;
             }
 
-            glyphEntry.hasGeometry = true;
-            glyphEntry.firstStrokeCommand = out.strokeCommands.Size();
-            glyphEntry.strokeCommandCount = strokeCommands.Size();
-            glyphEntry.boundsMinX = curves[0].minX;
-            glyphEntry.boundsMinY = curves[0].minY;
-            glyphEntry.boundsMaxX = curves[0].maxX;
-            glyphEntry.boundsMaxY = curves[0].maxY;
-            AppendCompiledStrokeData(
-                out.strokePoints,
-                out.strokeCommands,
-                Span<const StrokeSourcePoint>(strokePoints.Data(), strokePoints.Size()),
-                Span<const StrokeSourceCommand>(strokeCommands.Data(), strokeCommands.Size()));
-
-            for (uint32_t curveIndex = 0; curveIndex < curves.Size(); ++curveIndex)
+            CompiledGlyphRenderEntry geometryEntry{};
+            PackedBandStats bandStats{};
+            CompiledShapeBuildOptions shapeOptions{};
+            shapeOptions.bandOverlapEpsilon = out.bandOverlapEpsilon;
+            if (!BuildCompiledShapeGeometry(
+                    geometryEntry,
+                    out.curveTexels,
+                    out.bandTexels,
+                    out.strokePoints,
+                    out.strokeCommands,
+                    bandStats,
+                    Span<const CurveData>(curves.Data(), curves.Size()),
+                    Span<const StrokeSourcePoint>(strokePoints.Data(), strokePoints.Size()),
+                    Span<const StrokeSourceCommand>(strokeCommands.Data(), strokeCommands.Size()),
+                    FillRule::NonZero,
+                    shapeOptions))
             {
-                CurveData& curve = curves[curveIndex];
-                curve.curveTexelIndex = out.curveTexels.Size();
-                AppendCurveTexels(out.curveTexels, curve);
-                glyphEntry.boundsMinX = Min(glyphEntry.boundsMinX, curve.minX);
-                glyphEntry.boundsMinY = Min(glyphEntry.boundsMinY, curve.minY);
-                glyphEntry.boundsMaxX = Max(glyphEntry.boundsMaxX, curve.maxX);
-                glyphEntry.boundsMaxY = Max(glyphEntry.boundsMaxY, curve.maxY);
+                HE_LOG_ERROR(he_scribe,
+                    HE_MSG("Failed to build shared glyph geometry for scribe font compile."),
+                    HE_KV(face_index, faceIndex),
+                    HE_KV(glyph_index, glyphIndex));
+                return false;
             }
 
-            const uint32_t verticalBandCount = ChooseBandCount(
-                curves,
-                false,
-                glyphEntry.boundsMinX,
-                glyphEntry.boundsMaxX,
-                out.bandOverlapEpsilon);
-            const uint32_t horizontalBandCount = ChooseBandCount(
-                curves,
-                true,
-                glyphEntry.boundsMinY,
-                glyphEntry.boundsMaxY,
-                out.bandOverlapEpsilon);
+            geometryEntry.advanceX = advanceX;
+            geometryEntry.advanceY = advanceY;
+            geometryEntry.hasGeometry = true;
+            geometryEntry.hasColorLayers = glyphEntry.hasColorLayers;
+            glyphEntry = geometryEntry;
 
-            glyphEntry.bandMaxX = verticalBandCount - 1;
-            glyphEntry.bandMaxY = horizontalBandCount - 1;
-            glyphEntry.bandScaleX = ComputeBandScale(glyphEntry.boundsMinX, glyphEntry.boundsMaxX, verticalBandCount);
-            glyphEntry.bandScaleY = ComputeBandScale(glyphEntry.boundsMinY, glyphEntry.boundsMaxY, horizontalBandCount);
-            glyphEntry.bandOffsetX = -glyphEntry.boundsMinX * glyphEntry.bandScaleX;
-            glyphEntry.bandOffsetY = -glyphEntry.boundsMinY * glyphEntry.bandScaleY;
-
-            Vector<Vector<CurveRef>> horizontalBands{};
-            Vector<Vector<CurveRef>> verticalBands{};
-            BuildBandRefs(
-                horizontalBands,
-                curves,
-                true,
-                glyphEntry.boundsMinY,
-                glyphEntry.boundsMaxY,
-                horizontalBandCount,
-                out.bandOverlapEpsilon);
-            BuildBandRefs(
-                verticalBands,
-                curves,
-                false,
-                glyphEntry.boundsMinX,
-                glyphEntry.boundsMaxX,
-                verticalBandCount,
-                out.bandOverlapEpsilon);
-
-            const uint32_t glyphBandStart = out.bandTexels.Size();
-            glyphEntry.glyphBandLocX = glyphBandStart & (ScribeBandTextureWidth - 1);
-            glyphEntry.glyphBandLocY = glyphBandStart / ScribeBandTextureWidth;
-
-            const PackedBandStats bandStats = AppendPackedBands(
-                out.bandTexels,
-                glyphBandStart,
-                horizontalBands,
-                verticalBands);
             out.bandHeaderCount += bandStats.headerCount;
             out.emittedBandPayloadTexelCount += bandStats.emittedPayloadTexelCount;
             out.reusedBandCount += bandStats.reusedBandCount;
             out.reusedBandPayloadTexelCount += bandStats.reusedPayloadTexelCount;
         }
 
-        out.curveTextureWidth = CurveTextureWidth;
+        out.curveTextureWidth = curve_compile::CurveTextureWidth;
         PadCurveTexture(out.curveTexels, out.curveTextureWidth, out.curveTextureHeight);
         PadBandTexture(out.bandTexels, out.bandTextureWidth, out.bandTextureHeight);
         return true;

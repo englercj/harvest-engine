@@ -3,7 +3,8 @@
 #include "image_compile_geometry.h"
 
 #include "curve_compile_utils.h"
-#include "stroke_compile_utils.h"
+#include "outline_build_utils.h"
+#include "packed_geometry_compile_utils.h"
 
 #include "font_import_utils.h"
 
@@ -29,14 +30,11 @@ namespace he::scribe::editor
     namespace
     {
         constexpr uint32_t CurveTextureWidth = curve_compile::CurveTextureWidth;
-        constexpr uint32_t MaxBandCount = curve_compile::MaxBandCount;
         constexpr uint32_t MaxCubicSubdivisionDepth = curve_compile::MaxCubicSubdivisionDepth;
         constexpr float DefaultBandOverlapEpsilon = 1.0f / 1024.0f;
         constexpr float DegenerateLineLengthSq = curve_compile::DegenerateLineLengthSq;
-        constexpr float DegenerateCurveExtent = curve_compile::DegenerateCurveExtent;
         using curve_compile::Affine2D;
         using curve_compile::CurveData;
-        using curve_compile::CurveRef;
         using curve_compile::Point2;
 
         struct ParsedShape
@@ -344,11 +342,6 @@ namespace he::scribe::editor
             return curve_compile::DistanceToLineSq(point, a, b);
         }
 
-        void SvgAppendCurveTexels(Vector<PackedCurveTexel>& out, const CurveData& curve)
-        {
-            curve_compile::AppendCurveTexels(out, curve);
-        }
-
         Point2 operator+(const Point2& a, const Point2& b)
         {
             return { a.x + b.x, a.y + b.y };
@@ -387,66 +380,12 @@ namespace he::scribe::editor
             };
         }
 
-        void SvgAppendLineCurve(Vector<CurveData>& out, const Point2& from, const Point2& to)
-        {
-            LineCurvePoint control{};
-            if (!TryComputeStableLineQuadraticControlPoint(
-                    control,
-                    { from.x, from.y },
-                    { to.x, to.y },
-                    DegenerateLineLengthSq))
-            {
-                return;
-            }
-
-            const float minX = Min(from.x, to.x);
-            const float minY = Min(from.y, to.y);
-            const float maxX = Max(from.x, to.x);
-            const float maxY = Max(from.y, to.y);
-            if (((maxX - minX) <= DegenerateCurveExtent) && ((maxY - minY) <= DegenerateCurveExtent))
-            {
-                return;
-            }
-
-            CurveData& curve = out.EmplaceBack();
-            curve.p1 = from;
-            curve.p2 = { control.x, control.y };
-            curve.p3 = to;
-            curve.minX = minX;
-            curve.minY = minY;
-            curve.maxX = maxX;
-            curve.maxY = maxY;
-            curve.isLineLike = true;
-        }
-
         void SvgBuildLineOnlyCurves(
             Vector<CurveData>& outCurves,
             Span<const Point2> points,
             bool closed)
         {
-            outCurves.Clear();
-
-            if (points.Size() < (closed ? 3u : 2u))
-            {
-                return;
-            }
-
-            curve_compile::CurveBuilder builder(0.25f);
-            Point2 previous = points[0];
-            for (uint32_t pointIndex = 1; pointIndex < points.Size(); ++pointIndex)
-            {
-                const Point2 current = points[pointIndex];
-                builder.AddLine(previous, current);
-                previous = current;
-            }
-
-            if (closed)
-            {
-                builder.AddLine(previous, points[0]);
-            }
-
-            const Vector<CurveData>& curves = builder.Curves();
-            outCurves.Insert(outCurves.Size(), curves.Data(), curves.Size());
+            BuildLineOnlyCurves(outCurves, points, closed, 0.25f);
         }
 
         void SvgBuildLineOnlyStrokeSource(
@@ -456,95 +395,7 @@ namespace he::scribe::editor
             bool closed,
             float flatteningTolerance)
         {
-            outPoints.Clear();
-            outCommands.Clear();
-            if (points.IsEmpty())
-            {
-                return;
-            }
-
-            StrokeSourceBuilder strokeBuilder(flatteningTolerance);
-            strokeBuilder.AppendMoveTo(points[0]);
-            for (uint32_t pointIndex = 1; pointIndex < points.Size(); ++pointIndex)
-            {
-                strokeBuilder.AppendLineTo(points[pointIndex]);
-            }
-
-            if (closed)
-            {
-                strokeBuilder.AppendClose();
-            }
-
-            outPoints = Move(strokeBuilder.Points());
-            outCommands = Move(strokeBuilder.Commands());
-        }
-
-        bool TryExtractClosedLineOnlyPathPolygon(
-            Vector<Point2>& outPolygon,
-            Span<const StrokeSourcePoint> points,
-            Span<const StrokeSourceCommand> commands)
-        {
-            outPolygon.Clear();
-            outPolygon.Reserve(commands.Size());
-
-            bool hasContour = false;
-            bool closed = false;
-            for (const StrokeSourceCommand& command : commands)
-            {
-                switch (command.type)
-                {
-                    case StrokeCommandType::MoveTo:
-                    {
-                        if (hasContour || (command.firstPoint >= points.Size()))
-                        {
-                            return false;
-                        }
-
-                        outPolygon.PushBack({ points[command.firstPoint].x, points[command.firstPoint].y });
-                        hasContour = true;
-                        break;
-                    }
-
-                    case StrokeCommandType::LineTo:
-                    {
-                        if (!hasContour || (command.firstPoint >= points.Size()))
-                        {
-                            return false;
-                        }
-
-                        outPolygon.PushBack({ points[command.firstPoint].x, points[command.firstPoint].y });
-                        break;
-                    }
-
-                    case StrokeCommandType::Close:
-                    {
-                        if (!hasContour)
-                        {
-                            return false;
-                        }
-
-                        closed = true;
-                        break;
-                    }
-
-                    default:
-                        return false;
-                }
-            }
-
-            if (!closed || (outPolygon.Size() < 3u))
-            {
-                return false;
-            }
-
-            const Point2& first = outPolygon[0];
-            const Point2& last = outPolygon.Back();
-            if ((Abs(first.x - last.x) <= 1.0e-5f) && (Abs(first.y - last.y) <= 1.0e-5f))
-            {
-                outPolygon.Resize(outPolygon.Size() - 1u);
-            }
-
-            return outPolygon.Size() >= 3u;
+            BuildLineOnlyStrokeSource(outPoints, outCommands, points, closed, flatteningTolerance);
         }
 
         bool TryBuildClosedLineOnlyPathFillCurves(
@@ -552,14 +403,7 @@ namespace he::scribe::editor
             Span<const StrokeSourcePoint> points,
             Span<const StrokeSourceCommand> commands)
         {
-            Vector<Point2> polygon{};
-            if (!TryExtractClosedLineOnlyPathPolygon(polygon, points, commands))
-            {
-                return false;
-            }
-
-            SvgBuildLineOnlyCurves(outCurves, Span<const Point2>(polygon.Data(), polygon.Size()), true);
-            return !outCurves.IsEmpty();
+            return TryBuildClosedLineOnlyFillCurves(outCurves, points, commands, 0.25f);
         }
 
         float SvgNormalizeAngle(float angle)
@@ -1796,89 +1640,6 @@ namespace he::scribe::editor
             {
                 counts[i] = 0;
             }
-        }
-
-        [[maybe_unused]] void GetBandRange(
-            int32_t& outStart,
-            int32_t& outEnd,
-            float curveMin,
-            float curveMax,
-            float boundsMin,
-            float boundsSpan,
-            uint32_t bandCount,
-            float epsilon)
-        {
-            if ((bandCount <= 1) || (boundsSpan <= epsilon))
-            {
-                outStart = 0;
-                outEnd = 0;
-                return;
-            }
-
-            const float bandScale = static_cast<float>(bandCount) / boundsSpan;
-            const float startBand = Floor(((curveMin - epsilon) - boundsMin) * bandScale);
-            const float endBand = Floor(((curveMax + epsilon) - boundsMin) * bandScale);
-            outStart = Clamp(static_cast<int32_t>(startBand), 0, static_cast<int32_t>(bandCount - 1));
-            outEnd = Clamp(static_cast<int32_t>(endBand), 0, static_cast<int32_t>(bandCount - 1));
-        }
-
-        uint32_t SvgChooseBandCount(
-            const Vector<CurveData>& curves,
-            bool horizontalBands,
-            float boundsMin,
-            float boundsMax,
-            float epsilon)
-        {
-            return curve_compile::ChooseBandCount(curves, horizontalBands, boundsMin, boundsMax, epsilon);
-        }
-
-        void SvgBuildBandRefs(
-            Vector<Vector<CurveRef>>& outBands,
-            const Vector<CurveData>& curves,
-            bool horizontalBands,
-            float boundsMin,
-            float boundsMax,
-            uint32_t bandCount,
-            float epsilon)
-        {
-            curve_compile::BuildBandRefs(outBands, curves, horizontalBands, boundsMin, boundsMax, bandCount, epsilon);
-        }
-
-        float ComputeBandScale(float minBound, float maxBound, uint32_t bandCount)
-        {
-            if (bandCount <= 1)
-            {
-                return 0.0f;
-            }
-
-            const float span = maxBound - minBound;
-            if (span <= 0.0f)
-            {
-                return 0.0f;
-            }
-
-            return static_cast<float>(bandCount) / span;
-        }
-
-        bool ShouldUseSingleBandForVectorShape(Span<const CurveData> curves, FillRule fillRule)
-        {
-            // Tiny non-zero polygons such as the Matplotlib mesh cells in the SVG gallery are more
-            // stable when we keep them in a single band rather than splitting them across band edges.
-            return (fillRule == FillRule::NonZero) && (curves.Size() <= 4u);
-        }
-
-        void PadCurveTexture(Vector<PackedCurveTexel>& texels, uint32_t width, uint32_t& outHeight)
-        {
-            const uint32_t texelCount = Max(texels.Size(), 1u);
-            outHeight = (texelCount + (width - 1)) / width;
-            texels.Resize(width * outHeight);
-        }
-
-        void PadBandTexture(Vector<PackedBandTexel>& texels, uint32_t width, uint32_t& outHeight)
-        {
-            const uint32_t texelCount = Max(texels.Size(), width);
-            outHeight = (texelCount + (width - 1)) / width;
-            texels.Resize(width * outHeight);
         }
 
         bool IsWhitespace(char c)
@@ -3510,7 +3271,6 @@ namespace he::scribe::editor
             }
 
             CurveBuilder builder(m_flatteningTolerance);
-            builder.SetTransform(state.transform);
             Vector<StrokeSourcePoint> strokePoints{};
             Vector<StrokeSourceCommand> strokeCommands{};
             const bool closeOpenSubpathsForFill = !state.style.fillNone && (state.style.fill.w > 0.0f);
@@ -4418,9 +4178,12 @@ namespace he::scribe::editor
             const char* cur = text.Data();
             const char* end = text.Data() + text.Size();
 
+            builder.Clear();
             outPoints.Clear();
             outCommands.Clear();
-            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
+            OutlineBuilder outlineBuilder(m_flatteningTolerance);
+            outlineBuilder.SetCurveTransform(strokeTransform);
+            outlineBuilder.SetStrokeTransform(strokeTransform);
 
             Point2 current{};
             Point2 subpathStart{};
@@ -4474,11 +4237,6 @@ namespace he::scribe::editor
                 return true;
             };
 
-            auto ToStrokePoint = [&](const Point2& point) -> Point2
-            {
-                return TransformPoint(strokeTransform, point);
-            };
-
             while (true)
             {
                 SkipSeparators();
@@ -4510,13 +4268,10 @@ namespace he::scribe::editor
 
                         if (hasCurrent && !subpathClosed)
                         {
-                            if (closeOpenSubpathsForFill)
-                            {
-                                builder.AddLine(current, subpathStart);
-                            }
+                            outlineBuilder.EndOpenSubpath(closeOpenSubpathsForFill);
                         }
 
-                        strokeBuilder.AppendMoveTo(ToStrokePoint(point));
+                        outlineBuilder.BeginSubpath(point);
                         current = point;
                         subpathStart = point;
                         hasCurrent = true;
@@ -4535,8 +4290,7 @@ namespace he::scribe::editor
                             return false;
                         }
 
-                        builder.AddLine(current, point);
-                        strokeBuilder.AppendLineTo(ToStrokePoint(point));
+                        outlineBuilder.LineTo(point);
                         current = point;
                         hasCurrent = true;
                         hasPreviousCubicControl = false;
@@ -4554,8 +4308,7 @@ namespace he::scribe::editor
 
                         Point2 point = current;
                         point.x = relative ? (current.x + value) : value;
-                        builder.AddLine(current, point);
-                        strokeBuilder.AppendLineTo(ToStrokePoint(point));
+                        outlineBuilder.LineTo(point);
                         current = point;
                         hasCurrent = true;
                         hasPreviousCubicControl = false;
@@ -4573,8 +4326,7 @@ namespace he::scribe::editor
 
                         Point2 point = current;
                         point.y = relative ? (current.y + value) : value;
-                        builder.AddLine(current, point);
-                        strokeBuilder.AppendLineTo(ToStrokePoint(point));
+                        outlineBuilder.LineTo(point);
                         current = point;
                         hasCurrent = true;
                         hasPreviousCubicControl = false;
@@ -4591,8 +4343,7 @@ namespace he::scribe::editor
                             return false;
                         }
 
-                        builder.AddQuadratic(current, control, point);
-                        strokeBuilder.AppendQuadraticTo(ToStrokePoint(control), ToStrokePoint(point));
+                        outlineBuilder.QuadraticTo(control, point);
                         current = point;
                         hasCurrent = true;
                         previousQuadraticControl = control;
@@ -4612,8 +4363,7 @@ namespace he::scribe::editor
                         const Point2 control = hasPreviousQuadraticControl
                             ? ReflectPoint(current, previousQuadraticControl)
                             : current;
-                        builder.AddQuadratic(current, control, point);
-                        strokeBuilder.AppendQuadraticTo(ToStrokePoint(control), ToStrokePoint(point));
+                        outlineBuilder.QuadraticTo(control, point);
                         current = point;
                         hasCurrent = true;
                         previousQuadraticControl = control;
@@ -4634,8 +4384,7 @@ namespace he::scribe::editor
                             return false;
                         }
 
-                        builder.AddCubic(current, c1, c2, point);
-                        strokeBuilder.AppendCubicTo(ToStrokePoint(c1), ToStrokePoint(c2), ToStrokePoint(point));
+                        outlineBuilder.CubicTo(c1, c2, point);
                         current = point;
                         hasCurrent = true;
                         previousCubicControl = c2;
@@ -4657,8 +4406,7 @@ namespace he::scribe::editor
                         const Point2 c1 = hasPreviousCubicControl
                             ? ReflectPoint(current, previousCubicControl)
                             : current;
-                        builder.AddCubic(current, c1, c2, point);
-                        strokeBuilder.AppendCubicTo(ToStrokePoint(c1), ToStrokePoint(c2), ToStrokePoint(point));
+                        outlineBuilder.CubicTo(c1, c2, point);
                         current = point;
                         hasCurrent = true;
                         previousCubicControl = c2;
@@ -4671,8 +4419,7 @@ namespace he::scribe::editor
                     {
                         if (hasCurrent)
                         {
-                            builder.AddLine(current, subpathStart);
-                            strokeBuilder.AppendClose();
+                            outlineBuilder.CloseSubpath(true);
                             current = subpathStart;
                             subpathClosed = true;
                             hasPreviousCubicControl = false;
@@ -4688,11 +4435,12 @@ namespace he::scribe::editor
 
             if (hasCurrent && !subpathClosed && closeOpenSubpathsForFill)
             {
-                builder.AddLine(current, subpathStart);
+                outlineBuilder.EndOpenSubpath(true);
             }
 
-            outPoints = Move(strokeBuilder.Points());
-            outCommands = Move(strokeBuilder.Commands());
+            builder.Curves() = Move(outlineBuilder.Curves());
+            outPoints = Move(outlineBuilder.Points());
+            outCommands = Move(outlineBuilder.Commands());
             return true;
         }
 
@@ -4820,104 +4568,22 @@ namespace he::scribe::editor
             const ParsedShape& shape,
             float epsilon)
         {
-            outShape = {};
-            outBandStats = {};
-            if (shape.curves.IsEmpty() && shape.strokeCommands.IsEmpty())
-            {
-                return false;
-            }
-
-            const Point2 localOrigin{ shape.minX, shape.minY };
-            outShape.originX = localOrigin.x;
-            outShape.originY = localOrigin.y;
-            outShape.boundsMinX = 0.0f;
-            outShape.boundsMinY = 0.0f;
-            outShape.boundsMaxX = Max(shape.maxX - localOrigin.x, 0.0f);
-            outShape.boundsMaxY = Max(shape.maxY - localOrigin.y, 0.0f);
-            outShape.fillRule = shape.fillRule;
-            outShape.firstStrokeCommand = outStrokeCommands.Size();
-            outShape.strokeCommandCount = shape.strokeCommands.Size();
-
-            Vector<StrokeSourcePoint> localStrokePoints = shape.strokePoints;
-            for (StrokeSourcePoint& point : localStrokePoints)
-            {
-                point.x -= localOrigin.x;
-                point.y -= localOrigin.y;
-            }
-            AppendCompiledStrokeData(
+            CompiledShapeBuildOptions shapeOptions{};
+            shapeOptions.bandOverlapEpsilon = epsilon;
+            shapeOptions.normalizeOriginToBoundsMin = true;
+            shapeOptions.useSingleBandForSmallNonZeroShape = true;
+            return BuildCompiledShapeGeometry(
+                outShape,
+                outCurveTexels,
+                outBandTexels,
                 outStrokePoints,
                 outStrokeCommands,
-                Span<const StrokeSourcePoint>(localStrokePoints.Data(), localStrokePoints.Size()),
-                Span<const StrokeSourceCommand>(shape.strokeCommands.Data(), shape.strokeCommands.Size()));
-
-            if (!shape.curves.IsEmpty())
-            {
-                Vector<CurveData> curves = shape.curves;
-                for (uint32_t curveIndex = 0; curveIndex < curves.Size(); ++curveIndex)
-                {
-                    CurveData& curve = curves[curveIndex];
-                    curve.p1.x -= localOrigin.x;
-                    curve.p1.y -= localOrigin.y;
-                    curve.p2.x -= localOrigin.x;
-                    curve.p2.y -= localOrigin.y;
-                    curve.p3.x -= localOrigin.x;
-                    curve.p3.y -= localOrigin.y;
-                    curve.minX -= localOrigin.x;
-                    curve.minY -= localOrigin.y;
-                    curve.maxX -= localOrigin.x;
-                    curve.maxY -= localOrigin.y;
-                    if (curve.isLineLike)
-                    {
-                        LineCurvePoint localControl{};
-                        if (TryComputeStableLineQuadraticControlPoint(
-                                localControl,
-                                { curve.p1.x, curve.p1.y },
-                                { curve.p3.x, curve.p3.y },
-                                DegenerateLineLengthSq))
-                        {
-                            curve.p2 = { localControl.x, localControl.y };
-                        }
-                    }
-                    curve.curveTexelIndex = outCurveTexels.Size();
-                    SvgAppendCurveTexels(outCurveTexels, curve);
-                }
-
-                const bool useSingleBandForSmallShape =
-                    ShouldUseSingleBandForVectorShape(
-                        Span<const CurveData>(curves.Data(), curves.Size()),
-                        outShape.fillRule);
-
-                const uint32_t bandCountX = useSingleBandForSmallShape
-                    ? 1u
-                    : SvgChooseBandCount(curves, false, outShape.boundsMinX, outShape.boundsMaxX, epsilon);
-                const uint32_t bandCountY = useSingleBandForSmallShape
-                    ? 1u
-                    : SvgChooseBandCount(curves, true, outShape.boundsMinY, outShape.boundsMaxY, epsilon);
-
-                Vector<Vector<CurveRef>> xBands{};
-                Vector<Vector<CurveRef>> yBands{};
-                SvgBuildBandRefs(xBands, curves, false, outShape.boundsMinX, outShape.boundsMaxX, bandCountX, epsilon);
-                SvgBuildBandRefs(yBands, curves, true, outShape.boundsMinY, outShape.boundsMaxY, bandCountY, epsilon);
-
-                outShape.bandScaleX = ComputeBandScale(outShape.boundsMinX, outShape.boundsMaxX, bandCountX);
-                outShape.bandScaleY = ComputeBandScale(outShape.boundsMinY, outShape.boundsMaxY, bandCountY);
-                outShape.bandOffsetX = -outShape.boundsMinX * outShape.bandScaleX;
-                outShape.bandOffsetY = -outShape.boundsMinY * outShape.bandScaleY;
-                outShape.glyphBandLocX = outBandTexels.Size() % ScribeBandTextureWidth;
-                outShape.glyphBandLocY = outBandTexels.Size() / ScribeBandTextureWidth;
-                outShape.bandMaxX = bandCountX > 0 ? bandCountX - 1 : 0;
-                outShape.bandMaxY = bandCountY > 0 ? bandCountY - 1 : 0;
-
-                const uint32_t glyphBandStart = outBandTexels.Size();
-                const PackedBandStats bandStats = AppendPackedBands(
-                    outBandTexels,
-                    glyphBandStart,
-                    yBands,
-                    xBands);
-                outBandStats = bandStats;
-            }
-
-            return true;
+                outBandStats,
+                Span<const CurveData>(shape.curves.Data(), shape.curves.Size()),
+                Span<const StrokeSourcePoint>(shape.strokePoints.Data(), shape.strokePoints.Size()),
+                Span<const StrokeSourceCommand>(shape.strokeCommands.Data(), shape.strokeCommands.Size()),
+                shape.fillRule,
+                shapeOptions);
         }
     }
 

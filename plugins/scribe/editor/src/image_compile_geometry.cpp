@@ -1147,20 +1147,11 @@ namespace he::scribe::editor
                 }
             }
 
-            bool lineOnlyStroke = !outlineCommands.IsEmpty();
-            for (uint32_t commandIndex = 0; commandIndex < outlineCommands.Size(); ++commandIndex)
-            {
-                const StrokeCommandType type = outlineCommands[commandIndex].type;
-                if ((type != StrokeCommandType::MoveTo)
-                    && (type != StrokeCommandType::LineTo)
-                    && (type != StrokeCommandType::Close))
-                {
-                    lineOnlyStroke = false;
-                    break;
-                }
-            }
+            bool singleOpenLineStroke = (outlineCommands.Size() == 2u)
+                && (outlineCommands[0].type == StrokeCommandType::MoveTo)
+                && (outlineCommands[1].type == StrokeCommandType::LineTo);
 
-            if (lineOnlyStroke)
+            if (singleOpenLineStroke)
             {
                 Vector<StrokeSourcePoint> linePoints{};
                 linePoints.Resize(outlinePoints.Size());

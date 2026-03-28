@@ -295,4 +295,15 @@ namespace he::scribe::editor
             flatteningTolerance);
         return !outCurves.IsEmpty();
     }
+
+    inline void TakeOutlineBuilderData(
+        Vector<curve_compile::CurveData>& outCurves,
+        Vector<StrokeSourcePoint>& outPoints,
+        Vector<StrokeSourceCommand>& outCommands,
+        OutlineBuilder& builder)
+    {
+        outCurves = Move(builder.Curves());
+        outPoints = Move(builder.Points());
+        outCommands = Move(builder.Commands());
+    }
 }

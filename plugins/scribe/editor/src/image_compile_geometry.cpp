@@ -1529,8 +1529,7 @@ namespace he::scribe::editor
         {
         public:
             explicit SvgTextOutlineBuilder(float cubicTolerance)
-                : m_curveBuilder(cubicTolerance)
-                , m_strokeBuilder(cubicTolerance)
+                : m_builder(cubicTolerance)
             {
             }
 
@@ -1541,11 +1540,9 @@ namespace he::scribe::editor
                 const FT_Outline& outline,
                 const Affine2D& transform)
             {
-                m_transform = transform;
-                m_curveBuilder.Clear();
-                m_strokeBuilder.Clear();
-                m_hasContour = false;
-                m_current = {};
+                m_builder.Clear();
+                m_builder.SetCurveTransform(transform);
+                m_builder.SetStrokeTransform(transform);
 
                 FT_Outline_Funcs funcs{};
                 funcs.move_to = &MoveTo;
@@ -1559,79 +1556,56 @@ namespace he::scribe::editor
                     return false;
                 }
 
-                if (m_hasContour)
+                if (m_builder.HasOpenSubpath())
                 {
-                    m_strokeBuilder.AppendClose();
+                    m_builder.CloseSubpath(false);
                 }
 
-                outCurves.Insert(outCurves.Size(), m_curveBuilder.Curves().Data(), m_curveBuilder.Curves().Size());
+                outCurves.Insert(outCurves.Size(), m_builder.Curves().Data(), m_builder.Curves().Size());
                 AppendStrokeSourceData(
                     outPoints,
                     outCommands,
-                    Span<const StrokeSourcePoint>(m_strokeBuilder.Points().Data(), m_strokeBuilder.Points().Size()),
-                    Span<const StrokeSourceCommand>(m_strokeBuilder.Commands().Data(), m_strokeBuilder.Commands().Size()));
+                    Span<const StrokeSourcePoint>(m_builder.Points().Data(), m_builder.Points().Size()),
+                    Span<const StrokeSourceCommand>(m_builder.Commands().Data(), m_builder.Commands().Size()));
                 return true;
             }
 
         private:
-            Point2 TransformOutlinePoint(const FT_Vector& value) const
-            {
-                return TransformPoint(m_transform, ToPoint(value));
-            }
-
             static int MoveTo(const FT_Vector* to, void* user)
             {
                 SvgTextOutlineBuilder& self = *static_cast<SvgTextOutlineBuilder*>(user);
-                if (self.m_hasContour)
+                if (self.m_builder.HasOpenSubpath())
                 {
-                    self.m_strokeBuilder.AppendClose();
+                    self.m_builder.CloseSubpath(false);
                 }
 
-                self.m_current = self.TransformOutlinePoint(*to);
-                self.m_strokeBuilder.AppendMoveTo(self.m_current);
-                self.m_hasContour = true;
+                self.m_builder.BeginSubpath(ToPoint(*to));
                 return 0;
             }
 
             static int LineTo(const FT_Vector* to, void* user)
             {
                 SvgTextOutlineBuilder& self = *static_cast<SvgTextOutlineBuilder*>(user);
-                const Point2 target = self.TransformOutlinePoint(*to);
-                self.m_curveBuilder.AddLine(self.m_current, target);
-                self.m_strokeBuilder.AppendLineTo(target);
-                self.m_current = target;
+                self.m_builder.LineTo(ToPoint(*to));
                 return 0;
             }
 
             static int ConicTo(const FT_Vector* control, const FT_Vector* to, void* user)
             {
                 SvgTextOutlineBuilder& self = *static_cast<SvgTextOutlineBuilder*>(user);
-                const Point2 c = self.TransformOutlinePoint(*control);
-                const Point2 target = self.TransformOutlinePoint(*to);
-                self.m_curveBuilder.AddQuadratic(self.m_current, c, target);
-                self.m_strokeBuilder.AppendQuadraticTo(c, target);
-                self.m_current = target;
+                self.m_builder.QuadraticTo(ToPoint(*control), ToPoint(*to));
                 return 0;
             }
 
             static int CubicTo(const FT_Vector* control1, const FT_Vector* control2, const FT_Vector* to, void* user)
             {
                 SvgTextOutlineBuilder& self = *static_cast<SvgTextOutlineBuilder*>(user);
-                const Point2 c1 = self.TransformOutlinePoint(*control1);
-                const Point2 c2 = self.TransformOutlinePoint(*control2);
-                const Point2 target = self.TransformOutlinePoint(*to);
-                self.m_curveBuilder.AddCubic(self.m_current, c1, c2, target);
-                self.m_strokeBuilder.AppendCubicTo(c1, c2, target);
-                self.m_current = target;
+                self.m_builder.CubicTo(ToPoint(*control1), ToPoint(*control2), ToPoint(*to));
                 return 0;
             }
 
         private:
-            CurveBuilder m_curveBuilder;
-            StrokeSourceBuilder m_strokeBuilder;
-            Affine2D m_transform{};
-            Point2 m_current{};
-            bool m_hasContour{ false };
+            OutlineBuilder m_builder;
         };
 
         [[maybe_unused]] void ZeroCounts(Vector<uint32_t>& counts)
@@ -2631,10 +2605,7 @@ namespace he::scribe::editor
             bool ParseTextElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs, bool selfClosing);
             bool ParseUseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs);
             bool ParsePathData(
-                CurveBuilder& builder,
-                Vector<StrokeSourcePoint>& outPoints,
-                Vector<StrokeSourceCommand>& outCommands,
-                const Affine2D& strokeTransform,
+                OutlineBuilder& builder,
                 bool closeOpenSubpathsForFill,
                 StringView text);
             bool ReadTextContents(String& outText, StringView closingTag);
@@ -3270,16 +3241,20 @@ namespace he::scribe::editor
                 return true;
             }
 
-            CurveBuilder builder(m_flatteningTolerance);
-            Vector<StrokeSourcePoint> strokePoints{};
-            Vector<StrokeSourceCommand> strokeCommands{};
+            OutlineBuilder builder(m_flatteningTolerance);
+            builder.SetCurveTransform(state.transform);
+            builder.SetStrokeTransform(state.transform);
             const bool closeOpenSubpathsForFill = !state.style.fillNone && (state.style.fill.w > 0.0f);
-            if (!ParsePathData(builder, strokePoints, strokeCommands, state.transform, closeOpenSubpathsForFill, d))
+            if (!ParsePathData(builder, closeOpenSubpathsForFill, d))
             {
                 HE_LOG_ERROR(he_scribe, HE_MSG("Failed to parse SVG path data for scribe image compile."));
                 return false;
             }
 
+            Vector<CurveData> curves{};
+            Vector<StrokeSourcePoint> strokePoints{};
+            Vector<StrokeSourceCommand> strokeCommands{};
+            TakeOutlineBuilderData(curves, strokePoints, strokeCommands, builder);
             if (closeOpenSubpathsForFill)
             {
                 Vector<CurveData> polygonCurves{};
@@ -3288,11 +3263,11 @@ namespace he::scribe::editor
                         Span<const StrokeSourcePoint>(strokePoints.Data(), strokePoints.Size()),
                         Span<const StrokeSourceCommand>(strokeCommands.Data(), strokeCommands.Size())))
                 {
-                    builder.Curves() = Move(polygonCurves);
+                    curves = Move(polygonCurves);
                 }
             }
 
-            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+            return EmitParsedShape(out, state, id, curves, strokePoints, strokeCommands);
         }
 
         bool SvgParser::ParseRectElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
@@ -3334,29 +3309,16 @@ namespace he::scribe::editor
             ry = Clamp(ry, 0.0f, height * 0.5f);
 
             constexpr float Kappa = 0.5522847498307936f;
-            auto tx = [&](float px, float py) -> Point2
-            {
-                return TransformPoint(state.transform, { px, py });
-            };
-
-            CurveBuilder builder(m_flatteningTolerance);
-            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
+            OutlineBuilder builder(m_flatteningTolerance);
+            builder.SetCurveTransform(state.transform);
+            builder.SetStrokeTransform(state.transform);
             if ((rx <= 0.0f) || (ry <= 0.0f))
             {
-                const Point2 p0 = tx(x, y);
-                const Point2 p1 = tx(x + width, y);
-                const Point2 p2 = tx(x + width, y + height);
-                const Point2 p3 = tx(x, y + height);
-
-                strokeBuilder.AppendMoveTo(p0);
-                builder.AddLine(p0, p1);
-                strokeBuilder.AppendLineTo(p1);
-                builder.AddLine(p1, p2);
-                strokeBuilder.AppendLineTo(p2);
-                builder.AddLine(p2, p3);
-                strokeBuilder.AppendLineTo(p3);
-                builder.AddLine(p3, p0);
-                strokeBuilder.AppendClose();
+                builder.BeginSubpath({ x, y });
+                builder.LineTo({ x + width, y });
+                builder.LineTo({ x + width, y + height });
+                builder.LineTo({ x, y + height });
+                builder.CloseSubpath(true);
             }
             else
             {
@@ -3367,53 +3329,35 @@ namespace he::scribe::editor
                 const float ox = rx * Kappa;
                 const float oy = ry * Kappa;
 
-                const Point2 start = tx(cx0, y);
-                strokeBuilder.AppendMoveTo(start);
-
-                const Point2 topRight = tx(cx1, y);
-                builder.AddLine(start, topRight);
-                strokeBuilder.AppendLineTo(topRight);
-
-                const Point2 trc1 = tx(cx1 + ox, y);
-                const Point2 trc2 = tx(x + width, cy0 - oy);
-                const Point2 tr = tx(x + width, cy0);
-                builder.AddCubic(topRight, trc1, trc2, tr);
-                strokeBuilder.AppendCubicTo(trc1, trc2, tr);
-
-                const Point2 bottomRight = tx(x + width, cy1);
-                builder.AddLine(tr, bottomRight);
-                strokeBuilder.AppendLineTo(bottomRight);
-
-                const Point2 brc1 = tx(x + width, cy1 + oy);
-                const Point2 brc2 = tx(cx1 + ox, y + height);
-                const Point2 br = tx(cx1, y + height);
-                builder.AddCubic(bottomRight, brc1, brc2, br);
-                strokeBuilder.AppendCubicTo(brc1, brc2, br);
-
-                const Point2 bottomLeft = tx(cx0, y + height);
-                builder.AddLine(br, bottomLeft);
-                strokeBuilder.AppendLineTo(bottomLeft);
-
-                const Point2 blc1 = tx(cx0 - ox, y + height);
-                const Point2 blc2 = tx(x, cy1 + oy);
-                const Point2 bl = tx(x, cy1);
-                builder.AddCubic(bottomLeft, blc1, blc2, bl);
-                strokeBuilder.AppendCubicTo(blc1, blc2, bl);
-
-                const Point2 topLeft = tx(x, cy0);
-                builder.AddLine(bl, topLeft);
-                strokeBuilder.AppendLineTo(topLeft);
-
-                const Point2 tlc1 = tx(x, cy0 - oy);
-                const Point2 tlc2 = tx(cx0 - ox, y);
-                builder.AddCubic(topLeft, tlc1, tlc2, start);
-                strokeBuilder.AppendCubicTo(tlc1, tlc2, start);
-                strokeBuilder.AppendClose();
+                builder.BeginSubpath({ cx0, y });
+                builder.LineTo({ cx1, y });
+                builder.CubicTo(
+                    { cx1 + ox, y },
+                    { x + width, cy0 - oy },
+                    { x + width, cy0 });
+                builder.LineTo({ x + width, cy1 });
+                builder.CubicTo(
+                    { x + width, cy1 + oy },
+                    { cx1 + ox, y + height },
+                    { cx1, y + height });
+                builder.LineTo({ cx0, y + height });
+                builder.CubicTo(
+                    { cx0 - ox, y + height },
+                    { x, cy1 + oy },
+                    { x, cy1 });
+                builder.LineTo({ x, cy0 });
+                builder.CubicTo(
+                    { x, cy0 - oy },
+                    { cx0 - ox, y },
+                    { cx0, y });
+                builder.CloseSubpath(false);
             }
 
-            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
-            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
-            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+            Vector<CurveData> curves{};
+            Vector<StrokeSourcePoint> strokePoints{};
+            Vector<StrokeSourceCommand> strokeCommands{};
+            TakeOutlineBuilderData(curves, strokePoints, strokeCommands, builder);
+            return EmitParsedShape(out, state, id, curves, strokePoints, strokeCommands);
         }
 
         bool SvgParser::ParseCircleElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
@@ -3436,44 +3380,34 @@ namespace he::scribe::editor
                 return true;
             }
 
-            auto tx = [&](float px, float py) -> Point2
-            {
-                return TransformPoint(state.transform, { px, py });
-            };
-
             constexpr float Kappa = 0.5522847498307936f;
-            CurveBuilder builder(m_flatteningTolerance);
-            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
-            const Point2 start = tx(cx + r, cy);
-            strokeBuilder.AppendMoveTo(start);
+            OutlineBuilder builder(m_flatteningTolerance);
+            builder.SetCurveTransform(state.transform);
+            builder.SetStrokeTransform(state.transform);
+            builder.BeginSubpath({ cx + r, cy });
+            builder.CubicTo(
+                { cx + r, cy + (r * Kappa) },
+                { cx + (r * Kappa), cy + r },
+                { cx, cy + r });
+            builder.CubicTo(
+                { cx - (r * Kappa), cy + r },
+                { cx - r, cy + (r * Kappa) },
+                { cx - r, cy });
+            builder.CubicTo(
+                { cx - r, cy - (r * Kappa) },
+                { cx - (r * Kappa), cy - r },
+                { cx, cy - r });
+            builder.CubicTo(
+                { cx + (r * Kappa), cy - r },
+                { cx + r, cy - (r * Kappa) },
+                { cx + r, cy });
+            builder.CloseSubpath(false);
 
-            const Point2 c1 = tx(cx + r, cy + (r * Kappa));
-            const Point2 c2 = tx(cx + (r * Kappa), cy + r);
-            const Point2 p1 = tx(cx, cy + r);
-            builder.AddCubic(start, c1, c2, p1);
-            strokeBuilder.AppendCubicTo(c1, c2, p1);
-
-            const Point2 c3 = tx(cx - (r * Kappa), cy + r);
-            const Point2 c4 = tx(cx - r, cy + (r * Kappa));
-            const Point2 p2 = tx(cx - r, cy);
-            builder.AddCubic(p1, c3, c4, p2);
-            strokeBuilder.AppendCubicTo(c3, c4, p2);
-
-            const Point2 c5 = tx(cx - r, cy - (r * Kappa));
-            const Point2 c6 = tx(cx - (r * Kappa), cy - r);
-            const Point2 p3 = tx(cx, cy - r);
-            builder.AddCubic(p2, c5, c6, p3);
-            strokeBuilder.AppendCubicTo(c5, c6, p3);
-
-            const Point2 c7 = tx(cx + (r * Kappa), cy - r);
-            const Point2 c8 = tx(cx + r, cy - (r * Kappa));
-            builder.AddCubic(p3, c7, c8, start);
-            strokeBuilder.AppendCubicTo(c7, c8, start);
-            strokeBuilder.AppendClose();
-
-            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
-            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
-            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+            Vector<CurveData> curves{};
+            Vector<StrokeSourcePoint> strokePoints{};
+            Vector<StrokeSourceCommand> strokeCommands{};
+            TakeOutlineBuilderData(curves, strokePoints, strokeCommands, builder);
+            return EmitParsedShape(out, state, id, curves, strokePoints, strokeCommands);
         }
 
         bool SvgParser::ParseEllipseElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
@@ -3498,44 +3432,34 @@ namespace he::scribe::editor
                 return true;
             }
 
-            auto tx = [&](float px, float py) -> Point2
-            {
-                return TransformPoint(state.transform, { px, py });
-            };
-
             constexpr float Kappa = 0.5522847498307936f;
-            CurveBuilder builder(m_flatteningTolerance);
-            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
-            const Point2 start = tx(cx + rx, cy);
-            strokeBuilder.AppendMoveTo(start);
+            OutlineBuilder builder(m_flatteningTolerance);
+            builder.SetCurveTransform(state.transform);
+            builder.SetStrokeTransform(state.transform);
+            builder.BeginSubpath({ cx + rx, cy });
+            builder.CubicTo(
+                { cx + rx, cy + (ry * Kappa) },
+                { cx + (rx * Kappa), cy + ry },
+                { cx, cy + ry });
+            builder.CubicTo(
+                { cx - (rx * Kappa), cy + ry },
+                { cx - rx, cy + (ry * Kappa) },
+                { cx - rx, cy });
+            builder.CubicTo(
+                { cx - rx, cy - (ry * Kappa) },
+                { cx - (rx * Kappa), cy - ry },
+                { cx, cy - ry });
+            builder.CubicTo(
+                { cx + (rx * Kappa), cy - ry },
+                { cx + rx, cy - (ry * Kappa) },
+                { cx + rx, cy });
+            builder.CloseSubpath(false);
 
-            const Point2 c1 = tx(cx + rx, cy + (ry * Kappa));
-            const Point2 c2 = tx(cx + (rx * Kappa), cy + ry);
-            const Point2 p1 = tx(cx, cy + ry);
-            builder.AddCubic(start, c1, c2, p1);
-            strokeBuilder.AppendCubicTo(c1, c2, p1);
-
-            const Point2 c3 = tx(cx - (rx * Kappa), cy + ry);
-            const Point2 c4 = tx(cx - rx, cy + (ry * Kappa));
-            const Point2 p2 = tx(cx - rx, cy);
-            builder.AddCubic(p1, c3, c4, p2);
-            strokeBuilder.AppendCubicTo(c3, c4, p2);
-
-            const Point2 c5 = tx(cx - rx, cy - (ry * Kappa));
-            const Point2 c6 = tx(cx - (rx * Kappa), cy - ry);
-            const Point2 p3 = tx(cx, cy - ry);
-            builder.AddCubic(p2, c5, c6, p3);
-            strokeBuilder.AppendCubicTo(c5, c6, p3);
-
-            const Point2 c7 = tx(cx + (rx * Kappa), cy - ry);
-            const Point2 c8 = tx(cx + rx, cy - (ry * Kappa));
-            builder.AddCubic(p3, c7, c8, start);
-            strokeBuilder.AppendCubicTo(c7, c8, start);
-            strokeBuilder.AppendClose();
-
-            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
-            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
-            return EmitParsedShape(out, state, id, builder.Curves(), strokePoints, strokeCommands);
+            Vector<CurveData> curves{};
+            Vector<StrokeSourcePoint> strokePoints{};
+            Vector<StrokeSourceCommand> strokeCommands{};
+            TakeOutlineBuilderData(curves, strokePoints, strokeCommands, builder);
+            return EmitParsedShape(out, state, id, curves, strokePoints, strokeCommands);
         }
 
         bool SvgParser::ParseLineElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
@@ -3555,22 +3479,20 @@ namespace he::scribe::editor
                 else if (attr.name.EqualToI("id")) { id = attr.value; }
             }
 
-            const Point2 p0 = TransformPoint(state.transform, { x1, y1 });
-            const Point2 p1 = TransformPoint(state.transform, { x2, y2 });
+            OutlineBuilder builder(m_flatteningTolerance);
+            builder.SetCurveTransform(state.transform);
+            builder.SetStrokeTransform(state.transform);
+            builder.BeginSubpath({ x1, y1 });
+            builder.LineTo({ x2, y2 });
 
-            CurveBuilder builder(m_flatteningTolerance);
-            builder.AddLine(p0, p1);
-
-            StrokeSourceBuilder strokeBuilder(m_flatteningTolerance);
-            strokeBuilder.AppendMoveTo(p0);
-            strokeBuilder.AppendLineTo(p1);
-
-            Vector<StrokeSourcePoint> strokePoints = Move(strokeBuilder.Points());
-            Vector<StrokeSourceCommand> strokeCommands = Move(strokeBuilder.Commands());
+            Vector<CurveData> curves{};
+            Vector<StrokeSourcePoint> strokePoints{};
+            Vector<StrokeSourceCommand> strokeCommands{};
+            TakeOutlineBuilderData(curves, strokePoints, strokeCommands, builder);
             ParseState lineState = state;
             lineState.style.fillNone = true;
             lineState.style.fill = { 0.0f, 0.0f, 0.0f, 0.0f };
-            return EmitParsedShape(out, lineState, id, builder.Curves(), strokePoints, strokeCommands);
+            return EmitParsedShape(out, lineState, id, curves, strokePoints, strokeCommands);
         }
 
         bool SvgParser::ParsePolylineElement(ParsedImage& out, const ParseState& state, Span<const Attribute> attrs)
@@ -4168,22 +4090,12 @@ namespace he::scribe::editor
         }
 
         bool SvgParser::ParsePathData(
-            CurveBuilder& builder,
-            Vector<StrokeSourcePoint>& outPoints,
-            Vector<StrokeSourceCommand>& outCommands,
-            const Affine2D& strokeTransform,
+            OutlineBuilder& builder,
             bool closeOpenSubpathsForFill,
             StringView text)
         {
             const char* cur = text.Data();
             const char* end = text.Data() + text.Size();
-
-            builder.Clear();
-            outPoints.Clear();
-            outCommands.Clear();
-            OutlineBuilder outlineBuilder(m_flatteningTolerance);
-            outlineBuilder.SetCurveTransform(strokeTransform);
-            outlineBuilder.SetStrokeTransform(strokeTransform);
 
             Point2 current{};
             Point2 subpathStart{};
@@ -4268,10 +4180,10 @@ namespace he::scribe::editor
 
                         if (hasCurrent && !subpathClosed)
                         {
-                            outlineBuilder.EndOpenSubpath(closeOpenSubpathsForFill);
+                            builder.EndOpenSubpath(closeOpenSubpathsForFill);
                         }
 
-                        outlineBuilder.BeginSubpath(point);
+                        builder.BeginSubpath(point);
                         current = point;
                         subpathStart = point;
                         hasCurrent = true;
@@ -4290,7 +4202,7 @@ namespace he::scribe::editor
                             return false;
                         }
 
-                        outlineBuilder.LineTo(point);
+                        builder.LineTo(point);
                         current = point;
                         hasCurrent = true;
                         hasPreviousCubicControl = false;
@@ -4308,7 +4220,7 @@ namespace he::scribe::editor
 
                         Point2 point = current;
                         point.x = relative ? (current.x + value) : value;
-                        outlineBuilder.LineTo(point);
+                        builder.LineTo(point);
                         current = point;
                         hasCurrent = true;
                         hasPreviousCubicControl = false;
@@ -4326,7 +4238,7 @@ namespace he::scribe::editor
 
                         Point2 point = current;
                         point.y = relative ? (current.y + value) : value;
-                        outlineBuilder.LineTo(point);
+                        builder.LineTo(point);
                         current = point;
                         hasCurrent = true;
                         hasPreviousCubicControl = false;
@@ -4343,7 +4255,7 @@ namespace he::scribe::editor
                             return false;
                         }
 
-                        outlineBuilder.QuadraticTo(control, point);
+                        builder.QuadraticTo(control, point);
                         current = point;
                         hasCurrent = true;
                         previousQuadraticControl = control;
@@ -4363,7 +4275,7 @@ namespace he::scribe::editor
                         const Point2 control = hasPreviousQuadraticControl
                             ? ReflectPoint(current, previousQuadraticControl)
                             : current;
-                        outlineBuilder.QuadraticTo(control, point);
+                        builder.QuadraticTo(control, point);
                         current = point;
                         hasCurrent = true;
                         previousQuadraticControl = control;
@@ -4384,7 +4296,7 @@ namespace he::scribe::editor
                             return false;
                         }
 
-                        outlineBuilder.CubicTo(c1, c2, point);
+                        builder.CubicTo(c1, c2, point);
                         current = point;
                         hasCurrent = true;
                         previousCubicControl = c2;
@@ -4406,7 +4318,7 @@ namespace he::scribe::editor
                         const Point2 c1 = hasPreviousCubicControl
                             ? ReflectPoint(current, previousCubicControl)
                             : current;
-                        outlineBuilder.CubicTo(c1, c2, point);
+                        builder.CubicTo(c1, c2, point);
                         current = point;
                         hasCurrent = true;
                         previousCubicControl = c2;
@@ -4419,7 +4331,7 @@ namespace he::scribe::editor
                     {
                         if (hasCurrent)
                         {
-                            outlineBuilder.CloseSubpath(true);
+                            builder.CloseSubpath(true);
                             current = subpathStart;
                             subpathClosed = true;
                             hasPreviousCubicControl = false;
@@ -4435,12 +4347,9 @@ namespace he::scribe::editor
 
             if (hasCurrent && !subpathClosed && closeOpenSubpathsForFill)
             {
-                outlineBuilder.EndOpenSubpath(true);
+                builder.EndOpenSubpath(true);
             }
 
-            builder.Curves() = Move(outlineBuilder.Curves());
-            outPoints = Move(outlineBuilder.Points());
-            outCommands = Move(outlineBuilder.Commands());
             return true;
         }
 

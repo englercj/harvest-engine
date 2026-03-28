@@ -117,6 +117,24 @@ namespace he::scribe::editor
 
         bool ParseDashArray(Vector<float>& out, StringView text);
 
+        bool ParseDashArrayScaled(Vector<float>& out, StringView text, float scale)
+        {
+            if (!ParseDashArray(out, text))
+            {
+                return false;
+            }
+
+            if (scale != 1.0f)
+            {
+                for (float& value : out)
+                {
+                    value *= scale;
+                }
+            }
+
+            return true;
+        }
+
         float DegreesToRadians(float degrees)
         {
             return degrees * 0.017453292519943295769f;
@@ -289,6 +307,35 @@ namespace he::scribe::editor
         {
             Affine2D result{};
             result.m10 = Tan(DegreesToRadians(degrees));
+            return result;
+        }
+
+        float ComputeAffineStrokeMetricScale(const Affine2D& transform)
+        {
+            const float scaleX = Sqrt((transform.m00 * transform.m00) + (transform.m10 * transform.m10));
+            const float scaleY = Sqrt((transform.m01 * transform.m01) + (transform.m11 * transform.m11));
+            if ((scaleX <= 1.0e-6f) && (scaleY <= 1.0e-6f))
+            {
+                return 1.0f;
+            }
+
+            if (scaleX <= 1.0e-6f)
+            {
+                return scaleY;
+            }
+
+            if (scaleY <= 1.0e-6f)
+            {
+                return scaleX;
+            }
+
+            return 0.5f * (scaleX + scaleY);
+        }
+
+        StyleState BuildEffectiveStrokeStyle(const StyleState& source, const Affine2D& transform)
+        {
+            StyleState result = source;
+            result.strokeWidth *= ComputeAffineStrokeMetricScale(transform);
             return result;
         }
 
@@ -908,17 +955,23 @@ namespace he::scribe::editor
                     }
                     else if (!path.closed && (style.strokeCap == StrokeCapKind::Butt))
                     {
-                        // A tiny overlap avoids visible AA seams where SVGs place a filled
-                        // arrowhead immediately after a stroked axis line.
-                        const float seamOverlap = Min(halfWidth, 0.25f);
-                        if (segmentIndex == 0)
+                        const bool axisAligned =
+                            (Abs(direction.x) <= 1.0e-5f)
+                            || (Abs(direction.y) <= 1.0e-5f);
+                        if (axisAligned)
                         {
-                            start = start - (direction * seamOverlap);
-                        }
+                            // A tiny overlap avoids visible AA seams where SVGs place a filled
+                            // arrowhead immediately after a stroked axis line.
+                            const float seamOverlap = Min(halfWidth, 0.25f);
+                            if (segmentIndex == 0)
+                            {
+                                start = start - (direction * seamOverlap);
+                            }
 
-                        if (segmentIndex == (segmentCount - 1))
-                        {
-                            end = end + (direction * seamOverlap);
+                            if (segmentIndex == (segmentCount - 1))
+                            {
+                                end = end + (direction * seamOverlap);
+                            }
                         }
                     }
 
@@ -979,6 +1032,7 @@ namespace he::scribe::editor
             ParsedShape& out,
             const ParsedShape& source,
             const StyleState& style,
+            float strokeMetricScale,
             float flatteningTolerance)
         {
             out = {};
@@ -995,7 +1049,10 @@ namespace he::scribe::editor
             Vector<float> dashPattern{};
             const bool hasDashPattern =
                 !style.strokeDashArray.IsEmpty()
-                && ParseDashArray(dashPattern, StringView(style.strokeDashArray.Data(), style.strokeDashArray.Size()))
+                && ParseDashArrayScaled(
+                    dashPattern,
+                    StringView(style.strokeDashArray.Data(), style.strokeDashArray.Size()),
+                    strokeMetricScale)
                 && !dashPattern.IsEmpty();
 
             if (hasDashPattern)
@@ -1249,13 +1306,17 @@ namespace he::scribe::editor
             Vector<ParsedShape>& outShapes,
             const ParsedShape& source,
             const StyleState& style,
+            float strokeMetricScale,
             float flatteningTolerance)
         {
             outShapes.Clear();
 
             Vector<float> dashPattern{};
             if (style.strokeDashArray.IsEmpty()
-                || !ParseDashArray(dashPattern, StringView(style.strokeDashArray.Data(), style.strokeDashArray.Size()))
+                || !ParseDashArrayScaled(
+                    dashPattern,
+                    StringView(style.strokeDashArray.Data(), style.strokeDashArray.Size()),
+                    strokeMetricScale)
                 || dashPattern.IsEmpty())
             {
                 return false;
@@ -3196,8 +3257,14 @@ namespace he::scribe::editor
                 return true;
             }
 
+            const StyleState effectiveStrokeStyle = BuildEffectiveStrokeStyle(state.style, state.transform);
+            const float strokeMetricScale = ComputeAffineStrokeMetricScale(state.transform);
             const bool hasVisibleFill = !state.style.fillNone && (state.style.fill.w > 0.0f) && !shape.curves.IsEmpty();
-            const bool hasVisibleStroke = !state.style.strokeNone && (state.style.stroke.w > 0.0f) && (state.style.strokeWidth > 0.0f) && !shape.strokeCommands.IsEmpty();
+            const bool hasVisibleStroke =
+                !state.style.strokeNone
+                && (state.style.stroke.w > 0.0f)
+                && (effectiveStrokeStyle.strokeWidth > 0.0f)
+                && !shape.strokeCommands.IsEmpty();
             if (state.suppressOutput || (!hasVisibleFill && !hasVisibleStroke))
             {
                 return true;
@@ -3240,7 +3307,7 @@ namespace he::scribe::editor
             {
                 const ParsedShape& strokeSource = hasVisibleFill ? out.shapes[fillShapeIndex] : shape;
                 const bool splitDashedLineStrokes =
-                    !state.style.strokeDashArray.IsEmpty()
+                    !effectiveStrokeStyle.strokeDashArray.IsEmpty()
                     && IsLineOnlyStrokeSource(strokeSource);
 
                 if (splitDashedLineStrokes)
@@ -3249,7 +3316,8 @@ namespace he::scribe::editor
                     if (!BuildAuthoredDashedLineStrokeShapes(
                             strokeShapes,
                             strokeSource,
-                            state.style,
+                            effectiveStrokeStyle,
+                            strokeMetricScale,
                             m_flatteningTolerance))
                     {
                         return false;
@@ -3265,10 +3333,10 @@ namespace he::scribe::editor
                         layer.green = state.style.stroke.y;
                         layer.blue = state.style.stroke.z;
                         layer.alpha = state.style.stroke.w;
-                        layer.strokeWidth = state.style.strokeWidth;
-                        layer.strokeJoin = state.style.strokeJoin;
-                        layer.strokeCap = state.style.strokeCap;
-                        layer.strokeMiterLimit = state.style.strokeMiterLimit;
+                        layer.strokeWidth = effectiveStrokeStyle.strokeWidth;
+                        layer.strokeJoin = effectiveStrokeStyle.strokeJoin;
+                        layer.strokeCap = effectiveStrokeStyle.strokeCap;
+                        layer.strokeMiterLimit = effectiveStrokeStyle.strokeMiterLimit;
                     }
                 }
                 else
@@ -3277,7 +3345,8 @@ namespace he::scribe::editor
                     if (!BuildAuthoredStrokeShape(
                             strokeShape,
                             strokeSource,
-                            state.style,
+                            effectiveStrokeStyle,
+                            strokeMetricScale,
                             m_flatteningTolerance))
                     {
                         return false;
@@ -3291,10 +3360,10 @@ namespace he::scribe::editor
                     layer.green = state.style.stroke.y;
                     layer.blue = state.style.stroke.z;
                     layer.alpha = state.style.stroke.w;
-                    layer.strokeWidth = state.style.strokeWidth;
-                    layer.strokeJoin = state.style.strokeJoin;
-                    layer.strokeCap = state.style.strokeCap;
-                    layer.strokeMiterLimit = state.style.strokeMiterLimit;
+                    layer.strokeWidth = effectiveStrokeStyle.strokeWidth;
+                    layer.strokeJoin = effectiveStrokeStyle.strokeJoin;
+                    layer.strokeCap = effectiveStrokeStyle.strokeCap;
+                    layer.strokeMiterLimit = effectiveStrokeStyle.strokeMiterLimit;
                 }
             }
 

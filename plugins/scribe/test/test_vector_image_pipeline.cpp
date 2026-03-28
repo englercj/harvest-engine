@@ -131,6 +131,18 @@ namespace
         "</g>"
         "</svg>";
 
+    constexpr const char* kSvgWithScaledSquareStroke =
+        "<svg viewBox=\"0 0 32 32\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<g transform=\"translate(8 8) scale(0.5)\">"
+        "<path fill=\"none\" stroke=\"#111827\" stroke-width=\"4\" stroke-linecap=\"square\" d=\"M0 0 L16 16\"/>"
+        "</g>"
+        "</svg>";
+
+    constexpr const char* kSvgWithDiagonalButtStroke =
+        "<svg viewBox=\"0 0 8 8\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<path fill=\"none\" stroke=\"#030404\" stroke-width=\"0.5\" stroke-linecap=\"butt\" d=\"M0 0 5.232 -5.465\"/>"
+        "</svg>";
+
     constexpr const char* kSvgWithDashedStroke =
         "<svg viewBox=\"0 0 64 24\" xmlns=\"http://www.w3.org/2000/svg\">"
         "<path fill=\"none\" stroke=\"#1475bc\" stroke-width=\"2\" stroke-dasharray=\"4,4\" d=\"M4 12 L60 12\"/>"
@@ -462,6 +474,69 @@ HE_TEST(scribe, vector_image_pipeline, emits_authored_stroke_layers)
     HE_EXPECT_EQ(imageData.layers[2].kind, VectorLayerKind::Stroke);
     HE_EXPECT_NE(imageData.layers[0].shapeIndex, imageData.layers[1].shapeIndex);
     HE_EXPECT_NE(imageData.layers[2].shapeIndex, imageData.layers[1].shapeIndex);
+}
+
+HE_TEST(scribe, vector_image_pipeline, scales_authored_stroke_metrics_with_svg_transform)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithScaledSquareStroke), StrLen(kSvgWithScaledSquareStroke)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.layers.Size(), 1u);
+    HE_EXPECT_EQ(imageData.layers[0].kind, VectorLayerKind::Stroke);
+    HE_EXPECT_GE(imageData.layers[0].strokeWidth, 1.999f);
+    HE_EXPECT_LE(imageData.layers[0].strokeWidth, 2.001f);
+}
+
+HE_TEST(scribe, vector_image_pipeline, keeps_diagonal_butt_strokes_at_authored_length)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithDiagonalButtStroke), StrLen(kSvgWithDiagonalButtStroke)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 1u);
+
+    const float dx = 5.232f;
+    const float dy = -5.465f;
+    const float length = Sqrt((dx * dx) + (dy * dy));
+    const float halfWidth = 0.25f;
+    const float nx = (-dy / length) * halfWidth;
+    const float ny = (dx / length) * halfWidth;
+
+    const float x0a = 0.0f + nx;
+    const float x0b = 0.0f - nx;
+    const float x1a = dx + nx;
+    const float x1b = dx - nx;
+    const float y0a = 0.0f + ny;
+    const float y0b = 0.0f - ny;
+    const float y1a = dy + ny;
+    const float y1b = dy - ny;
+
+    const float expectedMinX = Min(Min(x0a, x0b), Min(x1a, x1b));
+    const float expectedMaxX = Max(Max(x0a, x0b), Max(x1a, x1b));
+    const float expectedMinY = Min(Min(y0a, y0b), Min(y1a, y1b));
+    const float expectedMaxY = Max(Max(y0a, y0b), Max(y1a, y1b));
+
+    const CompiledVectorShapeRenderEntry& shape = imageData.shapes[0];
+    const float actualMinX = shape.originX + shape.boundsMinX;
+    const float actualMaxX = shape.originX + shape.boundsMaxX;
+    const float actualMinY = shape.originY + shape.boundsMinY;
+    const float actualMaxY = shape.originY + shape.boundsMaxY;
+
+    HE_EXPECT_GE(actualMinX, expectedMinX - 0.001f);
+    HE_EXPECT_LE(actualMinX, expectedMinX + 0.001f);
+    HE_EXPECT_GE(actualMaxX, expectedMaxX - 0.001f);
+    HE_EXPECT_LE(actualMaxX, expectedMaxX + 0.001f);
+    HE_EXPECT_GE(actualMinY, expectedMinY - 0.001f);
+    HE_EXPECT_LE(actualMinY, expectedMinY + 0.001f);
+    HE_EXPECT_GE(actualMaxY, expectedMaxY - 0.001f);
+    HE_EXPECT_LE(actualMaxY, expectedMaxY + 0.001f);
 }
 
 HE_TEST(scribe, vector_image_pipeline, skips_shapes_outside_simple_clip_paths)

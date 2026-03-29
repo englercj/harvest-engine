@@ -129,6 +129,8 @@ Suggested payload groups:
 
 - lines, rects, circles, ellipses, and arcs are converted to path segments,
 - cubic paths are approximated into quadratic segments,
+- authored path/shape strokes are expanded during compile and emitted as compiled stroke layers,
+- runtime stroke command data is kept so image-level restrokes can still be generated on demand,
 - transforms are baked or normalized depending on reuse opportunities,
 - unsupported features fail with explicit diagnostics instead of silent corruption.
 

@@ -33,6 +33,13 @@ namespace he::scribe
     {
         constexpr uint32_t VertexShaderConstantCount = 20;
 
+        RetainedVectorImageShapeResourceKind GetShapeResourceKind(const RetainedVectorImageDraw& draw)
+        {
+            return ((draw.flags & RetainedVectorImageDrawFlagRuntimeRestroke) != 0)
+                ? RetainedVectorImageShapeResourceKind::RuntimeRestroke
+                : RetainedVectorImageShapeResourceKind::CompiledShape;
+        }
+
         bool CreateUploadBuffer(
             rhi::Device& device,
             rhi::Buffer*& out,
@@ -457,10 +464,12 @@ namespace he::scribe
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
-            const bool useRuntimeStroke =
-                ((draw.flags & RetainedVectorImageDrawFlagStroke) != 0)
-                && ((draw.flags & RetainedVectorImageDrawFlagUseCompiledShape) == 0);
-            const bool ok = image.TryGetPreparedShapeResource(draw.shapeIndex, useRuntimeStroke, draw.strokeStyle, *this, shapeResource);
+            const bool ok = image.TryGetPreparedShapeResource(
+                draw.shapeIndex,
+                GetShapeResourceKind(draw),
+                draw.strokeStyle,
+                *this,
+                shapeResource);
             if (!ok)
             {
                 continue;
@@ -582,10 +591,12 @@ namespace he::scribe
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
-            const bool useRuntimeStroke =
-                ((draw.flags & RetainedVectorImageDrawFlagStroke) != 0)
-                && ((draw.flags & RetainedVectorImageDrawFlagUseCompiledShape) == 0);
-            const bool ok = image.TryGetPreparedShapeResource(draw.shapeIndex, useRuntimeStroke, draw.strokeStyle, *this, shapeResource);
+            const bool ok = image.TryGetPreparedShapeResource(
+                draw.shapeIndex,
+                GetShapeResourceKind(draw),
+                draw.strokeStyle,
+                *this,
+                shapeResource);
             if (!ok)
             {
                 continue;

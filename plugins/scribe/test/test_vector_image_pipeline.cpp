@@ -952,6 +952,11 @@ HE_TEST(scribe, retained_vector_image, builds_runtime_stroke_draws_from_runtime_
             ++strokeDrawCount;
             HE_EXPECT_EQ(draw.color.x, desc.strokeColor.x);
             HE_EXPECT_GT(draw.strokeStyle.width, 0.0f);
+            HE_EXPECT((draw.flags & RetainedVectorImageDrawFlagRuntimeRestroke) != 0);
+        }
+        else
+        {
+            HE_EXPECT((draw.flags & RetainedVectorImageDrawFlagRuntimeRestroke) == 0);
         }
     }
 
@@ -997,7 +1002,7 @@ HE_TEST(scribe, retained_vector_image, builds_authored_stroke_draws_from_runtime
         if ((draw.flags & RetainedVectorImageDrawFlagStroke) != 0)
         {
             ++authoredStrokeDrawCount;
-            HE_EXPECT((draw.flags & RetainedVectorImageDrawFlagUseCompiledShape) != 0);
+            HE_EXPECT((draw.flags & RetainedVectorImageDrawFlagRuntimeRestroke) == 0);
             HE_EXPECT_GT(draw.strokeStyle.width, 0.0f);
         }
         else
@@ -1201,10 +1206,20 @@ HE_TEST(scribe, retained_vector_image, shares_one_fill_atlas_across_prepared_sha
 
     const GlyphResource* shape0 = nullptr;
     const GlyphResource* shape1 = nullptr;
-    HE_ASSERT(retainedImage.TryGetPreparedShapeResource(0, false, {}, harness.renderer, shape0));
-    HE_ASSERT(retainedImage.TryGetPreparedShapeResource(1, false, {}, harness.renderer, shape1));
+    HE_ASSERT(retainedImage.TryGetPreparedShapeResource(
+        0,
+        RetainedVectorImageShapeResourceKind::CompiledShape,
+        {},
+        harness.renderer,
+        shape0));
+    HE_ASSERT(retainedImage.TryGetPreparedShapeResource(
+        1,
+        RetainedVectorImageShapeResourceKind::CompiledShape,
+        {},
+        harness.renderer,
+        shape1));
     HE_ASSERT(shape0 != nullptr);
     HE_ASSERT(shape1 != nullptr);
     HE_EXPECT(shape0->atlas != nullptr);
-    HE_EXPECT_EQ(shape0->atlas, shape1->atlas);
+    HE_EXPECT_EQ_PTR(shape0->atlas, shape1->atlas);
 }

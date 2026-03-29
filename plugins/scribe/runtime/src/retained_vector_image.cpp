@@ -215,7 +215,10 @@ namespace he::scribe
             {
                 RetainedVectorImageDraw& stroke = m_draws.EmplaceBack();
                 stroke.shapeIndex = layer.GetShapeIndex();
-                stroke.flags = RetainedVectorImageDrawFlagStroke | RetainedVectorImageDrawFlagUseCompiledShape;
+                // Authored SVG stroke layers are compiled to immutable shapes at import time.
+                // They render through the same compiled-shape path as fills rather than going
+                // back through the runtime restroker.
+                stroke.flags = RetainedVectorImageDrawFlagStroke;
                 stroke.color = {
                     layer.GetRed(),
                     layer.GetGreen(),
@@ -235,7 +238,7 @@ namespace he::scribe
             {
                 RetainedVectorImageDraw& stroke = m_draws.EmplaceBack();
                 stroke.shapeIndex = layer.GetShapeIndex();
-                stroke.flags = RetainedVectorImageDrawFlagStroke;
+                stroke.flags = RetainedVectorImageDrawFlagStroke | RetainedVectorImageDrawFlagRuntimeRestroke;
                 stroke.color = desc.strokeColor;
                 stroke.offset = shapeOffset;
                 stroke.strokeStyle = desc.strokeStyle;
@@ -483,7 +486,7 @@ namespace he::scribe
 
     bool RetainedVectorImageModel::TryGetPreparedShapeResource(
         uint32_t shapeIndex,
-        bool runtimeStroke,
+        RetainedVectorImageShapeResourceKind resourceKind,
         const StrokeStyle& style,
         Renderer& renderer,
         const GlyphResource*& out) const
@@ -494,13 +497,13 @@ namespace he::scribe
             return false;
         }
 
-        Vector<GlyphResource>& resources = runtimeStroke
+        Vector<GlyphResource>& resources = (resourceKind == RetainedVectorImageShapeResourceKind::RuntimeRestroke)
             ? const_cast<Vector<GlyphResource>&>(m_runtimeStrokeResources)
             : const_cast<Vector<GlyphResource>&>(m_shapeResources);
         GlyphResource& resource = resources[shapeIndex];
         if (resource.atlas == nullptr)
         {
-            if (runtimeStroke)
+            if (resourceKind == RetainedVectorImageShapeResourceKind::RuntimeRestroke)
             {
                 CompiledStrokedVectorShapeResourceData shapeData{};
                 if (!BuildCompiledStrokedVectorShapeResourceData(shapeData, m_image, shapeIndex, style)

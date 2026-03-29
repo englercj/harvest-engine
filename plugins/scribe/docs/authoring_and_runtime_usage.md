@@ -23,6 +23,12 @@ This document records the current intended usage model for `he.scribe` after mil
 ## SVG Authoring Notes
 
 - Prefer explicit `nonzero` or `evenodd` fill rules when the authored result depends on them.
+- Treat authored SVG path/shape strokes as compile-time geometry. `scribe` imports them as
+  compiled stroke layers that render through the normal compiled-shape path at runtime.
+- Treat runtime image stroke overrides as a separate effect path. Those restrokes are generated
+  from the stored stroke command stream on demand and cached by the runtime.
+- Keep SVG `<text>` on the runtime text path unless the importer explicitly grows a
+  text-to-outline mode later.
 - Keep representative SVG samples small and intentional so compiler regressions are easy to
   spot in unit tests and in the test app.
 - Treat unsupported SVG features as compile-time work items, not silent fallbacks.

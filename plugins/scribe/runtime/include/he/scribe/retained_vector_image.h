@@ -9,6 +9,8 @@
 #include "he/core/vector.h"
 #include "he/math/types.h"
 
+#include <cstdint>
+
 namespace he::scribe
 {
     struct GlyphAtlas;
@@ -16,7 +18,13 @@ namespace he::scribe
     enum RetainedVectorImageDrawFlags : uint32_t
     {
         RetainedVectorImageDrawFlagStroke = 0x01u,
-        RetainedVectorImageDrawFlagUseCompiledShape = 0x02u,
+        RetainedVectorImageDrawFlagRuntimeRestroke = 0x02u,
+    };
+
+    enum class RetainedVectorImageShapeResourceKind : uint8_t
+    {
+        CompiledShape,
+        RuntimeRestroke,
     };
 
     struct RetainedVectorImageDraw
@@ -62,7 +70,12 @@ namespace he::scribe
         VectorImageResourceReader GetImage() const { return m_image; }
         Vec2f GetViewBoxSize() const { return m_viewBoxSize; }
         FontFaceHandle GetFontFaceHandle(uint32_t fontFaceIndex) const;
-        bool TryGetPreparedShapeResource(uint32_t shapeIndex, bool runtimeStroke, const StrokeStyle& style, Renderer& renderer, const GlyphResource*& out) const;
+        bool TryGetPreparedShapeResource(
+            uint32_t shapeIndex,
+            RetainedVectorImageShapeResourceKind resourceKind,
+            const StrokeStyle& style,
+            Renderer& renderer,
+            const GlyphResource*& out) const;
 
     private:
         ScribeContext* m_context{ nullptr };

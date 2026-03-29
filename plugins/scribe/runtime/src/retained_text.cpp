@@ -10,6 +10,19 @@ namespace he::scribe
 {
     namespace
     {
+        bool MatchesCachedInstance(
+            const RetainedTextInstanceDesc& a,
+            const RetainedTextInstanceDesc& b)
+        {
+            return (a.origin.x == b.origin.x)
+                && (a.origin.y == b.origin.y)
+                && (a.scale == b.scale)
+                && (a.foregroundColor.x == b.foregroundColor.x)
+                && (a.foregroundColor.y == b.foregroundColor.y)
+                && (a.foregroundColor.z == b.foregroundColor.z)
+                && (a.foregroundColor.w == b.foregroundColor.w);
+        }
+
         Vec4f ToVec4f(FontFacePaletteColor::Reader color)
         {
             return {
@@ -342,6 +355,10 @@ namespace he::scribe
         m_draws.Clear();
         m_quads.Clear();
         m_preparedGlyphs.Clear();
+        m_cachedVertices.Clear();
+        m_cachedBatches.Clear();
+        m_cachedInstance = {};
+        m_hasCachedInstance = false;
         m_estimatedVertexCount = 0;
     }
 
@@ -373,5 +390,32 @@ namespace he::scribe
     void RetainedTextModel::ClearPreparedGlyphResources() const
     {
         m_preparedGlyphs.Clear();
+    }
+
+    bool RetainedTextModel::HasCachedTransformedVertices(const RetainedTextInstanceDesc& instance) const
+    {
+        return m_hasCachedInstance
+            && MatchesCachedInstance(m_cachedInstance, instance)
+            && !m_cachedVertices.IsEmpty()
+            && !m_cachedBatches.IsEmpty();
+    }
+
+    void RetainedTextModel::SetCachedTransformedVertices(
+        const RetainedTextInstanceDesc& instance,
+        Vector<PackedGlyphVertex>&& vertices,
+        Vector<RetainedTextCachedBatch>&& batches) const
+    {
+        m_cachedInstance = instance;
+        m_cachedVertices = Move(vertices);
+        m_cachedBatches = Move(batches);
+        m_hasCachedInstance = !m_cachedVertices.IsEmpty() && !m_cachedBatches.IsEmpty();
+    }
+
+    void RetainedTextModel::ClearTransformedVertexCache() const
+    {
+        m_cachedVertices.Clear();
+        m_cachedBatches.Clear();
+        m_cachedInstance = {};
+        m_hasCachedInstance = false;
     }
 }

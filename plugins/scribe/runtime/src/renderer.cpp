@@ -233,6 +233,35 @@ namespace he::scribe
             out.col = vertexColorIsWhite ? state.premultipliedColor : MultiplyPremultiplyColor(src.col, state.color);
         }
 
+        void TransformDrawVertices(
+            PackedGlyphVertex* dst,
+            const DrawGlyphDesc& draw)
+        {
+            const GlyphTransformState transformState = BuildGlyphTransformState(draw);
+            const bool vertexColorIsWhite = draw.glyph->vertexColorIsWhite;
+            const PackedGlyphVertex* src = draw.glyph->vertices;
+            if (transformState.hasAxisAlignedTransform)
+            {
+                for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
+                {
+                    TransformVertexGeometryAxisAligned(*dst, *src, transformState);
+                    TransformVertexColor(*dst, *src, transformState, vertexColorIsWhite);
+                    ++src;
+                    ++dst;
+                }
+            }
+            else
+            {
+                for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
+                {
+                    TransformVertexGeometryGeneral(*dst, *src, transformState);
+                    TransformVertexColor(*dst, *src, transformState, vertexColorIsWhite);
+                    ++src;
+                    ++dst;
+                }
+            }
+        }
+
         PackedQuadVertex MakeQuadVertex(float x, float y, const Vec4f& color)
         {
             PackedQuadVertex vertex{};
@@ -514,6 +543,7 @@ namespace he::scribe
     bool Renderer::PrepareRetainedText(const RetainedTextModel& text)
     {
         text.ClearPreparedGlyphResources();
+        text.ClearTransformedVertexCache();
 
         const Span<const RetainedTextDraw> draws = text.GetDraws();
         for (uint32_t drawIndex = 0; drawIndex < draws.Size(); ++drawIndex)
@@ -608,7 +638,63 @@ namespace he::scribe
             m_streamVertices.Size() + text.GetEstimatedVertexCount(),
             m_batches.Size() + text.GetDrawCount());
 
+        if (text.HasCachedTransformedVertices(instance))
+        {
+            const uint32_t firstVertex = m_streamVertices.Size();
+            const Span<const PackedGlyphVertex> cachedVertices = text.GetCachedTransformedVertices();
+            if (!cachedVertices.IsEmpty())
+            {
+                m_streamVertices.Insert(m_streamVertices.Size(), cachedVertices.Data(), cachedVertices.Size());
+            }
+
+            uint32_t batchVertexStart = firstVertex;
+            for (const RetainedTextCachedBatch& cachedBatch : text.GetCachedTransformedBatches())
+            {
+                if (!cachedBatch.atlas || (cachedBatch.vertexCount == 0))
+                {
+                    continue;
+                }
+
+                if (m_glyphBatchingEnabled && !m_batches.IsEmpty() && (m_batches.Back().atlas == cachedBatch.atlas))
+                {
+                    m_batches.Back().vertexCount += cachedBatch.vertexCount;
+                }
+                else
+                {
+                    StreamBatch& batch = m_batches.EmplaceBack();
+                    batch.atlas = cachedBatch.atlas;
+                    batch.vertexStart = batchVertexStart;
+                    batch.vertexCount = cachedBatch.vertexCount;
+                }
+
+                batchVertexStart += cachedBatch.vertexCount;
+            }
+
+            for (const RetainedTextQuad& quad : text.GetQuads())
+            {
+                DrawQuadDesc desc{};
+                desc.position = {
+                    instance.origin.x + (quad.position.x * instance.scale),
+                    instance.origin.y + (quad.position.y * instance.scale)
+                };
+                desc.size = {
+                    quad.size.x * instance.scale,
+                    quad.size.y * instance.scale
+                };
+                desc.color = MultiplyColor(quad.color, instance.foregroundColor);
+                desc.basisX = quad.basisX;
+                desc.basisY = quad.basisY;
+                desc.offset = quad.offset;
+                QueueQuad(desc);
+            }
+            return;
+        }
+
         const Span<const RetainedTextDraw> draws = text.GetDraws();
+        Vector<PackedGlyphVertex> cachedVertices{};
+        cachedVertices.Reserve(text.GetEstimatedVertexCount());
+        Vector<RetainedTextCachedBatch> cachedBatches{};
+        cachedBatches.Reserve(draws.Size());
         for (uint32_t drawIndex = 0; drawIndex < draws.Size(); ++drawIndex)
         {
             const RetainedTextDraw& draw = draws[drawIndex];
@@ -641,7 +727,23 @@ namespace he::scribe
             desc.basisY = draw.basisY;
             desc.offset = draw.offset;
             QueueDraw(desc);
+
+            const uint32_t oldSize = cachedVertices.Size();
+            cachedVertices.Expand(desc.glyph->vertexCount, DefaultInit);
+            TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
+            if (m_glyphBatchingEnabled && !cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == desc.glyph->atlas))
+            {
+                cachedBatches.Back().vertexCount += desc.glyph->vertexCount;
+            }
+            else
+            {
+                RetainedTextCachedBatch& batch = cachedBatches.EmplaceBack();
+                batch.atlas = desc.glyph->atlas;
+                batch.vertexCount = desc.glyph->vertexCount;
+            }
         }
+
+        text.SetCachedTransformedVertices(instance, Move(cachedVertices), Move(cachedBatches));
 
         for (const RetainedTextQuad& quad : text.GetQuads())
         {
@@ -896,30 +998,7 @@ namespace he::scribe
 
         const uint32_t oldSize = m_streamVertices.Size();
         m_streamVertices.Expand(draw.glyph->vertexCount, DefaultInit);
-        const GlyphTransformState transformState = BuildGlyphTransformState(draw);
-        const bool vertexColorIsWhite = draw.glyph->vertexColorIsWhite;
-        const PackedGlyphVertex* src = draw.glyph->vertices;
-        PackedGlyphVertex* dst = m_streamVertices.Data() + oldSize;
-        if (transformState.hasAxisAlignedTransform)
-        {
-            for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
-            {
-                TransformVertexGeometryAxisAligned(*dst, *src, transformState);
-                TransformVertexColor(*dst, *src, transformState, vertexColorIsWhite);
-                ++src;
-                ++dst;
-            }
-        }
-        else
-        {
-            for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
-            {
-                TransformVertexGeometryGeneral(*dst, *src, transformState);
-                TransformVertexColor(*dst, *src, transformState, vertexColorIsWhite);
-                ++src;
-                ++dst;
-            }
-        }
+        TransformDrawVertices(m_streamVertices.Data() + oldSize, draw);
 
         batch->vertexCount += draw.glyph->vertexCount;
     }

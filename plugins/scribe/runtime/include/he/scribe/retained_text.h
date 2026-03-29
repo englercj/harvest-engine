@@ -57,6 +57,12 @@ namespace he::scribe
         Vec4f foregroundColor{ 1.0f, 1.0f, 1.0f, 1.0f };
     };
 
+    struct RetainedTextCachedBatch
+    {
+        const GlyphAtlas* atlas{ nullptr };
+        uint32_t vertexCount{ 0 };
+    };
+
     class RetainedTextModel
     {
     public:
@@ -74,6 +80,14 @@ namespace he::scribe
         const GlyphResource* GetPreparedGlyphResource(uint32_t drawIndex) const;
         void SetPreparedGlyphResource(uint32_t drawIndex, const GlyphResource& glyph) const;
         void ClearPreparedGlyphResources() const;
+        bool HasCachedTransformedVertices(const RetainedTextInstanceDesc& instance) const;
+        Span<const PackedGlyphVertex> GetCachedTransformedVertices() const { return m_cachedVertices; }
+        Span<const RetainedTextCachedBatch> GetCachedTransformedBatches() const { return m_cachedBatches; }
+        void SetCachedTransformedVertices(
+            const RetainedTextInstanceDesc& instance,
+            Vector<PackedGlyphVertex>&& vertices,
+            Vector<RetainedTextCachedBatch>&& batches) const;
+        void ClearTransformedVertexCache() const;
 
     private:
         ScribeContext* m_context{ nullptr };
@@ -81,6 +95,10 @@ namespace he::scribe
         Vector<RetainedTextDraw> m_draws{};
         Vector<RetainedTextQuad> m_quads{};
         mutable Vector<GlyphResource> m_preparedGlyphs{};
+        mutable Vector<PackedGlyphVertex> m_cachedVertices{};
+        mutable Vector<RetainedTextCachedBatch> m_cachedBatches{};
+        mutable RetainedTextInstanceDesc m_cachedInstance{};
+        mutable bool m_hasCachedInstance{ false };
         uint32_t m_estimatedVertexCount{ 0 };
     };
 }

@@ -368,7 +368,7 @@ namespace he::scribe
         m_batches.Clear();
         m_streamVertices.Clear();
         m_quadVertices.Clear();
-        m_frame = {};
+        m_drawPass = {};
         for (StreamBuffer& streamBuffer : m_streamBuffers)
         {
             m_device->SafeDestroy(streamBuffer.buffer);
@@ -571,7 +571,7 @@ namespace he::scribe
         resource = {};
     }
 
-    bool Renderer::BeginFrame(const FrameDesc& desc)
+    bool Renderer::BeginDraw(const DrawPassDesc& desc)
     {
         if (!HE_VERIFY(
             m_device != nullptr
@@ -584,7 +584,7 @@ namespace he::scribe
             return false;
         }
 
-        m_frame = desc;
+        m_drawPass = desc;
         m_streamBufferIndex = (m_streamBufferIndex + 1) % HE_LENGTH_OF(m_streamBuffers);
         m_batches.Clear();
         m_streamVertices.Clear();
@@ -593,7 +593,7 @@ namespace he::scribe
         return true;
     }
 
-    void Renderer::ReserveQueuedVertexCapacity(uint32_t vertexCount, uint32_t batchCount)
+    void Renderer::EnsureQueuedCapacity(uint32_t vertexCount, uint32_t batchCount)
     {
         if (vertexCount > m_streamVertices.Capacity())
         {
@@ -606,7 +606,7 @@ namespace he::scribe
         }
     }
 
-    void Renderer::QueueDraw(const DrawGlyphDesc& desc)
+    void Renderer::DrawGlyph(const DrawGlyphDesc& desc)
     {
         if (!desc.glyph || !desc.glyph->atlas || (desc.glyph->vertexCount == 0))
         {
@@ -616,14 +616,14 @@ namespace he::scribe
         AppendDrawVertices(desc);
     }
 
-    void Renderer::QueueQuad(const DrawQuadDesc& desc)
+    void Renderer::DrawQuad(const DrawQuadDesc& desc)
     {
         AppendQuadVertices(m_quadVertices, desc);
     }
 
-    void Renderer::QueueRetainedText(const RetainedTextModel& text)
+    void Renderer::DrawText(const RetainedTextModel& text)
     {
-        ReserveQueuedVertexCapacity(
+        EnsureQueuedCapacity(
             m_streamVertices.Size() + text.GetEstimatedVertexCount(),
             m_batches.Size() + text.GetDrawCount());
 
@@ -673,9 +673,9 @@ namespace he::scribe
         }
     }
 
-    void Renderer::QueueRetainedVectorImage(const RetainedVectorImageModel& image)
+    void Renderer::DrawImage(const RetainedVectorImageModel& image)
     {
-        ReserveQueuedVertexCapacity(
+        EnsureQueuedCapacity(
             m_streamVertices.Size() + image.GetEstimatedVertexCount(),
             m_batches.Size() + image.GetDrawCount());
 
@@ -720,29 +720,29 @@ namespace he::scribe
         }
     }
 
-    void Renderer::EndFrame()
+    void Renderer::EndDraw()
     {
-        if (!m_frame.cmdList || !m_frame.targetView)
+        if (!m_drawPass.cmdList || !m_drawPass.targetView)
         {
             return;
         }
 
         rhi::ColorAttachment colorAttachment{};
-        colorAttachment.action.load = m_frame.clearTarget ? rhi::LoadOp::Clear : rhi::LoadOp::Load;
+        colorAttachment.action.load = m_drawPass.clearTarget ? rhi::LoadOp::Clear : rhi::LoadOp::Load;
         colorAttachment.action.store = rhi::StoreOp::Store;
-        colorAttachment.action.clearValue = m_frame.clearColor;
-        colorAttachment.view = m_frame.targetView;
-        colorAttachment.state = m_frame.targetState;
+        colorAttachment.action.clearValue = m_drawPass.clearColor;
+        colorAttachment.view = m_drawPass.targetView;
+        colorAttachment.state = m_drawPass.targetState;
 
         rhi::RenderPassDesc passDesc{};
         passDesc.colorAttachmentCount = 1;
         passDesc.colorAttachments = &colorAttachment;
 
-        m_frame.cmdList->BeginRenderPass(passDesc);
+        m_drawPass.cmdList->BeginRenderPass(passDesc);
 
-        if (m_frame.gpuTimer.querySet && m_frame.gpuTimer.resolveBuffer)
+        if (m_drawPass.gpuTimer.querySet && m_drawPass.gpuTimer.resolveBuffer)
         {
-            m_frame.cmdList->WriteTimestamp(m_frame.gpuTimer.querySet, m_frame.gpuTimer.startQueryIndex);
+            m_drawPass.cmdList->WriteTimestamp(m_drawPass.gpuTimer.querySet, m_drawPass.gpuTimer.startQueryIndex);
         }
 
         if (!m_streamVertices.IsEmpty())
@@ -750,16 +750,16 @@ namespace he::scribe
             rhi::Viewport viewport{};
             viewport.x = 0.0f;
             viewport.y = 0.0f;
-            viewport.width = static_cast<float>(m_frame.targetSize.x);
-            viewport.height = static_cast<float>(m_frame.targetSize.y);
+            viewport.width = static_cast<float>(m_drawPass.targetSize.x);
+            viewport.height = static_cast<float>(m_drawPass.targetSize.y);
             viewport.minZ = 0.0f;
             viewport.maxZ = 1.0f;
 
-            m_frame.cmdList->SetViewport(viewport);
-            m_frame.cmdList->SetScissor({ 0, 0 }, m_frame.targetSize);
-            m_frame.cmdList->SetRenderRootSignature(m_rootSignature);
-            m_frame.cmdList->SetRenderPipeline(m_pipeline);
-            m_frame.cmdList->SetBlendColor({ 0, 0, 0, 0 });
+            m_drawPass.cmdList->SetViewport(viewport);
+            m_drawPass.cmdList->SetScissor({ 0, 0 }, m_drawPass.targetSize);
+            m_drawPass.cmdList->SetRenderRootSignature(m_rootSignature);
+            m_drawPass.cmdList->SetRenderPipeline(m_pipeline);
+            m_drawPass.cmdList->SetBlendColor({ 0, 0, 0, 0 });
 
             StreamBuffer& streamBuffer = m_streamBuffers[m_streamBufferIndex];
             const uint32_t vertexDataSize = m_streamVertices.Size() * sizeof(PackedGlyphVertex);
@@ -776,21 +776,21 @@ namespace he::scribe
                     m_device->Unmap(streamBuffer.buffer);
 
                     float constants[VertexShaderConstantCount]{};
-                    BuildFrameConstants(constants, m_frame.targetSize, m_frame.viewTransform);
-                    m_frame.cmdList->SetVertexBuffer(0, m_vertexBufferFormat, streamBuffer.buffer, 0, vertexDataSize);
-                    m_frame.cmdList->SetRender32BitConstantValues(0, constants, VertexShaderConstantCount);
+                    BuildFrameConstants(constants, m_drawPass.targetSize, m_drawPass.viewTransform);
+                    m_drawPass.cmdList->SetVertexBuffer(0, m_vertexBufferFormat, streamBuffer.buffer, 0, vertexDataSize);
+                    m_drawPass.cmdList->SetRender32BitConstantValues(0, constants, VertexShaderConstantCount);
                     m_lastSubmittedDrawCount = m_batches.Size();
 
                     for (const StreamBatch& batch : m_batches)
                     {
-                        m_frame.cmdList->SetRenderDescriptorTable(1, batch.atlas->descriptorTable);
+                        m_drawPass.cmdList->SetRenderDescriptorTable(1, batch.atlas->descriptorTable);
 
                         rhi::DrawDesc desc{};
                         desc.vertexCount = batch.vertexCount;
                         desc.instanceCount = 1;
                         desc.vertexStart = batch.vertexStart;
                         desc.baseInstance = 0;
-                        m_frame.cmdList->Draw(desc);
+                        m_drawPass.cmdList->Draw(desc);
                     }
                 }
             }
@@ -813,43 +813,43 @@ namespace he::scribe
                     m_device->Unmap(quadStreamBuffer.buffer);
 
                     float constants[VertexShaderConstantCount]{};
-                    BuildFrameConstants(constants, m_frame.targetSize, m_frame.viewTransform);
-                    m_frame.cmdList->SetRenderRootSignature(m_quadRootSignature);
-                    m_frame.cmdList->SetRenderPipeline(m_quadPipeline);
-                    m_frame.cmdList->SetRender32BitConstantValues(0, constants, VertexShaderConstantCount);
-                    m_frame.cmdList->SetVertexBuffer(0, m_quadVertexBufferFormat, quadStreamBuffer.buffer, 0, quadVertexDataSize);
+                    BuildFrameConstants(constants, m_drawPass.targetSize, m_drawPass.viewTransform);
+                    m_drawPass.cmdList->SetRenderRootSignature(m_quadRootSignature);
+                    m_drawPass.cmdList->SetRenderPipeline(m_quadPipeline);
+                    m_drawPass.cmdList->SetRender32BitConstantValues(0, constants, VertexShaderConstantCount);
+                    m_drawPass.cmdList->SetVertexBuffer(0, m_quadVertexBufferFormat, quadStreamBuffer.buffer, 0, quadVertexDataSize);
 
                     rhi::DrawDesc desc{};
                     desc.vertexCount = m_quadVertices.Size();
                     desc.instanceCount = 1;
                     desc.vertexStart = 0;
                     desc.baseInstance = 0;
-                    m_frame.cmdList->Draw(desc);
+                    m_drawPass.cmdList->Draw(desc);
                     ++m_lastSubmittedDrawCount;
                 }
             }
         }
 
-        if (m_frame.gpuTimer.querySet && m_frame.gpuTimer.resolveBuffer)
+        if (m_drawPass.gpuTimer.querySet && m_drawPass.gpuTimer.resolveBuffer)
         {
-            m_frame.cmdList->WriteTimestamp(m_frame.gpuTimer.querySet, m_frame.gpuTimer.endQueryIndex);
+            m_drawPass.cmdList->WriteTimestamp(m_drawPass.gpuTimer.querySet, m_drawPass.gpuTimer.endQueryIndex);
         }
 
-        m_frame.cmdList->EndRenderPass();
+        m_drawPass.cmdList->EndRenderPass();
 
-        if (m_frame.gpuTimer.querySet && m_frame.gpuTimer.resolveBuffer)
+        if (m_drawPass.gpuTimer.querySet && m_drawPass.gpuTimer.resolveBuffer)
         {
-            const uint32_t firstQueryIndex = Min(m_frame.gpuTimer.startQueryIndex, m_frame.gpuTimer.endQueryIndex);
-            const uint32_t lastQueryIndex = Max(m_frame.gpuTimer.startQueryIndex, m_frame.gpuTimer.endQueryIndex);
-            m_frame.cmdList->ResolveTimestamps(
-                m_frame.gpuTimer.querySet,
+            const uint32_t firstQueryIndex = Min(m_drawPass.gpuTimer.startQueryIndex, m_drawPass.gpuTimer.endQueryIndex);
+            const uint32_t lastQueryIndex = Max(m_drawPass.gpuTimer.startQueryIndex, m_drawPass.gpuTimer.endQueryIndex);
+            m_drawPass.cmdList->ResolveTimestamps(
+                m_drawPass.gpuTimer.querySet,
                 firstQueryIndex,
                 (lastQueryIndex - firstQueryIndex) + 1,
-                m_frame.gpuTimer.resolveBuffer,
-                m_frame.gpuTimer.resolveBufferOffset);
+                m_drawPass.gpuTimer.resolveBuffer,
+                m_drawPass.gpuTimer.resolveBufferOffset);
         }
 
-        m_frame = {};
+        m_drawPass = {};
         m_batches.Clear();
         m_streamVertices.Clear();
         m_quadVertices.Clear();

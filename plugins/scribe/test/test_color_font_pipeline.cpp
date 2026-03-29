@@ -1739,7 +1739,7 @@ HE_TEST(scribe, retained_text, prepares_with_renderer_after_temporary_face_span_
 
     NullRendererHarness harness;
     HE_ASSERT(harness.Initialize());
-    harness.renderer.QueueRetainedText(retainedText);
+    harness.renderer.DrawText(retainedText);
 }
 
 HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_face_span_expires)
@@ -1793,7 +1793,7 @@ HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_fac
 
     NullRendererHarness harness;
     HE_ASSERT(harness.Initialize());
-    harness.renderer.QueueRetainedText(retainedText);
+    harness.renderer.DrawText(retainedText);
 }
 
 HE_TEST(scribe, renderer_frame_constants, identity_view_matches_screen_projection)
@@ -1869,7 +1869,7 @@ HE_TEST(scribe, retained_text, transformed_vertex_cache_is_reused_when_only_fram
     retainedText.SetScale(1.0f);
     retainedText.SetForegroundColor({ 0.1f, 0.2f, 0.3f, 1.0f });
 
-    harness.renderer.QueueRetainedText(retainedText);
+    harness.renderer.DrawText(retainedText);
     HE_EXPECT_GT(retainedText.GetCachedVertexCount(), 0u);
     HE_EXPECT_GT(retainedText.GetCachedBatchCount(), 0u);
     const uint32_t cacheGeneration = retainedText.GetGeometryCacheGeneration();
@@ -1883,13 +1883,13 @@ HE_TEST(scribe, retained_text, transformed_vertex_cache_is_reused_when_only_fram
     BuildFrameConstants(constantsB, { 640u, 480u }, viewB);
     HE_EXPECT_NE(constantsA[3], constantsB[3]);
 
-    harness.renderer.QueueRetainedText(retainedText);
+    harness.renderer.DrawText(retainedText);
     HE_EXPECT_EQ(retainedText.GetGeometryCacheGeneration(), cacheGeneration);
 
     retainedText.SetOrigin({ 112.0f, 24.0f });
     HE_EXPECT_EQ(retainedText.GetCachedVertexCount(), 0u);
     HE_EXPECT_EQ(retainedText.GetCachedBatchCount(), 0u);
-    harness.renderer.QueueRetainedText(retainedText);
+    harness.renderer.DrawText(retainedText);
     HE_EXPECT_GT(retainedText.GetCachedVertexCount(), 0u);
     HE_EXPECT_GT(retainedText.GetCachedBatchCount(), 0u);
     HE_EXPECT_GT(retainedText.GetGeometryCacheGeneration(), cacheGeneration);

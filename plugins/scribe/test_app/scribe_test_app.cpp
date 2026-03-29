@@ -972,41 +972,39 @@ namespace he
         AlignTextOriginLeftEdgeX(titleOrigin, m_retainedTitleText, m_titleLayout);
         AlignTextOriginLeftEdgeX(bodyOrigin, m_retainedBodyText, m_bodyLayout);
 
-        scribe::FrameDesc sceneFrameDesc{};
-        sceneFrameDesc.cmdList = m_render.cmdList;
-        sceneFrameDesc.targetView = m_render.presentTarget.renderTargetView;
-        sceneFrameDesc.targetState = rhi::TextureState::Present;
-        sceneFrameDesc.targetSize = {
+        scribe::DrawPassDesc sceneDrawPassDesc{};
+        sceneDrawPassDesc.cmdList = m_render.cmdList;
+        sceneDrawPassDesc.targetView = m_render.presentTarget.renderTargetView;
+        sceneDrawPassDesc.targetState = rhi::TextureState::Present;
+        sceneDrawPassDesc.targetSize = {
             static_cast<uint32_t>(Max(m_view->GetSize().x, 0)),
             static_cast<uint32_t>(Max(m_view->GetSize().y, 0))
         };
-        sceneFrameDesc.viewTransform.position = m_scenePan;
-        sceneFrameDesc.viewTransform.scale = { m_sceneZoom, m_sceneZoom };
-        sceneFrameDesc.clearTarget = true;
-        sceneFrameDesc.clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-        sceneFrameDesc.gpuTimer.querySet = m_render.frames[m_render.frameIndex].gpuTimerQueries;
-        sceneFrameDesc.gpuTimer.resolveBuffer = m_render.frames[m_render.frameIndex].gpuTimerReadback;
+        sceneDrawPassDesc.viewTransform.position = m_scenePan;
+        sceneDrawPassDesc.viewTransform.scale = { m_sceneZoom, m_sceneZoom };
+        sceneDrawPassDesc.clearTarget = true;
+        sceneDrawPassDesc.clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        sceneDrawPassDesc.gpuTimer.querySet = m_render.frames[m_render.frameIndex].gpuTimerQueries;
+        sceneDrawPassDesc.gpuTimer.resolveBuffer = m_render.frames[m_render.frameIndex].gpuTimerReadback;
 
-        if (!m_renderer.BeginFrame(sceneFrameDesc))
+        if (!m_renderer.BeginDraw(sceneDrawPassDesc))
         {
             EndFrame();
             return;
         }
 
-        m_renderer.ReserveQueuedVertexCapacity(m_sceneVertexEstimate + (m_hasCaret ? m_caretGlyph.vertexCount : 0));
-
         if (!m_retainedTitleText.IsEmpty())
         {
             m_retainedTitleText.SetOrigin(titleOrigin);
             m_retainedTitleText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
-            m_renderer.QueueRetainedText(m_retainedTitleText);
+            m_renderer.DrawText(m_retainedTitleText);
         }
 
         if (!m_retainedBodyText.IsEmpty())
         {
             m_retainedBodyText.SetOrigin(bodyOrigin);
             m_retainedBodyText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
-            m_renderer.QueueRetainedText(m_retainedBodyText);
+            m_renderer.DrawText(m_retainedBodyText);
         }
 
         for (SceneTextBlock& block : m_sceneBlocks)
@@ -1018,7 +1016,7 @@ namespace he
 
             block.retainedText.SetOrigin(GetSceneBlockRenderOrigin(block));
             block.retainedText.SetForegroundColor(block.color);
-            m_renderer.QueueRetainedText(block.retainedText);
+            m_renderer.DrawText(block.retainedText);
         }
 
         for (SceneVectorImageBlock& block : m_sceneImages)
@@ -1030,48 +1028,46 @@ namespace he
 
             block.retainedImage.SetOrigin(GetSceneImageRenderOrigin(block));
             block.retainedImage.SetScale(block.scale);
-            m_renderer.QueueRetainedVectorImage(block.retainedImage);
+            m_renderer.DrawImage(block.retainedImage);
         }
 
         QueueCaret();
-        m_renderer.EndFrame();
+        m_renderer.EndDraw();
         const uint32_t sceneDrawCount = m_renderer.GetLastSubmittedDrawCount();
 
-        scribe::FrameDesc overlayFrameDesc{};
-        overlayFrameDesc.cmdList = m_render.cmdList;
-        overlayFrameDesc.targetView = m_render.presentTarget.renderTargetView;
-        overlayFrameDesc.targetState = rhi::TextureState::RenderTarget;
-        overlayFrameDesc.targetSize = sceneFrameDesc.targetSize;
-        overlayFrameDesc.clearTarget = false;
-        overlayFrameDesc.clearColor = sceneFrameDesc.clearColor;
+        scribe::DrawPassDesc overlayDrawPassDesc{};
+        overlayDrawPassDesc.cmdList = m_render.cmdList;
+        overlayDrawPassDesc.targetView = m_render.presentTarget.renderTargetView;
+        overlayDrawPassDesc.targetState = rhi::TextureState::RenderTarget;
+        overlayDrawPassDesc.targetSize = sceneDrawPassDesc.targetSize;
+        overlayDrawPassDesc.clearTarget = false;
+        overlayDrawPassDesc.clearColor = sceneDrawPassDesc.clearColor;
 
-        if (!m_renderer.BeginFrame(overlayFrameDesc))
+        if (!m_renderer.BeginDraw(overlayDrawPassDesc))
         {
             EndFrame();
             return;
         }
 
-        m_renderer.ReserveQueuedVertexCapacity(m_overlayVertexEstimate);
-
         if (!m_retainedSceneStatsText.IsEmpty())
         {
             m_retainedSceneStatsText.SetOrigin(m_sceneStatsOrigin);
             m_retainedSceneStatsText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
-            m_renderer.QueueRetainedText(m_retainedSceneStatsText);
+            m_renderer.DrawText(m_retainedSceneStatsText);
         }
 
         if (!m_retainedRenderStatsText.IsEmpty())
         {
             m_retainedRenderStatsText.SetOrigin(m_renderStatsOrigin);
             m_retainedRenderStatsText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
-            m_renderer.QueueRetainedText(m_retainedRenderStatsText);
+            m_renderer.DrawText(m_retainedRenderStatsText);
         }
 
         if (!m_retainedInputHintsText.IsEmpty())
         {
             m_retainedInputHintsText.SetOrigin(m_inputHintsOrigin);
             m_retainedInputHintsText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
-            m_renderer.QueueRetainedText(m_retainedInputHintsText);
+            m_renderer.DrawText(m_retainedInputHintsText);
         }
 
         for (uint32_t i = 0; i < GpuGraphTickCount; ++i)
@@ -1080,7 +1076,7 @@ namespace he
             {
                 m_retainedGpuGraphLabels[i].SetOrigin(m_gpuGraphLabelOrigins[i]);
                 m_retainedGpuGraphLabels[i].SetForegroundColor({ 0.35f, 0.35f, 0.35f, 1.0f });
-                m_renderer.QueueRetainedText(m_retainedGpuGraphLabels[i]);
+                m_renderer.DrawText(m_retainedGpuGraphLabels[i]);
             }
         }
 
@@ -1092,7 +1088,7 @@ namespace he
                 desc.position = { x, y };
                 desc.size = { width, height };
                 desc.color = color;
-                m_renderer.QueueQuad(desc);
+                m_renderer.DrawQuad(desc);
             };
 
             const float graphX = m_gpuGraphOrigin.x;
@@ -1167,12 +1163,12 @@ namespace he
                     desc.color = { 0.10f, 0.45f, 0.90f, 1.0f };
                     desc.basisX = { dx * invLen, dy * invLen };
                     desc.basisY = { nx, ny };
-                    m_renderer.QueueQuad(desc);
+                    m_renderer.DrawQuad(desc);
                 }
             }
         }
 
-        m_renderer.EndFrame();
+        m_renderer.EndDraw();
         EndFrame();
         m_lastDrawCount = sceneDrawCount + m_renderer.GetLastSubmittedDrawCount();
     }
@@ -2936,7 +2932,7 @@ namespace he
         };
         desc.size = { 2.0f, Max(line.height, 1.0f) };
         desc.color = { 0.0f, 0.0f, 0.0f, 1.0f };
-        m_renderer.QueueDraw(desc);
+        m_renderer.DrawGlyph(desc);
     }
 
     void ScribeTestApp::UpdateSceneTitle()

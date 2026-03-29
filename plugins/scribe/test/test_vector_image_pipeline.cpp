@@ -1181,7 +1181,7 @@ HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_im
 
     NullRendererHarness harness;
     HE_ASSERT(harness.Initialize());
-    harness.renderer.QueueRetainedVectorImage(retainedImage);
+    harness.renderer.DrawImage(retainedImage);
 }
 
 HE_TEST(scribe, retained_vector_image, shares_one_fill_atlas_across_prepared_shapes)
@@ -1240,18 +1240,18 @@ HE_TEST(scribe, retained_vector_image, transformed_vertex_cache_is_reused_for_sa
     retainedImage.SetScale(1.25f);
     retainedImage.SetTint({ 0.8f, 0.7f, 0.6f, 1.0f });
 
-    harness.renderer.QueueRetainedVectorImage(retainedImage);
+    harness.renderer.DrawImage(retainedImage);
     HE_EXPECT_GT(retainedImage.GetCachedVertexCount(), 0u);
     HE_EXPECT_GT(retainedImage.GetCachedBatchCount(), 0u);
     const uint32_t cacheGeneration = retainedImage.GetGeometryCacheGeneration();
 
-    harness.renderer.QueueRetainedVectorImage(retainedImage);
+    harness.renderer.DrawImage(retainedImage);
     HE_EXPECT_EQ(retainedImage.GetGeometryCacheGeneration(), cacheGeneration);
 
     retainedImage.SetScale(0.75f);
     HE_EXPECT_EQ(retainedImage.GetCachedVertexCount(), 0u);
     HE_EXPECT_EQ(retainedImage.GetCachedBatchCount(), 0u);
-    harness.renderer.QueueRetainedVectorImage(retainedImage);
+    harness.renderer.DrawImage(retainedImage);
     HE_EXPECT_GT(retainedImage.GetCachedVertexCount(), 0u);
     HE_EXPECT_GT(retainedImage.GetCachedBatchCount(), 0u);
     HE_EXPECT_GT(retainedImage.GetGeometryCacheGeneration(), cacheGeneration);

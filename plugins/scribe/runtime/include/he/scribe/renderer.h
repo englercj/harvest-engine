@@ -64,7 +64,7 @@ namespace he::scribe
         float skewX{ 0.0f };
     };
 
-    struct FrameDesc
+    struct DrawPassDesc
     {
         struct GpuTimerDesc
         {
@@ -137,16 +137,16 @@ namespace he::scribe
         bool CreateDebugGlyphResource(GlyphResource& out);
         void DestroyGlyphResource(GlyphResource& resource);
 
-        bool BeginFrame(const FrameDesc& desc);
         void SetGlyphBatchingEnabled(bool enabled) { m_glyphBatchingEnabled = enabled; }
         bool IsGlyphBatchingEnabled() const { return m_glyphBatchingEnabled; }
-        void ReserveQueuedVertexCapacity(uint32_t vertexCount, uint32_t batchCount = 0);
-        void QueueDraw(const DrawGlyphDesc& desc);
-        void QueueQuad(const DrawQuadDesc& desc);
-        void QueueRetainedText(const RetainedTextModel& text);
-        void QueueRetainedVectorImage(const RetainedVectorImageModel& image);
-        void EndFrame();
         uint32_t GetLastSubmittedDrawCount() const { return m_lastSubmittedDrawCount; }
+
+        bool BeginDraw(const DrawPassDesc& desc);
+        void DrawGlyph(const DrawGlyphDesc& desc);
+        void DrawQuad(const DrawQuadDesc& desc);
+        void DrawText(const RetainedTextModel& text);
+        void DrawImage(const RetainedVectorImageModel& image);
+        void EndDraw();
 
     private:
         struct StreamBatch
@@ -167,6 +167,7 @@ namespace he::scribe
             const TextureDataDesc& curveTexture,
             const TextureDataDesc& bandTexture);
         void ReleaseAtlas(GlyphAtlas*& atlas);
+        void EnsureQueuedCapacity(uint32_t vertexCount, uint32_t batchCount = 0);
         bool EnsureStreamBufferCapacity(StreamBuffer& streamBuffer, uint32_t minSize, uint32_t stride, const char* name);
         bool CreateDeviceResources();
         void DestroyDeviceResources();
@@ -182,7 +183,7 @@ namespace he::scribe
         rhi::VertexBufferFormat* m_quadVertexBufferFormat{ nullptr };
         rhi::RenderPipeline* m_quadPipeline{ nullptr };
         rhi::Format m_targetFormat{ rhi::Format::Invalid };
-        FrameDesc m_frame{};
+        DrawPassDesc m_drawPass{};
         StreamBuffer m_streamBuffers[rhi::MaxFrameCount]{};
         StreamBuffer m_quadStreamBuffers[rhi::MaxFrameCount]{};
         uint32_t m_streamBufferIndex{ 0 };

@@ -1183,8 +1183,7 @@ HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_im
     HE_ASSERT(harness.Initialize());
     HE_EXPECT(harness.renderer.PrepareRetainedVectorImage(retainedImage));
 
-    RetainedVectorImageInstanceDesc instance{};
-    harness.renderer.QueueRetainedVectorImage(retainedImage, instance);
+    harness.renderer.QueueRetainedVectorImage(retainedImage);
 }
 
 HE_TEST(scribe, retained_vector_image, shares_one_fill_atlas_across_prepared_shapes)
@@ -1241,23 +1240,21 @@ HE_TEST(scribe, retained_vector_image, transformed_vertex_cache_is_reused_for_sa
     HE_ASSERT(retainedImage.Build(desc));
     HE_ASSERT(harness.renderer.PrepareRetainedVectorImage(retainedImage));
 
-    RetainedVectorImageInstanceDesc instance{};
-    instance.origin = { 16.0f, 18.0f };
-    instance.scale = 1.25f;
-    instance.tint = { 0.8f, 0.7f, 0.6f, 1.0f };
+    retainedImage.SetOrigin({ 16.0f, 18.0f });
+    retainedImage.SetScale(1.25f);
+    retainedImage.SetTint({ 0.8f, 0.7f, 0.6f, 1.0f });
 
-    harness.renderer.QueueRetainedVectorImage(retainedImage, instance);
-    HE_EXPECT(retainedImage.HasCachedTransformedVertices(instance));
+    harness.renderer.QueueRetainedVectorImage(retainedImage);
+    HE_EXPECT(retainedImage.HasCachedTransformedVertices());
     const PackedGlyphVertex* cachedVertices = retainedImage.GetCachedTransformedVertices().Data();
     const RetainedVectorImageCachedBatch* cachedBatches = retainedImage.GetCachedTransformedBatches().Data();
 
-    harness.renderer.QueueRetainedVectorImage(retainedImage, instance);
+    harness.renderer.QueueRetainedVectorImage(retainedImage);
     HE_EXPECT_EQ_PTR(retainedImage.GetCachedTransformedVertices().Data(), cachedVertices);
     HE_EXPECT_EQ_PTR(retainedImage.GetCachedTransformedBatches().Data(), cachedBatches);
 
-    RetainedVectorImageInstanceDesc scaledInstance = instance;
-    scaledInstance.scale = 0.75f;
-    harness.renderer.QueueRetainedVectorImage(retainedImage, scaledInstance);
-    HE_EXPECT(!retainedImage.HasCachedTransformedVertices(instance));
-    HE_EXPECT(retainedImage.HasCachedTransformedVertices(scaledInstance));
+    retainedImage.SetScale(0.75f);
+    HE_EXPECT(!retainedImage.HasCachedTransformedVertices());
+    harness.renderer.QueueRetainedVectorImage(retainedImage);
+    HE_EXPECT(retainedImage.HasCachedTransformedVertices());
 }

@@ -10,17 +10,12 @@ namespace he::scribe
 {
     namespace
     {
-        bool MatchesCachedInstance(
-            const RetainedTextInstanceDesc& a,
-            const RetainedTextInstanceDesc& b)
+        bool EqualColor(const Vec4f& a, const Vec4f& b)
         {
-            return (a.origin.x == b.origin.x)
-                && (a.origin.y == b.origin.y)
-                && (a.scale == b.scale)
-                && (a.foregroundColor.x == b.foregroundColor.x)
-                && (a.foregroundColor.y == b.foregroundColor.y)
-                && (a.foregroundColor.z == b.foregroundColor.z)
-                && (a.foregroundColor.w == b.foregroundColor.w);
+            return (a.x == b.x)
+                && (a.y == b.y)
+                && (a.z == b.z)
+                && (a.w == b.w);
         }
 
         Vec4f ToVec4f(FontFacePaletteColor::Reader color)
@@ -41,6 +36,48 @@ namespace he::scribe
                 a.z * b.z,
                 a.w * b.w
             };
+        }
+
+        DrawGlyphDesc BuildDrawDesc(
+            const RetainedTextModel& model,
+            const RetainedTextDraw& draw,
+            const GlyphResource& glyph)
+        {
+            DrawGlyphDesc desc{};
+            desc.glyph = &glyph;
+            desc.position = {
+                model.GetOrigin().x + (draw.position.x * model.GetScale()),
+                model.GetOrigin().y + (draw.position.y * model.GetScale())
+            };
+            desc.size = {
+                draw.size.x * model.GetScale(),
+                draw.size.y * model.GetScale()
+            };
+            desc.color = (draw.flags & RetainedTextDrawFlagUseForegroundColor) != 0
+                ? MultiplyColor(model.GetForegroundColor(), draw.color)
+                : draw.color;
+            desc.basisX = draw.basisX;
+            desc.basisY = draw.basisY;
+            desc.offset = draw.offset;
+            return desc;
+        }
+
+        DrawQuadDesc BuildQuadDesc(const RetainedTextModel& model, const RetainedTextQuad& quad)
+        {
+            DrawQuadDesc desc{};
+            desc.position = {
+                model.GetOrigin().x + (quad.position.x * model.GetScale()),
+                model.GetOrigin().y + (quad.position.y * model.GetScale())
+            };
+            desc.size = {
+                quad.size.x * model.GetScale(),
+                quad.size.y * model.GetScale()
+            };
+            desc.color = MultiplyColor(quad.color, model.GetForegroundColor());
+            desc.basisX = quad.basisX;
+            desc.basisY = quad.basisY;
+            desc.offset = quad.offset;
+            return desc;
         }
 
         bool IsWhiteColor(const Vec4f& color)
@@ -354,12 +391,49 @@ namespace he::scribe
         m_fontFaces.Clear();
         m_draws.Clear();
         m_quads.Clear();
+        m_origin = {};
+        m_scale = 1.0f;
+        m_foregroundColor = { 1.0f, 1.0f, 1.0f, 1.0f };
         m_preparedGlyphs.Clear();
         m_cachedVertices.Clear();
         m_cachedBatches.Clear();
-        m_cachedInstance = {};
-        m_hasCachedInstance = false;
+        m_cachedQuadVertices.Clear();
+        m_hasCachedGeometry = false;
+        m_hasCachedColor = false;
         m_estimatedVertexCount = 0;
+    }
+
+    void RetainedTextModel::SetOrigin(const Vec2f& origin)
+    {
+        if ((m_origin.x == origin.x) && (m_origin.y == origin.y))
+        {
+            return;
+        }
+
+        m_origin = origin;
+        InvalidateGeometry();
+    }
+
+    void RetainedTextModel::SetScale(float scale)
+    {
+        if (m_scale == scale)
+        {
+            return;
+        }
+
+        m_scale = scale;
+        InvalidateGeometry();
+    }
+
+    void RetainedTextModel::SetForegroundColor(const Vec4f& color)
+    {
+        if (EqualColor(m_foregroundColor, color))
+        {
+            return;
+        }
+
+        m_foregroundColor = color;
+        InvalidateColor();
     }
 
     FontFaceHandle RetainedTextModel::GetFontFaceHandle(uint32_t fontFaceIndex) const
@@ -390,32 +464,157 @@ namespace he::scribe
     void RetainedTextModel::ClearPreparedGlyphResources() const
     {
         m_preparedGlyphs.Clear();
+        InvalidateGeometry();
     }
 
-    bool RetainedTextModel::HasCachedTransformedVertices(const RetainedTextInstanceDesc& instance) const
+    bool RetainedTextModel::UpdateRenderData() const
     {
-        return m_hasCachedInstance
-            && MatchesCachedInstance(m_cachedInstance, instance)
-            && !m_cachedVertices.IsEmpty()
-            && !m_cachedBatches.IsEmpty();
+        if (m_context == nullptr)
+        {
+            return false;
+        }
+
+        const Span<const RetainedTextDraw> draws = m_draws;
+        if (m_preparedGlyphs.Size() < draws.Size())
+        {
+            m_preparedGlyphs.Resize(draws.Size(), DefaultInit);
+        }
+
+        bool preparedAny = false;
+        for (uint32_t drawIndex = 0; drawIndex < draws.Size(); ++drawIndex)
+        {
+            const RetainedTextDraw& draw = draws[drawIndex];
+            if (m_preparedGlyphs[drawIndex].atlas != nullptr)
+            {
+                preparedAny = true;
+                continue;
+            }
+
+            const GlyphResource* glyphResource = nullptr;
+            const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
+                ? m_context->TryGetStrokedGlyphResource(GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
+                : m_context->TryGetGlyphResource(GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
+            if (!ok || (glyphResource == nullptr))
+            {
+                continue;
+            }
+
+            m_preparedGlyphs[drawIndex] = *glyphResource;
+            preparedAny = true;
+        }
+
+        if (!preparedAny && m_quads.IsEmpty())
+        {
+            return false;
+        }
+
+        if (!m_hasCachedGeometry)
+        {
+            Vector<PackedGlyphVertex> cachedVertices{};
+            cachedVertices.Reserve(m_estimatedVertexCount);
+            Vector<RetainedTextCachedBatch> cachedBatches{};
+            cachedBatches.Reserve(draws.Size());
+            for (uint32_t drawIndex = 0; drawIndex < draws.Size(); ++drawIndex)
+            {
+                const GlyphResource* glyphResource = GetPreparedGlyphResource(drawIndex);
+                if (glyphResource == nullptr)
+                {
+                    continue;
+                }
+
+                const DrawGlyphDesc desc = BuildDrawDesc(*this, draws[drawIndex], *glyphResource);
+                const uint32_t oldSize = cachedVertices.Size();
+                cachedVertices.Expand(glyphResource->vertexCount, DefaultInit);
+                TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
+                if (!cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == glyphResource->atlas))
+                {
+                    cachedBatches.Back().vertexCount += glyphResource->vertexCount;
+                }
+                else
+                {
+                    RetainedTextCachedBatch& batch = cachedBatches.EmplaceBack();
+                    batch.atlas = glyphResource->atlas;
+                    batch.vertexCount = glyphResource->vertexCount;
+                }
+            }
+
+            Vector<PackedQuadVertex> cachedQuadVertices{};
+            cachedQuadVertices.Reserve(m_quads.Size() * 6u);
+            for (const RetainedTextQuad& quad : m_quads)
+            {
+                AppendQuadVertices(cachedQuadVertices, BuildQuadDesc(*this, quad));
+            }
+
+            SetCachedTransformedVertices(Move(cachedVertices), Move(cachedBatches), Move(cachedQuadVertices));
+            return true;
+        }
+
+        if (!m_hasCachedColor)
+        {
+            uint32_t vertexOffset = 0;
+            for (uint32_t drawIndex = 0; drawIndex < draws.Size(); ++drawIndex)
+            {
+                const GlyphResource* glyphResource = GetPreparedGlyphResource(drawIndex);
+                if (glyphResource == nullptr)
+                {
+                    continue;
+                }
+
+                const DrawGlyphDesc desc = BuildDrawDesc(*this, draws[drawIndex], *glyphResource);
+                UpdateDrawVertexColors(m_cachedVertices.Data() + vertexOffset, desc);
+                vertexOffset += glyphResource->vertexCount;
+            }
+
+            PackedQuadVertex* cachedQuadVertices = m_cachedQuadVertices.Data();
+            for (const RetainedTextQuad& quad : m_quads)
+            {
+                const DrawQuadDesc desc = BuildQuadDesc(*this, quad);
+                UpdateQuadVertexColors(cachedQuadVertices, desc.color, 6u);
+                cachedQuadVertices += 6;
+            }
+
+            m_hasCachedColor = true;
+        }
+
+        return true;
     }
 
     void RetainedTextModel::SetCachedTransformedVertices(
-        const RetainedTextInstanceDesc& instance,
         Vector<PackedGlyphVertex>&& vertices,
-        Vector<RetainedTextCachedBatch>&& batches) const
+        Vector<RetainedTextCachedBatch>&& batches,
+        Vector<PackedQuadVertex>&& quads) const
     {
-        m_cachedInstance = instance;
         m_cachedVertices = Move(vertices);
         m_cachedBatches = Move(batches);
-        m_hasCachedInstance = !m_cachedVertices.IsEmpty() && !m_cachedBatches.IsEmpty();
+        m_cachedQuadVertices = Move(quads);
+        m_hasCachedGeometry = true;
+        m_hasCachedColor = true;
     }
 
     void RetainedTextModel::ClearTransformedVertexCache() const
     {
         m_cachedVertices.Clear();
         m_cachedBatches.Clear();
-        m_cachedInstance = {};
-        m_hasCachedInstance = false;
+        m_cachedQuadVertices.Clear();
+        m_hasCachedGeometry = false;
+        m_hasCachedColor = false;
+    }
+
+    bool RetainedTextModel::HasCachedTransformedVertices() const
+    {
+        return m_hasCachedGeometry
+            && m_hasCachedColor
+            && (!m_cachedVertices.IsEmpty() || !m_cachedQuadVertices.IsEmpty())
+            && (m_cachedBatches.IsEmpty() == m_cachedVertices.IsEmpty());
+    }
+
+    void RetainedTextModel::InvalidateGeometry() const
+    {
+        ClearTransformedVertexCache();
+    }
+
+    void RetainedTextModel::InvalidateColor() const
+    {
+        m_hasCachedColor = false;
     }
 }

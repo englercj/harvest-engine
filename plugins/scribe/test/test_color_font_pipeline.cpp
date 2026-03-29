@@ -1741,8 +1741,7 @@ HE_TEST(scribe, retained_text, prepares_with_renderer_after_temporary_face_span_
     HE_ASSERT(harness.Initialize());
     HE_EXPECT(harness.renderer.PrepareRetainedText(retainedText));
 
-    RetainedTextInstanceDesc instance{};
-    harness.renderer.QueueRetainedText(retainedText, instance);
+    harness.renderer.QueueRetainedText(retainedText);
 }
 
 HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_face_span_expires)
@@ -1798,8 +1797,7 @@ HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_fac
     HE_ASSERT(harness.Initialize());
     HE_EXPECT(harness.renderer.PrepareRetainedText(retainedText));
 
-    RetainedTextInstanceDesc instance{};
-    harness.renderer.QueueRetainedText(retainedText, instance);
+    harness.renderer.QueueRetainedText(retainedText);
 }
 
 HE_TEST(scribe, renderer_frame_constants, identity_view_matches_screen_projection)
@@ -1873,13 +1871,12 @@ HE_TEST(scribe, retained_text, transformed_vertex_cache_is_reused_when_only_fram
     HE_ASSERT(retainedText.Build(retainedDesc));
     HE_ASSERT(harness.renderer.PrepareRetainedText(retainedText));
 
-    RetainedTextInstanceDesc instance{};
-    instance.origin = { 12.0f, 24.0f };
-    instance.scale = 1.0f;
-    instance.foregroundColor = { 0.1f, 0.2f, 0.3f, 1.0f };
+    retainedText.SetOrigin({ 12.0f, 24.0f });
+    retainedText.SetScale(1.0f);
+    retainedText.SetForegroundColor({ 0.1f, 0.2f, 0.3f, 1.0f });
 
-    harness.renderer.QueueRetainedText(retainedText, instance);
-    HE_EXPECT(retainedText.HasCachedTransformedVertices(instance));
+    harness.renderer.QueueRetainedText(retainedText);
+    HE_EXPECT(retainedText.HasCachedTransformedVertices());
     const PackedGlyphVertex* cachedVertices = retainedText.GetCachedTransformedVertices().Data();
     const RetainedTextCachedBatch* cachedBatches = retainedText.GetCachedTransformedBatches().Data();
 
@@ -1892,13 +1889,12 @@ HE_TEST(scribe, retained_text, transformed_vertex_cache_is_reused_when_only_fram
     BuildFrameConstants(constantsB, { 640u, 480u }, viewB);
     HE_EXPECT_NE(constantsA[3], constantsB[3]);
 
-    harness.renderer.QueueRetainedText(retainedText, instance);
+    harness.renderer.QueueRetainedText(retainedText);
     HE_EXPECT_EQ_PTR(retainedText.GetCachedTransformedVertices().Data(), cachedVertices);
     HE_EXPECT_EQ_PTR(retainedText.GetCachedTransformedBatches().Data(), cachedBatches);
 
-    RetainedTextInstanceDesc movedInstance = instance;
-    movedInstance.origin.x += 100.0f;
-    harness.renderer.QueueRetainedText(retainedText, movedInstance);
-    HE_EXPECT(!retainedText.HasCachedTransformedVertices(instance));
-    HE_EXPECT(retainedText.HasCachedTransformedVertices(movedInstance));
+    retainedText.SetOrigin({ 112.0f, 24.0f });
+    HE_EXPECT(!retainedText.HasCachedTransformedVertices());
+    harness.renderer.QueueRetainedText(retainedText);
+    HE_EXPECT(retainedText.HasCachedTransformedVertices());
 }

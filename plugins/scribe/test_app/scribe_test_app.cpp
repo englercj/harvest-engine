@@ -997,44 +997,40 @@ namespace he
 
         if (!m_retainedTitleText.IsEmpty())
         {
-            scribe::RetainedTextInstanceDesc instance{};
-            instance.origin = titleOrigin;
-            instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-            m_renderer.QueueRetainedText(m_retainedTitleText, instance);
+            m_retainedTitleText.SetOrigin(titleOrigin);
+            m_retainedTitleText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
+            m_renderer.QueueRetainedText(m_retainedTitleText);
         }
 
         if (!m_retainedBodyText.IsEmpty())
         {
-            scribe::RetainedTextInstanceDesc instance{};
-            instance.origin = bodyOrigin;
-            instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-            m_renderer.QueueRetainedText(m_retainedBodyText, instance);
+            m_retainedBodyText.SetOrigin(bodyOrigin);
+            m_retainedBodyText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
+            m_renderer.QueueRetainedText(m_retainedBodyText);
         }
 
-        for (const SceneTextBlock& block : m_sceneBlocks)
+        for (SceneTextBlock& block : m_sceneBlocks)
         {
             if (block.retainedText.IsEmpty())
             {
                 continue;
             }
 
-            scribe::RetainedTextInstanceDesc instance{};
-            instance.origin = GetSceneBlockRenderOrigin(block);
-            instance.foregroundColor = block.color;
-            m_renderer.QueueRetainedText(block.retainedText, instance);
+            block.retainedText.SetOrigin(GetSceneBlockRenderOrigin(block));
+            block.retainedText.SetForegroundColor(block.color);
+            m_renderer.QueueRetainedText(block.retainedText);
         }
 
-        for (const SceneVectorImageBlock& block : m_sceneImages)
+        for (SceneVectorImageBlock& block : m_sceneImages)
         {
             if (block.retainedImage.IsEmpty())
             {
                 continue;
             }
 
-            scribe::RetainedVectorImageInstanceDesc instance{};
-            instance.origin = GetSceneImageRenderOrigin(block);
-            instance.scale = block.scale;
-            m_renderer.QueueRetainedVectorImage(block.retainedImage, instance);
+            block.retainedImage.SetOrigin(GetSceneImageRenderOrigin(block));
+            block.retainedImage.SetScale(block.scale);
+            m_renderer.QueueRetainedVectorImage(block.retainedImage);
         }
 
         QueueCaret();
@@ -1059,36 +1055,32 @@ namespace he
 
         if (!m_retainedSceneStatsText.IsEmpty())
         {
-            scribe::RetainedTextInstanceDesc instance{};
-            instance.origin = m_sceneStatsOrigin;
-            instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-            m_renderer.QueueRetainedText(m_retainedSceneStatsText, instance);
+            m_retainedSceneStatsText.SetOrigin(m_sceneStatsOrigin);
+            m_retainedSceneStatsText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
+            m_renderer.QueueRetainedText(m_retainedSceneStatsText);
         }
 
         if (!m_retainedRenderStatsText.IsEmpty())
         {
-            scribe::RetainedTextInstanceDesc instance{};
-            instance.origin = m_renderStatsOrigin;
-            instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-            m_renderer.QueueRetainedText(m_retainedRenderStatsText, instance);
+            m_retainedRenderStatsText.SetOrigin(m_renderStatsOrigin);
+            m_retainedRenderStatsText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
+            m_renderer.QueueRetainedText(m_retainedRenderStatsText);
         }
 
         if (!m_retainedInputHintsText.IsEmpty())
         {
-            scribe::RetainedTextInstanceDesc instance{};
-            instance.origin = m_inputHintsOrigin;
-            instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-            m_renderer.QueueRetainedText(m_retainedInputHintsText, instance);
+            m_retainedInputHintsText.SetOrigin(m_inputHintsOrigin);
+            m_retainedInputHintsText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
+            m_renderer.QueueRetainedText(m_retainedInputHintsText);
         }
 
         for (uint32_t i = 0; i < GpuGraphTickCount; ++i)
         {
             if (!m_retainedGpuGraphLabels[i].IsEmpty())
             {
-                scribe::RetainedTextInstanceDesc instance{};
-                instance.origin = m_gpuGraphLabelOrigins[i];
-                instance.foregroundColor = { 0.35f, 0.35f, 0.35f, 1.0f };
-                m_renderer.QueueRetainedText(m_retainedGpuGraphLabels[i], instance);
+                m_retainedGpuGraphLabels[i].SetOrigin(m_gpuGraphLabelOrigins[i]);
+                m_retainedGpuGraphLabels[i].SetForegroundColor({ 0.35f, 0.35f, 0.35f, 1.0f });
+                m_renderer.QueueRetainedText(m_retainedGpuGraphLabels[i]);
             }
         }
 

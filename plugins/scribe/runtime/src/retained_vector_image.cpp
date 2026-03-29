@@ -17,17 +17,12 @@ namespace he::scribe
 {
     namespace
     {
-        bool MatchesCachedInstance(
-            const RetainedVectorImageInstanceDesc& a,
-            const RetainedVectorImageInstanceDesc& b)
+        bool EqualColor(const Vec4f& a, const Vec4f& b)
         {
-            return (a.origin.x == b.origin.x)
-                && (a.origin.y == b.origin.y)
-                && (a.scale == b.scale)
-                && (a.tint.x == b.tint.x)
-                && (a.tint.y == b.tint.y)
-                && (a.tint.z == b.tint.z)
-                && (a.tint.w == b.tint.w);
+            return (a.x == b.x)
+                && (a.y == b.y)
+                && (a.z == b.z)
+                && (a.w == b.w);
         }
 
         StrokeJoinStyle ToRuntimeStrokeJoin(StrokeJoinKind value)
@@ -52,6 +47,53 @@ namespace he::scribe
                 default:
                     return StrokeCapStyle::Butt;
             }
+        }
+
+        Vec4f MultiplyColor(const Vec4f& a, const Vec4f& b)
+        {
+            return {
+                a.x * b.x,
+                a.y * b.y,
+                a.z * b.z,
+                a.w * b.w
+            };
+        }
+
+        DrawGlyphDesc BuildShapeDrawDesc(const RetainedVectorImageModel& model, const RetainedVectorImageDraw& draw, const GlyphResource& glyph)
+        {
+            DrawGlyphDesc desc{};
+            desc.glyph = &glyph;
+            desc.position = model.GetOrigin();
+            desc.size = { model.GetScale(), model.GetScale() };
+            desc.color = MultiplyColor(draw.color, model.GetTint());
+            desc.offset = draw.offset;
+            return desc;
+        }
+
+        RetainedVectorImageShapeResourceKind GetShapeResourceKind(const RetainedVectorImageDraw& draw)
+        {
+            return ((draw.flags & RetainedVectorImageDrawFlagRuntimeRestroke) != 0)
+                ? RetainedVectorImageShapeResourceKind::RuntimeRestroke
+                : RetainedVectorImageShapeResourceKind::CompiledShape;
+        }
+
+        DrawGlyphDesc BuildTextDrawDesc(const RetainedVectorImageModel& model, const RetainedTextDraw& draw, const GlyphResource& glyph)
+        {
+            DrawGlyphDesc desc{};
+            desc.glyph = &glyph;
+            desc.position = {
+                model.GetOrigin().x + (draw.position.x * model.GetScale()),
+                model.GetOrigin().y + (draw.position.y * model.GetScale())
+            };
+            desc.size = {
+                draw.size.x * model.GetScale(),
+                draw.size.y * model.GetScale()
+            };
+            desc.color = MultiplyColor(draw.color, model.GetTint());
+            desc.basisX = draw.basisX;
+            desc.basisY = draw.basisY;
+            desc.offset = draw.offset;
+            return desc;
         }
 
         Vec2f TransformTextRunVector(const ScribeImage::TextRun::Reader& run, const Vec2f& value)
@@ -480,15 +522,51 @@ namespace he::scribe
         m_fontFaces.Clear();
         m_draws.Clear();
         m_textDraws.Clear();
+        m_origin = {};
+        m_scale = 1.0f;
+        m_tint = { 1.0f, 1.0f, 1.0f, 1.0f };
         m_shapeResources.Clear();
         m_runtimeStrokeResources.Clear();
         m_sharedShapeAtlas = nullptr;
         m_cachedVertices.Clear();
         m_cachedBatches.Clear();
-        m_cachedInstance = {};
-        m_hasCachedInstance = false;
+        m_hasCachedGeometry = false;
+        m_hasCachedColor = false;
         m_viewBoxSize = { 0.0f, 0.0f };
         m_estimatedVertexCount = 0;
+    }
+
+    void RetainedVectorImageModel::SetOrigin(const Vec2f& origin)
+    {
+        if ((m_origin.x == origin.x) && (m_origin.y == origin.y))
+        {
+            return;
+        }
+
+        m_origin = origin;
+        InvalidateGeometry();
+    }
+
+    void RetainedVectorImageModel::SetScale(float scale)
+    {
+        if (m_scale == scale)
+        {
+            return;
+        }
+
+        m_scale = scale;
+        InvalidateGeometry();
+    }
+
+    void RetainedVectorImageModel::SetTint(const Vec4f& tint)
+    {
+        if (EqualColor(m_tint, tint))
+        {
+            return;
+        }
+
+        m_tint = tint;
+        InvalidateColor();
     }
 
     FontFaceHandle RetainedVectorImageModel::GetFontFaceHandle(uint32_t fontFaceIndex) const
@@ -563,30 +641,180 @@ namespace he::scribe
         return true;
     }
 
-    bool RetainedVectorImageModel::HasCachedTransformedVertices(const RetainedVectorImageInstanceDesc& instance) const
+    bool RetainedVectorImageModel::UpdateRenderData(Renderer& renderer) const
     {
-        return m_hasCachedInstance
-            && MatchesCachedInstance(m_cachedInstance, instance)
-            && !m_cachedVertices.IsEmpty()
-            && !m_cachedBatches.IsEmpty();
+        bool preparedAny = false;
+        for (const RetainedVectorImageDraw& draw : m_draws)
+        {
+            const GlyphResource* shapeResource = nullptr;
+            const bool ok = TryGetPreparedShapeResource(
+                draw.shapeIndex,
+                GetShapeResourceKind(draw),
+                draw.strokeStyle,
+                renderer,
+                shapeResource);
+            preparedAny |= ok && (shapeResource != nullptr);
+        }
+
+        for (const RetainedTextDraw& draw : m_textDraws)
+        {
+            const GlyphResource* glyphResource = nullptr;
+            const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
+                ? m_context->TryGetStrokedGlyphResource(GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
+                : m_context->TryGetGlyphResource(GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
+            preparedAny |= ok && (glyphResource != nullptr);
+        }
+
+        if (!preparedAny)
+        {
+            return false;
+        }
+
+        if (!m_hasCachedGeometry)
+        {
+            Vector<PackedGlyphVertex> cachedVertices{};
+            cachedVertices.Reserve(m_estimatedVertexCount);
+            Vector<RetainedVectorImageCachedBatch> cachedBatches{};
+            cachedBatches.Reserve(GetDrawCount());
+
+            for (const RetainedVectorImageDraw& draw : m_draws)
+            {
+                const GlyphResource* shapeResource = nullptr;
+                const bool ok = TryGetPreparedShapeResource(
+                    draw.shapeIndex,
+                    GetShapeResourceKind(draw),
+                    draw.strokeStyle,
+                    renderer,
+                    shapeResource);
+                if (!ok || (shapeResource == nullptr))
+                {
+                    continue;
+                }
+
+                const DrawGlyphDesc desc = BuildShapeDrawDesc(*this, draw, *shapeResource);
+                const uint32_t oldSize = cachedVertices.Size();
+                cachedVertices.Expand(shapeResource->vertexCount, DefaultInit);
+                TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
+                if (!cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == shapeResource->atlas))
+                {
+                    cachedBatches.Back().vertexCount += shapeResource->vertexCount;
+                }
+                else
+                {
+                    RetainedVectorImageCachedBatch& batch = cachedBatches.EmplaceBack();
+                    batch.atlas = shapeResource->atlas;
+                    batch.vertexCount = shapeResource->vertexCount;
+                }
+            }
+
+            for (const RetainedTextDraw& draw : m_textDraws)
+            {
+                const GlyphResource* glyphResource = nullptr;
+                const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
+                    ? m_context->TryGetStrokedGlyphResource(GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
+                    : m_context->TryGetGlyphResource(GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
+                if (!ok || (glyphResource == nullptr))
+                {
+                    continue;
+                }
+
+                const DrawGlyphDesc desc = BuildTextDrawDesc(*this, draw, *glyphResource);
+                const uint32_t oldSize = cachedVertices.Size();
+                cachedVertices.Expand(glyphResource->vertexCount, DefaultInit);
+                TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
+                if (!cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == glyphResource->atlas))
+                {
+                    cachedBatches.Back().vertexCount += glyphResource->vertexCount;
+                }
+                else
+                {
+                    RetainedVectorImageCachedBatch& batch = cachedBatches.EmplaceBack();
+                    batch.atlas = glyphResource->atlas;
+                    batch.vertexCount = glyphResource->vertexCount;
+                }
+            }
+
+            SetCachedTransformedVertices(Move(cachedVertices), Move(cachedBatches));
+            return true;
+        }
+
+        if (!m_hasCachedColor)
+        {
+            uint32_t vertexOffset = 0;
+            for (const RetainedVectorImageDraw& draw : m_draws)
+            {
+                const GlyphResource* shapeResource = nullptr;
+                const bool ok = TryGetPreparedShapeResource(
+                    draw.shapeIndex,
+                    GetShapeResourceKind(draw),
+                    draw.strokeStyle,
+                    renderer,
+                    shapeResource);
+                if (!ok || (shapeResource == nullptr))
+                {
+                    continue;
+                }
+
+                const DrawGlyphDesc desc = BuildShapeDrawDesc(*this, draw, *shapeResource);
+                UpdateDrawVertexColors(m_cachedVertices.Data() + vertexOffset, desc);
+                vertexOffset += shapeResource->vertexCount;
+            }
+
+            for (const RetainedTextDraw& draw : m_textDraws)
+            {
+                const GlyphResource* glyphResource = nullptr;
+                const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
+                    ? m_context->TryGetStrokedGlyphResource(GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
+                    : m_context->TryGetGlyphResource(GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
+                if (!ok || (glyphResource == nullptr))
+                {
+                    continue;
+                }
+
+                const DrawGlyphDesc desc = BuildTextDrawDesc(*this, draw, *glyphResource);
+                UpdateDrawVertexColors(m_cachedVertices.Data() + vertexOffset, desc);
+                vertexOffset += glyphResource->vertexCount;
+            }
+
+            m_hasCachedColor = true;
+        }
+
+        return true;
     }
 
     void RetainedVectorImageModel::SetCachedTransformedVertices(
-        const RetainedVectorImageInstanceDesc& instance,
         Vector<PackedGlyphVertex>&& vertices,
         Vector<RetainedVectorImageCachedBatch>&& batches) const
     {
-        m_cachedInstance = instance;
         m_cachedVertices = Move(vertices);
         m_cachedBatches = Move(batches);
-        m_hasCachedInstance = !m_cachedVertices.IsEmpty() && !m_cachedBatches.IsEmpty();
+        m_hasCachedGeometry = true;
+        m_hasCachedColor = true;
     }
 
     void RetainedVectorImageModel::ClearTransformedVertexCache() const
     {
         m_cachedVertices.Clear();
         m_cachedBatches.Clear();
-        m_cachedInstance = {};
-        m_hasCachedInstance = false;
+        m_hasCachedGeometry = false;
+        m_hasCachedColor = false;
+    }
+
+    bool RetainedVectorImageModel::HasCachedTransformedVertices() const
+    {
+        return m_hasCachedGeometry
+            && m_hasCachedColor
+            && !m_cachedVertices.IsEmpty()
+            && !m_cachedBatches.IsEmpty();
+    }
+
+    void RetainedVectorImageModel::InvalidateGeometry() const
+    {
+        ClearTransformedVertexCache();
+    }
+
+    void RetainedVectorImageModel::InvalidateColor() const
+    {
+        m_hasCachedColor = false;
     }
 }

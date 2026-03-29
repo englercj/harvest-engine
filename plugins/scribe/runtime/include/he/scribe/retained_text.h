@@ -50,13 +50,6 @@ namespace he::scribe
         Span<const TextStyle> styles{};
     };
 
-    struct RetainedTextInstanceDesc
-    {
-        Vec2f origin{ 0.0f, 0.0f };
-        float scale{ 1.0f };
-        Vec4f foregroundColor{ 1.0f, 1.0f, 1.0f, 1.0f };
-    };
-
     struct RetainedTextCachedBatch
     {
         const GlyphAtlas* atlas{ nullptr };
@@ -76,29 +69,45 @@ namespace he::scribe
         Span<const RetainedTextDraw> GetDraws() const { return m_draws; }
         Span<const RetainedTextQuad> GetQuads() const { return m_quads; }
         ScribeContext* GetContext() const { return m_context; }
+        Vec2f GetOrigin() const { return m_origin; }
+        float GetScale() const { return m_scale; }
+        Vec4f GetForegroundColor() const { return m_foregroundColor; }
+        void SetOrigin(const Vec2f& origin);
+        void SetScale(float scale);
+        void SetForegroundColor(const Vec4f& color);
         FontFaceHandle GetFontFaceHandle(uint32_t fontFaceIndex) const;
         const GlyphResource* GetPreparedGlyphResource(uint32_t drawIndex) const;
         void SetPreparedGlyphResource(uint32_t drawIndex, const GlyphResource& glyph) const;
         void ClearPreparedGlyphResources() const;
-        bool HasCachedTransformedVertices(const RetainedTextInstanceDesc& instance) const;
+        bool UpdateRenderData() const;
+        bool HasCachedTransformedVertices() const;
         Span<const PackedGlyphVertex> GetCachedTransformedVertices() const { return m_cachedVertices; }
         Span<const RetainedTextCachedBatch> GetCachedTransformedBatches() const { return m_cachedBatches; }
+        Span<const PackedQuadVertex> GetCachedQuadVertices() const { return m_cachedQuadVertices; }
         void SetCachedTransformedVertices(
-            const RetainedTextInstanceDesc& instance,
             Vector<PackedGlyphVertex>&& vertices,
-            Vector<RetainedTextCachedBatch>&& batches) const;
+            Vector<RetainedTextCachedBatch>&& batches,
+            Vector<PackedQuadVertex>&& quads) const;
         void ClearTransformedVertexCache() const;
+
+    private:
+        void InvalidateGeometry() const;
+        void InvalidateColor() const;
 
     private:
         ScribeContext* m_context{ nullptr };
         Vector<FontFaceHandle> m_fontFaces{};
         Vector<RetainedTextDraw> m_draws{};
         Vector<RetainedTextQuad> m_quads{};
+        Vec2f m_origin{ 0.0f, 0.0f };
+        float m_scale{ 1.0f };
+        Vec4f m_foregroundColor{ 1.0f, 1.0f, 1.0f, 1.0f };
         mutable Vector<GlyphResource> m_preparedGlyphs{};
         mutable Vector<PackedGlyphVertex> m_cachedVertices{};
         mutable Vector<RetainedTextCachedBatch> m_cachedBatches{};
-        mutable RetainedTextInstanceDesc m_cachedInstance{};
-        mutable bool m_hasCachedInstance{ false };
+        mutable Vector<PackedQuadVertex> m_cachedQuadVertices{};
+        mutable bool m_hasCachedGeometry{ false };
+        mutable bool m_hasCachedColor{ false };
         uint32_t m_estimatedVertexCount{ 0 };
     };
 }

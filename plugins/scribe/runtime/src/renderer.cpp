@@ -200,7 +200,7 @@ namespace he::scribe
             out.col = vertexColorIsWhite ? state.premultipliedColor : MultiplyPremultiplyColor(src.col, state.color);
         }
 
-        void TransformDrawVertices(
+        void TransformDrawVerticesInternal(
             PackedGlyphVertex* dst,
             const DrawGlyphDesc& draw)
         {
@@ -287,6 +287,59 @@ namespace he::scribe
         outConstants[17] = height;
         outConstants[18] = 0.0f;
         outConstants[19] = 0.0f;
+    }
+
+    void TransformDrawVertices(PackedGlyphVertex* dst, const DrawGlyphDesc& draw)
+    {
+        TransformDrawVerticesInternal(dst, draw);
+    }
+
+    void UpdateDrawVertexColors(PackedGlyphVertex* dst, const DrawGlyphDesc& draw)
+    {
+        const GlyphTransformState transformState = BuildGlyphTransformState(draw);
+        const bool vertexColorIsWhite = draw.glyph->vertexColorIsWhite;
+        const PackedGlyphVertex* src = draw.glyph->vertices;
+        for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
+        {
+            TransformVertexColor(*dst, *src, transformState, vertexColorIsWhite);
+            ++src;
+            ++dst;
+        }
+    }
+
+    void AppendQuadVertices(Vector<PackedQuadVertex>& out, const DrawQuadDesc& desc)
+    {
+        const float a00 = desc.size.x * desc.basisX.x;
+        const float a01 = desc.size.x * desc.basisY.x;
+        const float a10 = desc.size.y * desc.basisX.y;
+        const float a11 = desc.size.y * desc.basisY.y;
+
+        const float offsetX = desc.position.x + (desc.size.x * desc.offset.x);
+        const float offsetY = desc.position.y + (desc.size.y * desc.offset.y);
+
+        auto pushVertex = [&](float x, float y)
+        {
+            const float tx = offsetX + (a00 * x) + (a01 * y);
+            const float ty = offsetY + (a10 * x) + (a11 * y);
+            out.PushBack(MakeQuadVertex(tx, ty, desc.color));
+        };
+
+        out.Reserve(out.Size() + 6);
+        pushVertex(0.0f, 0.0f);
+        pushVertex(1.0f, 0.0f);
+        pushVertex(1.0f, 1.0f);
+        pushVertex(0.0f, 0.0f);
+        pushVertex(1.0f, 1.0f);
+        pushVertex(0.0f, 1.0f);
+    }
+
+    void UpdateQuadVertexColors(PackedQuadVertex* dst, const Vec4f& color, uint32_t vertexCount)
+    {
+        const Vec4f premultipliedColor = PremultiplyColor(color);
+        for (uint32_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex)
+        {
+            dst[vertexIndex].col = premultipliedColor;
+        }
     }
 
     bool Renderer::Initialize(rhi::Format targetFormat)
@@ -555,60 +608,28 @@ namespace he::scribe
 
     bool Renderer::PrepareRetainedText(const RetainedTextModel& text)
     {
-        text.ClearPreparedGlyphResources();
-        text.ClearTransformedVertexCache();
-
-        const Span<const RetainedTextDraw> draws = text.GetDraws();
-        for (uint32_t drawIndex = 0; drawIndex < draws.Size(); ++drawIndex)
+        if (ScribeContext* textContext = text.GetContext(); textContext && !textContext->IsInitialized() && m_device)
         {
-            const RetainedTextDraw& draw = draws[drawIndex];
-            const GlyphResource* glyphResource = nullptr;
-            const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
-                ? m_context.TryGetStrokedGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
-                : m_context.TryGetGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
-            if (!ok)
+            if (!textContext->Initialize(*m_device))
             {
-                continue;
+                return false;
             }
-
-            text.SetPreparedGlyphResource(drawIndex, *glyphResource);
         }
 
-        return true;
+        return text.UpdateRenderData();
     }
 
     bool Renderer::PrepareRetainedVectorImage(const RetainedVectorImageModel& image)
     {
-        image.ClearTransformedVertexCache();
-
-        for (const RetainedVectorImageDraw& draw : image.GetDraws())
+        if (ScribeContext* imageContext = image.GetContext(); imageContext && !imageContext->IsInitialized() && m_device)
         {
-            const GlyphResource* shapeResource = nullptr;
-            const bool ok = image.TryGetPreparedShapeResource(
-                draw.shapeIndex,
-                GetShapeResourceKind(draw),
-                draw.strokeStyle,
-                *this,
-                shapeResource);
-            if (!ok)
+            if (!imageContext->Initialize(*m_device))
             {
-                continue;
+                return false;
             }
         }
 
-        for (const RetainedTextDraw& draw : image.GetTextDraws())
-        {
-            const GlyphResource* glyphResource = nullptr;
-            const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
-                ? m_context.TryGetStrokedGlyphResource(image.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
-                : m_context.TryGetGlyphResource(image.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
-            if (!ok)
-            {
-                continue;
-            }
-        }
-
-        return true;
+        return image.UpdateRenderData(*this);
     }
 
     void Renderer::QueueDraw(const DrawGlyphDesc& desc)
@@ -623,37 +644,16 @@ namespace he::scribe
 
     void Renderer::QueueQuad(const DrawQuadDesc& desc)
     {
-        const float a00 = desc.size.x * desc.basisX.x;
-        const float a01 = desc.size.x * desc.basisY.x;
-        const float a10 = desc.size.y * desc.basisX.y;
-        const float a11 = desc.size.y * desc.basisY.y;
-
-        const float offsetX = desc.position.x + (desc.size.x * desc.offset.x);
-        const float offsetY = desc.position.y + (desc.size.y * desc.offset.y);
-
-        auto pushVertex = [&](float x, float y)
-        {
-            const float tx = offsetX + (a00 * x) + (a01 * y);
-            const float ty = offsetY + (a10 * x) + (a11 * y);
-            m_quadVertices.PushBack(MakeQuadVertex(tx, ty, desc.color));
-        };
-
-        m_quadVertices.Reserve(m_quadVertices.Size() + 6);
-        pushVertex(0.0f, 0.0f);
-        pushVertex(1.0f, 0.0f);
-        pushVertex(1.0f, 1.0f);
-        pushVertex(0.0f, 0.0f);
-        pushVertex(1.0f, 1.0f);
-        pushVertex(0.0f, 1.0f);
+        AppendQuadVertices(m_quadVertices, desc);
     }
 
-    void Renderer::QueueRetainedText(const RetainedTextModel& text, const RetainedTextInstanceDesc& instance)
+    void Renderer::QueueRetainedText(const RetainedTextModel& text)
     {
         ReserveQueuedVertexCapacity(
             m_streamVertices.Size() + text.GetEstimatedVertexCount(),
             m_batches.Size() + text.GetDrawCount());
 
-        if (text.HasCachedTransformedVertices(instance))
+        if (PrepareRetainedText(text) && text.HasCachedTransformedVertices())
         {
             const uint32_t firstVertex = m_streamVertices.Size();
             const Span<const PackedGlyphVertex> cachedVertices = text.GetCachedTransformedVertices();
@@ -685,107 +685,22 @@ namespace he::scribe
                 batchVertexStart += cachedBatch.vertexCount;
             }
 
-            for (const RetainedTextQuad& quad : text.GetQuads())
+            const Span<const PackedQuadVertex> cachedQuadVertices = text.GetCachedQuadVertices();
+            if (!cachedQuadVertices.IsEmpty())
             {
-                DrawQuadDesc desc{};
-                desc.position = {
-                    instance.origin.x + (quad.position.x * instance.scale),
-                    instance.origin.y + (quad.position.y * instance.scale)
-                };
-                desc.size = {
-                    quad.size.x * instance.scale,
-                    quad.size.y * instance.scale
-                };
-                desc.color = MultiplyColor(quad.color, instance.foregroundColor);
-                desc.basisX = quad.basisX;
-                desc.basisY = quad.basisY;
-                desc.offset = quad.offset;
-                QueueQuad(desc);
+                m_quadVertices.Insert(m_quadVertices.Size(), cachedQuadVertices.Data(), cachedQuadVertices.Size());
             }
             return;
         }
-
-        const Span<const RetainedTextDraw> draws = text.GetDraws();
-        Vector<PackedGlyphVertex> cachedVertices{};
-        cachedVertices.Reserve(text.GetEstimatedVertexCount());
-        Vector<RetainedTextCachedBatch> cachedBatches{};
-        cachedBatches.Reserve(draws.Size());
-        for (uint32_t drawIndex = 0; drawIndex < draws.Size(); ++drawIndex)
-        {
-            const RetainedTextDraw& draw = draws[drawIndex];
-            const GlyphResource* glyphResource = text.GetPreparedGlyphResource(drawIndex);
-            if (glyphResource == nullptr)
-            {
-                const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
-                    ? m_context.TryGetStrokedGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
-                    : m_context.TryGetGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
-                if (!ok)
-                {
-                    continue;
-                }
-            }
-
-            DrawGlyphDesc desc{};
-            desc.glyph = glyphResource;
-            desc.position = {
-                instance.origin.x + (draw.position.x * instance.scale),
-                instance.origin.y + (draw.position.y * instance.scale)
-            };
-            desc.size = {
-                draw.size.x * instance.scale,
-                draw.size.y * instance.scale
-            };
-            desc.color = (draw.flags & RetainedTextDrawFlagUseForegroundColor) != 0
-                ? MultiplyColor(instance.foregroundColor, draw.color)
-                : draw.color;
-            desc.basisX = draw.basisX;
-            desc.basisY = draw.basisY;
-            desc.offset = draw.offset;
-            QueueDraw(desc);
-
-            const uint32_t oldSize = cachedVertices.Size();
-            cachedVertices.Expand(desc.glyph->vertexCount, DefaultInit);
-            TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
-            if (m_glyphBatchingEnabled && !cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == desc.glyph->atlas))
-            {
-                cachedBatches.Back().vertexCount += desc.glyph->vertexCount;
-            }
-            else
-            {
-                RetainedTextCachedBatch& batch = cachedBatches.EmplaceBack();
-                batch.atlas = desc.glyph->atlas;
-                batch.vertexCount = desc.glyph->vertexCount;
-            }
-        }
-
-        text.SetCachedTransformedVertices(instance, Move(cachedVertices), Move(cachedBatches));
-
-        for (const RetainedTextQuad& quad : text.GetQuads())
-        {
-            DrawQuadDesc desc{};
-            desc.position = {
-                instance.origin.x + (quad.position.x * instance.scale),
-                instance.origin.y + (quad.position.y * instance.scale)
-            };
-            desc.size = {
-                quad.size.x * instance.scale,
-                quad.size.y * instance.scale
-            };
-            desc.color = MultiplyColor(quad.color, instance.foregroundColor);
-            desc.basisX = quad.basisX;
-            desc.basisY = quad.basisY;
-            desc.offset = quad.offset;
-            QueueQuad(desc);
-        }
     }
 
-    void Renderer::QueueRetainedVectorImage(const RetainedVectorImageModel& image, const RetainedVectorImageInstanceDesc& instance)
+    void Renderer::QueueRetainedVectorImage(const RetainedVectorImageModel& image)
     {
         ReserveQueuedVertexCapacity(
             m_streamVertices.Size() + image.GetEstimatedVertexCount(),
             m_batches.Size() + image.GetDrawCount());
 
-        if (image.HasCachedTransformedVertices(instance))
+        if (PrepareRetainedVectorImage(image) && image.HasCachedTransformedVertices())
         {
             const uint32_t firstVertex = m_streamVertices.Size();
             const Span<const PackedGlyphVertex> cachedVertices = image.GetCachedTransformedVertices();
@@ -819,92 +734,6 @@ namespace he::scribe
 
             return;
         }
-
-        Vector<PackedGlyphVertex> cachedVertices{};
-        cachedVertices.Reserve(image.GetEstimatedVertexCount());
-        Vector<RetainedVectorImageCachedBatch> cachedBatches{};
-        cachedBatches.Reserve(image.GetDrawCount());
-
-        for (const RetainedVectorImageDraw& draw : image.GetDraws())
-        {
-            const GlyphResource* shapeResource = nullptr;
-            const bool ok = image.TryGetPreparedShapeResource(
-                draw.shapeIndex,
-                GetShapeResourceKind(draw),
-                draw.strokeStyle,
-                *this,
-                shapeResource);
-            if (!ok)
-            {
-                continue;
-            }
-
-            DrawGlyphDesc desc{};
-            desc.glyph = shapeResource;
-            desc.position = instance.origin;
-            desc.size = { instance.scale, instance.scale };
-            desc.color = MultiplyColor(draw.color, instance.tint);
-            desc.offset = draw.offset;
-            QueueDraw(desc);
-
-            const uint32_t oldSize = cachedVertices.Size();
-            cachedVertices.Expand(desc.glyph->vertexCount, DefaultInit);
-            TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
-            if (m_glyphBatchingEnabled && !cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == desc.glyph->atlas))
-            {
-                cachedBatches.Back().vertexCount += desc.glyph->vertexCount;
-            }
-            else
-            {
-                RetainedVectorImageCachedBatch& batch = cachedBatches.EmplaceBack();
-                batch.atlas = desc.glyph->atlas;
-                batch.vertexCount = desc.glyph->vertexCount;
-            }
-        }
-
-        for (const RetainedTextDraw& draw : image.GetTextDraws())
-        {
-            const GlyphResource* glyphResource = nullptr;
-            const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
-                ? m_context.TryGetStrokedGlyphResource(image.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
-                : m_context.TryGetGlyphResource(image.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
-            if (!ok)
-            {
-                continue;
-            }
-
-            DrawGlyphDesc desc{};
-            desc.glyph = glyphResource;
-            desc.position = {
-                instance.origin.x + (draw.position.x * instance.scale),
-                instance.origin.y + (draw.position.y * instance.scale)
-            };
-            desc.size = {
-                draw.size.x * instance.scale,
-                draw.size.y * instance.scale
-            };
-            desc.color = MultiplyColor(draw.color, instance.tint);
-            desc.basisX = draw.basisX;
-            desc.basisY = draw.basisY;
-            desc.offset = draw.offset;
-            QueueDraw(desc);
-
-            const uint32_t oldSize = cachedVertices.Size();
-            cachedVertices.Expand(desc.glyph->vertexCount, DefaultInit);
-            TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
-            if (m_glyphBatchingEnabled && !cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == desc.glyph->atlas))
-            {
-                cachedBatches.Back().vertexCount += desc.glyph->vertexCount;
-            }
-            else
-            {
-                RetainedVectorImageCachedBatch& batch = cachedBatches.EmplaceBack();
-                batch.atlas = desc.glyph->atlas;
-                batch.vertexCount = desc.glyph->vertexCount;
-            }
-        }
-
-        image.SetCachedTransformedVertices(instance, Move(cachedVertices), Move(cachedBatches));
     }
 
     void Renderer::EndFrame()

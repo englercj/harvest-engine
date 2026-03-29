@@ -46,13 +46,6 @@ namespace he::scribe
         StrokeStyle strokeStyle{};
     };
 
-    struct RetainedVectorImageInstanceDesc
-    {
-        Vec2f origin{ 0.0f, 0.0f };
-        float scale{ 1.0f };
-        Vec4f tint{ 1.0f, 1.0f, 1.0f, 1.0f };
-    };
-
     struct RetainedVectorImageCachedBatch
     {
         const GlyphAtlas* atlas{ nullptr };
@@ -75,6 +68,12 @@ namespace he::scribe
         ScribeContext* GetContext() const { return m_context; }
         VectorImageResourceReader GetImage() const { return m_image; }
         Vec2f GetViewBoxSize() const { return m_viewBoxSize; }
+        Vec2f GetOrigin() const { return m_origin; }
+        float GetScale() const { return m_scale; }
+        Vec4f GetTint() const { return m_tint; }
+        void SetOrigin(const Vec2f& origin);
+        void SetScale(float scale);
+        void SetTint(const Vec4f& tint);
         FontFaceHandle GetFontFaceHandle(uint32_t fontFaceIndex) const;
         bool TryGetPreparedShapeResource(
             uint32_t shapeIndex,
@@ -82,14 +81,18 @@ namespace he::scribe
             const StrokeStyle& style,
             Renderer& renderer,
             const GlyphResource*& out) const;
-        bool HasCachedTransformedVertices(const RetainedVectorImageInstanceDesc& instance) const;
+        bool UpdateRenderData(Renderer& renderer) const;
+        bool HasCachedTransformedVertices() const;
         Span<const PackedGlyphVertex> GetCachedTransformedVertices() const { return m_cachedVertices; }
         Span<const RetainedVectorImageCachedBatch> GetCachedTransformedBatches() const { return m_cachedBatches; }
         void SetCachedTransformedVertices(
-            const RetainedVectorImageInstanceDesc& instance,
             Vector<PackedGlyphVertex>&& vertices,
             Vector<RetainedVectorImageCachedBatch>&& batches) const;
         void ClearTransformedVertexCache() const;
+
+    private:
+        void InvalidateGeometry() const;
+        void InvalidateColor() const;
 
     private:
         ScribeContext* m_context{ nullptr };
@@ -98,13 +101,16 @@ namespace he::scribe
         Vector<FontFaceHandle> m_fontFaces{};
         Vector<RetainedVectorImageDraw> m_draws{};
         Vector<RetainedTextDraw> m_textDraws{};
+        Vec2f m_origin{ 0.0f, 0.0f };
+        float m_scale{ 1.0f };
+        Vec4f m_tint{ 1.0f, 1.0f, 1.0f, 1.0f };
         mutable Vector<GlyphResource> m_shapeResources{};
         mutable Vector<GlyphResource> m_runtimeStrokeResources{};
         mutable GlyphAtlas* m_sharedShapeAtlas{ nullptr };
         mutable Vector<PackedGlyphVertex> m_cachedVertices{};
         mutable Vector<RetainedVectorImageCachedBatch> m_cachedBatches{};
-        mutable RetainedVectorImageInstanceDesc m_cachedInstance{};
-        mutable bool m_hasCachedInstance{ false };
+        mutable bool m_hasCachedGeometry{ false };
+        mutable bool m_hasCachedColor{ false };
         Vec2f m_viewBoxSize{ 0.0f, 0.0f };
         uint32_t m_estimatedVertexCount{ 0 };
     };

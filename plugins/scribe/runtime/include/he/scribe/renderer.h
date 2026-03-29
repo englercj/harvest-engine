@@ -16,8 +16,6 @@ namespace he::scribe
     struct GlyphAtlas;
     class RetainedTextModel;
     class RetainedVectorImageModel;
-    struct RetainedTextInstanceDesc;
-    struct RetainedVectorImageInstanceDesc;
 
     struct PackedGlyphVertex
     {
@@ -112,6 +110,10 @@ namespace he::scribe
         float* outConstants,
         const Vec2u& targetSize,
         const ViewTransform2D& viewTransform);
+    void TransformDrawVertices(PackedGlyphVertex* dst, const DrawGlyphDesc& draw);
+    void UpdateDrawVertexColors(PackedGlyphVertex* dst, const DrawGlyphDesc& draw);
+    void AppendQuadVertices(Vector<PackedQuadVertex>& out, const DrawQuadDesc& desc);
+    void UpdateQuadVertexColors(PackedQuadVertex* dst, const Vec4f& color, uint32_t vertexCount);
 
     class Renderer
     {
@@ -143,8 +145,8 @@ namespace he::scribe
         void ReserveQueuedVertexCapacity(uint32_t vertexCount, uint32_t batchCount = 0);
         void QueueDraw(const DrawGlyphDesc& desc);
         void QueueQuad(const DrawQuadDesc& desc);
-        void QueueRetainedText(const RetainedTextModel& text, const RetainedTextInstanceDesc& instance);
-        void QueueRetainedVectorImage(const RetainedVectorImageModel& image, const RetainedVectorImageInstanceDesc& instance);
+        void QueueRetainedText(const RetainedTextModel& text);
+        void QueueRetainedVectorImage(const RetainedVectorImageModel& image);
         void EndFrame();
         uint32_t GetLastSubmittedDrawCount() const { return m_lastSubmittedDrawCount; }
 

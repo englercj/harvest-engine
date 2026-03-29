@@ -183,7 +183,8 @@ namespace he::scribe
             const PackedGlyphVertex& src,
             const GlyphTransformState& state)
         {
-            out = src;
+            out.tex = src.tex;
+            out.bnd = src.bnd;
             out.pos.x = state.offsetX + (state.a00 * src.pos.x);
             out.pos.y = state.offsetY + (state.a11 * src.pos.y);
             out.pos.z = state.a00 * src.pos.z;
@@ -199,7 +200,8 @@ namespace he::scribe
             const PackedGlyphVertex& src,
             const GlyphTransformState& state)
         {
-            out = src;
+            out.tex = src.tex;
+            out.bnd = src.bnd;
             out.pos.x = state.offsetX + (state.a00 * src.pos.x) + (state.a01 * src.pos.y);
             out.pos.y = state.offsetY + (state.a10 * src.pos.x) + (state.a11 * src.pos.y);
             out.pos.z = (state.a00 * src.pos.z) + (state.a01 * src.pos.w);
@@ -896,24 +898,26 @@ namespace he::scribe
         m_streamVertices.Expand(draw.glyph->vertexCount, DefaultInit);
         const GlyphTransformState transformState = BuildGlyphTransformState(draw);
         const bool vertexColorIsWhite = draw.glyph->vertexColorIsWhite;
+        const PackedGlyphVertex* src = draw.glyph->vertices;
+        PackedGlyphVertex* dst = m_streamVertices.Data() + oldSize;
         if (transformState.hasAxisAlignedTransform)
         {
             for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
             {
-                const PackedGlyphVertex& src = draw.glyph->vertices[vertexIndex];
-                PackedGlyphVertex& dst = m_streamVertices[oldSize + vertexIndex];
-                TransformVertexGeometryAxisAligned(dst, src, transformState);
-                TransformVertexColor(dst, src, transformState, vertexColorIsWhite);
+                TransformVertexGeometryAxisAligned(*dst, *src, transformState);
+                TransformVertexColor(*dst, *src, transformState, vertexColorIsWhite);
+                ++src;
+                ++dst;
             }
         }
         else
         {
             for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
             {
-                const PackedGlyphVertex& src = draw.glyph->vertices[vertexIndex];
-                PackedGlyphVertex& dst = m_streamVertices[oldSize + vertexIndex];
-                TransformVertexGeometryGeneral(dst, src, transformState);
-                TransformVertexColor(dst, src, transformState, vertexColorIsWhite);
+                TransformVertexGeometryGeneral(*dst, *src, transformState);
+                TransformVertexColor(*dst, *src, transformState, vertexColorIsWhite);
+                ++src;
+                ++dst;
             }
         }
 

@@ -341,11 +341,37 @@ namespace he::scribe
         m_fontFaces.Clear();
         m_draws.Clear();
         m_quads.Clear();
+        m_preparedGlyphs.Clear();
         m_estimatedVertexCount = 0;
     }
 
     FontFaceHandle RetainedTextModel::GetFontFaceHandle(uint32_t fontFaceIndex) const
     {
         return fontFaceIndex < m_fontFaces.Size() ? m_fontFaces[fontFaceIndex] : FontFaceHandle{};
+    }
+
+    const GlyphResource* RetainedTextModel::GetPreparedGlyphResource(uint32_t drawIndex) const
+    {
+        if ((drawIndex >= m_preparedGlyphs.Size()) || (m_preparedGlyphs[drawIndex].atlas == nullptr))
+        {
+            return nullptr;
+        }
+
+        return &m_preparedGlyphs[drawIndex];
+    }
+
+    void RetainedTextModel::SetPreparedGlyphResource(uint32_t drawIndex, const GlyphResource& glyph) const
+    {
+        if (drawIndex >= m_preparedGlyphs.Size())
+        {
+            m_preparedGlyphs.Resize(m_draws.Size(), DefaultInit);
+        }
+
+        m_preparedGlyphs[drawIndex] = glyph;
+    }
+
+    void RetainedTextModel::ClearPreparedGlyphResources() const
+    {
+        m_preparedGlyphs.Clear();
     }
 }

@@ -4,6 +4,7 @@
 
 #include "he/scribe/context.h"
 #include "he/scribe/layout_engine.h"
+#include "he/scribe/renderer.h"
 
 #include "he/core/span.h"
 
@@ -70,12 +71,16 @@ namespace he::scribe
         Span<const RetainedTextQuad> GetQuads() const { return m_quads; }
         ScribeContext* GetContext() const { return m_context; }
         FontFaceHandle GetFontFaceHandle(uint32_t fontFaceIndex) const;
+        const GlyphResource* GetPreparedGlyphResource(uint32_t drawIndex) const;
+        void SetPreparedGlyphResource(uint32_t drawIndex, const GlyphResource& glyph) const;
+        void ClearPreparedGlyphResources() const;
 
     private:
         ScribeContext* m_context{ nullptr };
         Vector<FontFaceHandle> m_fontFaces{};
         Vector<RetainedTextDraw> m_draws{};
         Vector<RetainedTextQuad> m_quads{};
+        mutable Vector<GlyphResource> m_preparedGlyphs{};
         uint32_t m_estimatedVertexCount{ 0 };
     };
 }

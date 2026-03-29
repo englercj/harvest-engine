@@ -33,6 +33,22 @@ namespace he::scribe
     {
         constexpr uint32_t VertexShaderConstantCount = 20;
 
+        struct GlyphTransformState
+        {
+            float a00{ 0.0f };
+            float a01{ 0.0f };
+            float a10{ 0.0f };
+            float a11{ 0.0f };
+            float offsetX{ 0.0f };
+            float offsetY{ 0.0f };
+            float it00{ 0.0f };
+            float it01{ 0.0f };
+            float it10{ 0.0f };
+            float it11{ 0.0f };
+            bool hasInverseJacobian{ false };
+            Vec4f color{ 1.0f, 1.0f, 1.0f, 1.0f };
+        };
+
         RetainedVectorImageShapeResourceKind GetShapeResourceKind(const RetainedVectorImageDraw& draw)
         {
             return ((draw.flags & RetainedVectorImageDrawFlagRuntimeRestroke) != 0)
@@ -123,46 +139,56 @@ namespace he::scribe
             outConstants[19] = 0.0f;
         }
 
-        PackedGlyphVertex TransformVertex(const PackedGlyphVertex& in, const DrawGlyphDesc& draw)
+        GlyphTransformState BuildGlyphTransformState(const DrawGlyphDesc& draw)
         {
-            const float a00 = draw.size.x * draw.basisX.x;
-            const float a01 = draw.size.x * draw.basisY.x;
-            const float a10 = draw.size.y * draw.basisX.y;
-            const float a11 = draw.size.y * draw.basisY.y;
+            GlyphTransformState state{};
+            state.a00 = draw.size.x * draw.basisX.x;
+            state.a01 = draw.size.x * draw.basisY.x;
+            state.a10 = draw.size.y * draw.basisX.y;
+            state.a11 = draw.size.y * draw.basisY.y;
+            state.offsetX = draw.position.x + (draw.size.x * draw.offset.x);
+            state.offsetY = draw.position.y + (draw.size.y * draw.offset.y);
+            state.color = draw.color;
 
-            const float offsetX = draw.position.x + (draw.size.x * draw.offset.x);
-            const float offsetY = draw.position.y + (draw.size.y * draw.offset.y);
-
-            PackedGlyphVertex out = in;
-            out.pos.x = offsetX + (a00 * in.pos.x) + (a01 * in.pos.y);
-            out.pos.y = offsetY + (a10 * in.pos.x) + (a11 * in.pos.y);
-            out.pos.z = (a00 * in.pos.z) + (a01 * in.pos.w);
-            out.pos.w = (a10 * in.pos.z) + (a11 * in.pos.w);
-
-            const float det = (a00 * a11) - (a01 * a10);
-            if (Abs(det) > 1.0e-8f)
+            const float det = (state.a00 * state.a11) - (state.a01 * state.a10);
+            state.hasInverseJacobian = Abs(det) > 1.0e-8f;
+            if (state.hasInverseJacobian)
             {
                 const float invDet = 1.0f / det;
-                const float it00 = a11 * invDet;
-                const float it01 = -a10 * invDet;
-                const float it10 = -a01 * invDet;
-                const float it11 = a00 * invDet;
+                state.it00 = state.a11 * invDet;
+                state.it01 = -state.a10 * invDet;
+                state.it10 = -state.a01 * invDet;
+                state.it11 = state.a00 * invDet;
+            }
 
+            return state;
+        }
+
+        PackedGlyphVertex TransformVertex(const PackedGlyphVertex& in, const GlyphTransformState& state)
+        {
+            PackedGlyphVertex out = in;
+            out.pos.x = state.offsetX + (state.a00 * in.pos.x) + (state.a01 * in.pos.y);
+            out.pos.y = state.offsetY + (state.a10 * in.pos.x) + (state.a11 * in.pos.y);
+            out.pos.z = (state.a00 * in.pos.z) + (state.a01 * in.pos.w);
+            out.pos.w = (state.a10 * in.pos.z) + (state.a11 * in.pos.w);
+
+            if (state.hasInverseJacobian)
+            {
                 const float j0x = in.jac.x;
                 const float j0y = in.jac.y;
                 const float j1x = in.jac.z;
                 const float j1y = in.jac.w;
-                out.jac.x = (it00 * j0x) + (it10 * j0y);
-                out.jac.y = (it01 * j0x) + (it11 * j0y);
-                out.jac.z = (it00 * j1x) + (it10 * j1y);
-                out.jac.w = (it01 * j1x) + (it11 * j1y);
+                out.jac.x = (state.it00 * j0x) + (state.it10 * j0y);
+                out.jac.y = (state.it01 * j0x) + (state.it11 * j0y);
+                out.jac.z = (state.it00 * j1x) + (state.it10 * j1y);
+                out.jac.w = (state.it01 * j1x) + (state.it11 * j1y);
             }
             else
             {
                 out.jac = in.jac;
             }
 
-            out.col = PremultiplyColor(MultiplyColor(in.col, draw.color));
+            out.col = PremultiplyColor(MultiplyColor(in.col, state.color));
             return out;
         }
 
@@ -444,8 +470,12 @@ namespace he::scribe
 
     bool Renderer::PrepareRetainedText(const RetainedTextModel& text)
     {
-        for (const RetainedTextDraw& draw : text.GetDraws())
+        text.ClearPreparedGlyphResources();
+
+        const Span<const RetainedTextDraw> draws = text.GetDraws();
+        for (uint32_t drawIndex = 0; drawIndex < draws.Size(); ++drawIndex)
         {
+            const RetainedTextDraw& draw = draws[drawIndex];
             const GlyphResource* glyphResource = nullptr;
             const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
                 ? m_context.TryGetStrokedGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
@@ -454,6 +484,8 @@ namespace he::scribe
             {
                 continue;
             }
+
+            text.SetPreparedGlyphResource(drawIndex, *glyphResource);
         }
 
         return true;
@@ -533,15 +565,20 @@ namespace he::scribe
             m_streamVertices.Size() + text.GetEstimatedVertexCount(),
             m_batches.Size() + text.GetDrawCount());
 
-        for (const RetainedTextDraw& draw : text.GetDraws())
+        const Span<const RetainedTextDraw> draws = text.GetDraws();
+        for (uint32_t drawIndex = 0; drawIndex < draws.Size(); ++drawIndex)
         {
-            const GlyphResource* glyphResource = nullptr;
-            const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
-                ? m_context.TryGetStrokedGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
-                : m_context.TryGetGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
-            if (!ok)
+            const RetainedTextDraw& draw = draws[drawIndex];
+            const GlyphResource* glyphResource = text.GetPreparedGlyphResource(drawIndex);
+            if (glyphResource == nullptr)
             {
-                continue;
+                const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
+                    ? m_context.TryGetStrokedGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
+                    : m_context.TryGetGlyphResource(text.GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
+                if (!ok)
+                {
+                    continue;
+                }
             }
 
             DrawGlyphDesc desc{};
@@ -816,9 +853,10 @@ namespace he::scribe
 
         const uint32_t oldSize = m_streamVertices.Size();
         m_streamVertices.Expand(draw.glyph->vertexCount, DefaultInit);
+        const GlyphTransformState transformState = BuildGlyphTransformState(draw);
         for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
         {
-            m_streamVertices[oldSize + vertexIndex] = TransformVertex(draw.glyph->vertices[vertexIndex], draw);
+            m_streamVertices[oldSize + vertexIndex] = TransformVertex(draw.glyph->vertices[vertexIndex], transformState);
         }
 
         batch->vertexCount += draw.glyph->vertexCount;

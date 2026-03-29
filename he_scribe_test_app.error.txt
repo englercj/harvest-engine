@@ -1,0 +1,6 @@
+error.kind = 0
+source.file = C:\Users\engle\source\repos\harvest-engine\plugins\rhi\src\d3d12\bitmap_allocator.h
+source.line = 33
+source.func = void __cdecl he::rhi::d3d12::BitmapAllocator::Destroy(class he::Allocator &)
+error_kind = Assertion(0)
+error_expr = m_allocCount == 0

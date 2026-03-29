@@ -758,6 +758,7 @@ namespace he
                     desc.bufferCount = HE_LENGTH_OF(m_render.frames);
                     desc.format = m_render.preferredSwapChainFormat;
                     desc.size = evt.size;
+                    desc.enableVSync = true;
 
                     Result r = m_render.device->UpdateSwapChain(m_render.swapChain, desc);
                     if (!r)
@@ -1038,7 +1039,9 @@ namespace he
         scribe::DrawPassDesc overlayDrawPassDesc{};
         overlayDrawPassDesc.cmdList = m_render.cmdList;
         overlayDrawPassDesc.targetView = m_render.presentTarget.renderTargetView;
-        overlayDrawPassDesc.targetState = rhi::TextureState::RenderTarget;
+        // DrawPassDesc.targetState is the backbuffer state outside the pass, not the in-pass state.
+        // Keep both passes restoring the swapchain target back to Present.
+        overlayDrawPassDesc.targetState = rhi::TextureState::Present;
         overlayDrawPassDesc.targetSize = sceneDrawPassDesc.targetSize;
         overlayDrawPassDesc.clearTarget = false;
         overlayDrawPassDesc.clearColor = sceneDrawPassDesc.clearColor;

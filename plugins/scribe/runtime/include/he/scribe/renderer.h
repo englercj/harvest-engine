@@ -13,6 +13,10 @@
 
 namespace he::scribe
 {
+    // The draw-oriented API can submit multiple scribe passes before the caller advances to the
+    // next frame fence, so keep a deeper upload-buffer ring than MaxFrameCount alone.
+    constexpr uint32_t ScribeStreamBufferRingSize = rhi::MaxFrameCount * 8u;
+
     struct GlyphAtlas;
     class RetainedTextModel;
     class RetainedVectorImageModel;
@@ -77,6 +81,8 @@ namespace he::scribe
 
         rhi::RenderCmdList* cmdList{ nullptr };
         const rhi::RenderTargetView* targetView{ nullptr };
+        // External texture state before BeginDraw and after EndDraw. The renderer transitions
+        // into RenderTarget for the pass and restores this state when the pass ends.
         rhi::TextureState targetState{ rhi::TextureState::Common };
         Vec2u targetSize{ 0, 0 };
         ViewTransform2D viewTransform{};
@@ -184,8 +190,8 @@ namespace he::scribe
         rhi::RenderPipeline* m_quadPipeline{ nullptr };
         rhi::Format m_targetFormat{ rhi::Format::Invalid };
         DrawPassDesc m_drawPass{};
-        StreamBuffer m_streamBuffers[rhi::MaxFrameCount]{};
-        StreamBuffer m_quadStreamBuffers[rhi::MaxFrameCount]{};
+        StreamBuffer m_streamBuffers[ScribeStreamBufferRingSize]{};
+        StreamBuffer m_quadStreamBuffers[ScribeStreamBufferRingSize]{};
         uint32_t m_streamBufferIndex{ 0 };
         Vector<StreamBatch> m_batches{};
         Vector<PackedGlyphVertex> m_streamVertices{};

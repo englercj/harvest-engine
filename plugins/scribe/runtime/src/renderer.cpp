@@ -579,7 +579,7 @@ namespace he::scribe
             && desc.targetView != nullptr
             && desc.targetSize.x > 0
             && desc.targetSize.y > 0,
-            HE_MSG("Invalid scribe frame description.")))
+            HE_MSG("Invalid scribe draw pass description.")))
         {
             return false;
         }

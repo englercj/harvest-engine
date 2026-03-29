@@ -1739,8 +1739,6 @@ HE_TEST(scribe, retained_text, prepares_with_renderer_after_temporary_face_span_
 
     NullRendererHarness harness;
     HE_ASSERT(harness.Initialize());
-    HE_EXPECT(harness.renderer.PrepareRetainedText(retainedText));
-
     harness.renderer.QueueRetainedText(retainedText);
 }
 
@@ -1795,8 +1793,6 @@ HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_fac
 
     NullRendererHarness harness;
     HE_ASSERT(harness.Initialize());
-    HE_EXPECT(harness.renderer.PrepareRetainedText(retainedText));
-
     harness.renderer.QueueRetainedText(retainedText);
 }
 
@@ -1869,16 +1865,14 @@ HE_TEST(scribe, retained_text, transformed_vertex_cache_is_reused_when_only_fram
     retainedDesc.layout = &layout;
     retainedDesc.fontSize = options.fontSize;
     HE_ASSERT(retainedText.Build(retainedDesc));
-    HE_ASSERT(harness.renderer.PrepareRetainedText(retainedText));
-
     retainedText.SetOrigin({ 12.0f, 24.0f });
     retainedText.SetScale(1.0f);
     retainedText.SetForegroundColor({ 0.1f, 0.2f, 0.3f, 1.0f });
 
     harness.renderer.QueueRetainedText(retainedText);
-    HE_EXPECT(retainedText.HasCachedTransformedVertices());
-    const PackedGlyphVertex* cachedVertices = retainedText.GetCachedTransformedVertices().Data();
-    const RetainedTextCachedBatch* cachedBatches = retainedText.GetCachedTransformedBatches().Data();
+    HE_EXPECT_GT(retainedText.GetCachedVertexCount(), 0u);
+    HE_EXPECT_GT(retainedText.GetCachedBatchCount(), 0u);
+    const uint32_t cacheGeneration = retainedText.GetGeometryCacheGeneration();
 
     float constantsA[20]{};
     BuildFrameConstants(constantsA, { 640u, 480u }, {});
@@ -1890,11 +1884,13 @@ HE_TEST(scribe, retained_text, transformed_vertex_cache_is_reused_when_only_fram
     HE_EXPECT_NE(constantsA[3], constantsB[3]);
 
     harness.renderer.QueueRetainedText(retainedText);
-    HE_EXPECT_EQ_PTR(retainedText.GetCachedTransformedVertices().Data(), cachedVertices);
-    HE_EXPECT_EQ_PTR(retainedText.GetCachedTransformedBatches().Data(), cachedBatches);
+    HE_EXPECT_EQ(retainedText.GetGeometryCacheGeneration(), cacheGeneration);
 
     retainedText.SetOrigin({ 112.0f, 24.0f });
-    HE_EXPECT(!retainedText.HasCachedTransformedVertices());
+    HE_EXPECT_EQ(retainedText.GetCachedVertexCount(), 0u);
+    HE_EXPECT_EQ(retainedText.GetCachedBatchCount(), 0u);
     harness.renderer.QueueRetainedText(retainedText);
-    HE_EXPECT(retainedText.HasCachedTransformedVertices());
+    HE_EXPECT_GT(retainedText.GetCachedVertexCount(), 0u);
+    HE_EXPECT_GT(retainedText.GetCachedBatchCount(), 0u);
+    HE_EXPECT_GT(retainedText.GetGeometryCacheGeneration(), cacheGeneration);
 }

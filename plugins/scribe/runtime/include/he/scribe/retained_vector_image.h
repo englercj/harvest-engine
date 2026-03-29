@@ -81,16 +81,15 @@ namespace he::scribe
             const StrokeStyle& style,
             Renderer& renderer,
             const GlyphResource*& out) const;
-        bool UpdateRenderData(Renderer& renderer) const;
-        bool HasCachedTransformedVertices() const;
-        Span<const PackedGlyphVertex> GetCachedTransformedVertices() const { return m_cachedVertices; }
-        Span<const RetainedVectorImageCachedBatch> GetCachedTransformedBatches() const { return m_cachedBatches; }
-        void SetCachedTransformedVertices(
-            Vector<PackedGlyphVertex>&& vertices,
-            Vector<RetainedVectorImageCachedBatch>&& batches) const;
-        void ClearTransformedVertexCache() const;
+        uint32_t GetCachedVertexCount() const { return m_cachedVertices.Size(); }
+        uint32_t GetCachedBatchCount() const { return m_cachedBatches.Size(); }
+        uint32_t GetGeometryCacheGeneration() const { return m_geometryCacheGeneration; }
 
     private:
+        friend class Renderer;
+
+        bool UpdateRenderData(Renderer& renderer) const;
+        void ClearTransformedVertexCache() const;
         void InvalidateGeometry() const;
         void InvalidateColor() const;
 
@@ -111,6 +110,7 @@ namespace he::scribe
         mutable Vector<RetainedVectorImageCachedBatch> m_cachedBatches{};
         mutable bool m_hasCachedGeometry{ false };
         mutable bool m_hasCachedColor{ false };
+        mutable uint32_t m_geometryCacheGeneration{ 0 };
         Vec2f m_viewBoxSize{ 0.0f, 0.0f };
         uint32_t m_estimatedVertexCount{ 0 };
     };

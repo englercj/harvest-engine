@@ -76,21 +76,18 @@ namespace he::scribe
         void SetScale(float scale);
         void SetForegroundColor(const Vec4f& color);
         FontFaceHandle GetFontFaceHandle(uint32_t fontFaceIndex) const;
-        const GlyphResource* GetPreparedGlyphResource(uint32_t drawIndex) const;
-        void SetPreparedGlyphResource(uint32_t drawIndex, const GlyphResource& glyph) const;
-        void ClearPreparedGlyphResources() const;
-        bool UpdateRenderData() const;
-        bool HasCachedTransformedVertices() const;
-        Span<const PackedGlyphVertex> GetCachedTransformedVertices() const { return m_cachedVertices; }
-        Span<const RetainedTextCachedBatch> GetCachedTransformedBatches() const { return m_cachedBatches; }
-        Span<const PackedQuadVertex> GetCachedQuadVertices() const { return m_cachedQuadVertices; }
-        void SetCachedTransformedVertices(
-            Vector<PackedGlyphVertex>&& vertices,
-            Vector<RetainedTextCachedBatch>&& batches,
-            Vector<PackedQuadVertex>&& quads) const;
-        void ClearTransformedVertexCache() const;
+        uint32_t GetCachedVertexCount() const { return m_cachedVertices.Size(); }
+        uint32_t GetCachedBatchCount() const { return m_cachedBatches.Size(); }
+        uint32_t GetCachedQuadVertexCount() const { return m_cachedQuadVertices.Size(); }
+        uint32_t GetGeometryCacheGeneration() const { return m_geometryCacheGeneration; }
 
     private:
+        friend class Renderer;
+
+        bool UpdateRenderData() const;
+        const GlyphResource* GetPreparedGlyphResource(uint32_t drawIndex) const;
+        void ClearPreparedGlyphResources() const;
+        void ClearTransformedVertexCache() const;
         void InvalidateGeometry() const;
         void InvalidateColor() const;
 
@@ -108,6 +105,7 @@ namespace he::scribe
         mutable Vector<PackedQuadVertex> m_cachedQuadVertices{};
         mutable bool m_hasCachedGeometry{ false };
         mutable bool m_hasCachedColor{ false };
+        mutable uint32_t m_geometryCacheGeneration{ 0 };
         uint32_t m_estimatedVertexCount{ 0 };
     };
 }

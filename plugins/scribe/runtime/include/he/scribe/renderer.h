@@ -138,8 +138,6 @@ namespace he::scribe
         void DestroyGlyphResource(GlyphResource& resource);
 
         bool BeginFrame(const FrameDesc& desc);
-        bool PrepareRetainedText(const RetainedTextModel& text);
-        bool PrepareRetainedVectorImage(const RetainedVectorImageModel& image);
         void SetGlyphBatchingEnabled(bool enabled) { m_glyphBatchingEnabled = enabled; }
         bool IsGlyphBatchingEnabled() const { return m_glyphBatchingEnabled; }
         void ReserveQueuedVertexCapacity(uint32_t vertexCount, uint32_t batchCount = 0);

@@ -400,6 +400,7 @@ namespace he::scribe
         m_cachedQuadVertices.Clear();
         m_hasCachedGeometry = false;
         m_hasCachedColor = false;
+        m_geometryCacheGeneration = 0;
         m_estimatedVertexCount = 0;
     }
 
@@ -451,16 +452,6 @@ namespace he::scribe
         return &m_preparedGlyphs[drawIndex];
     }
 
-    void RetainedTextModel::SetPreparedGlyphResource(uint32_t drawIndex, const GlyphResource& glyph) const
-    {
-        if (drawIndex >= m_preparedGlyphs.Size())
-        {
-            m_preparedGlyphs.Resize(m_draws.Size(), DefaultInit);
-        }
-
-        m_preparedGlyphs[drawIndex] = glyph;
-    }
-
     void RetainedTextModel::ClearPreparedGlyphResources() const
     {
         m_preparedGlyphs.Clear();
@@ -510,10 +501,10 @@ namespace he::scribe
 
         if (!m_hasCachedGeometry)
         {
-            Vector<PackedGlyphVertex> cachedVertices{};
-            cachedVertices.Reserve(m_estimatedVertexCount);
-            Vector<RetainedTextCachedBatch> cachedBatches{};
-            cachedBatches.Reserve(draws.Size());
+            m_cachedVertices.Clear();
+            m_cachedVertices.Reserve(m_estimatedVertexCount);
+            m_cachedBatches.Clear();
+            m_cachedBatches.Reserve(draws.Size());
             for (uint32_t drawIndex = 0; drawIndex < draws.Size(); ++drawIndex)
             {
                 const GlyphResource* glyphResource = GetPreparedGlyphResource(drawIndex);
@@ -523,29 +514,30 @@ namespace he::scribe
                 }
 
                 const DrawGlyphDesc desc = BuildDrawDesc(*this, draws[drawIndex], *glyphResource);
-                const uint32_t oldSize = cachedVertices.Size();
-                cachedVertices.Expand(glyphResource->vertexCount, DefaultInit);
-                TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
-                if (!cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == glyphResource->atlas))
+                const uint32_t oldSize = m_cachedVertices.Size();
+                m_cachedVertices.Expand(glyphResource->vertexCount, DefaultInit);
+                TransformDrawVertices(m_cachedVertices.Data() + oldSize, desc);
+                if (!m_cachedBatches.IsEmpty() && (m_cachedBatches.Back().atlas == glyphResource->atlas))
                 {
-                    cachedBatches.Back().vertexCount += glyphResource->vertexCount;
+                    m_cachedBatches.Back().vertexCount += glyphResource->vertexCount;
                 }
                 else
                 {
-                    RetainedTextCachedBatch& batch = cachedBatches.EmplaceBack();
+                    RetainedTextCachedBatch& batch = m_cachedBatches.EmplaceBack();
                     batch.atlas = glyphResource->atlas;
                     batch.vertexCount = glyphResource->vertexCount;
                 }
             }
 
-            Vector<PackedQuadVertex> cachedQuadVertices{};
-            cachedQuadVertices.Reserve(m_quads.Size() * 6u);
+            m_cachedQuadVertices.Clear();
+            m_cachedQuadVertices.Reserve(m_quads.Size() * 6u);
             for (const RetainedTextQuad& quad : m_quads)
             {
-                AppendQuadVertices(cachedQuadVertices, BuildQuadDesc(*this, quad));
+                AppendQuadVertices(m_cachedQuadVertices, BuildQuadDesc(*this, quad));
             }
-
-            SetCachedTransformedVertices(Move(cachedVertices), Move(cachedBatches), Move(cachedQuadVertices));
+            m_hasCachedGeometry = true;
+            m_hasCachedColor = true;
+            ++m_geometryCacheGeneration;
             return true;
         }
 
@@ -579,18 +571,6 @@ namespace he::scribe
         return true;
     }
 
-    void RetainedTextModel::SetCachedTransformedVertices(
-        Vector<PackedGlyphVertex>&& vertices,
-        Vector<RetainedTextCachedBatch>&& batches,
-        Vector<PackedQuadVertex>&& quads) const
-    {
-        m_cachedVertices = Move(vertices);
-        m_cachedBatches = Move(batches);
-        m_cachedQuadVertices = Move(quads);
-        m_hasCachedGeometry = true;
-        m_hasCachedColor = true;
-    }
-
     void RetainedTextModel::ClearTransformedVertexCache() const
     {
         m_cachedVertices.Clear();
@@ -598,14 +578,6 @@ namespace he::scribe
         m_cachedQuadVertices.Clear();
         m_hasCachedGeometry = false;
         m_hasCachedColor = false;
-    }
-
-    bool RetainedTextModel::HasCachedTransformedVertices() const
-    {
-        return m_hasCachedGeometry
-            && m_hasCachedColor
-            && (!m_cachedVertices.IsEmpty() || !m_cachedQuadVertices.IsEmpty())
-            && (m_cachedBatches.IsEmpty() == m_cachedVertices.IsEmpty());
     }
 
     void RetainedTextModel::InvalidateGeometry() const

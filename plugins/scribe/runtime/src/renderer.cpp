@@ -606,32 +606,6 @@ namespace he::scribe
         }
     }
 
-    bool Renderer::PrepareRetainedText(const RetainedTextModel& text)
-    {
-        if (ScribeContext* textContext = text.GetContext(); textContext && !textContext->IsInitialized() && m_device)
-        {
-            if (!textContext->Initialize(*m_device))
-            {
-                return false;
-            }
-        }
-
-        return text.UpdateRenderData();
-    }
-
-    bool Renderer::PrepareRetainedVectorImage(const RetainedVectorImageModel& image)
-    {
-        if (ScribeContext* imageContext = image.GetContext(); imageContext && !imageContext->IsInitialized() && m_device)
-        {
-            if (!imageContext->Initialize(*m_device))
-            {
-                return false;
-            }
-        }
-
-        return image.UpdateRenderData(*this);
-    }
-
     void Renderer::QueueDraw(const DrawGlyphDesc& desc)
     {
         if (!desc.glyph || !desc.glyph->atlas || (desc.glyph->vertexCount == 0))
@@ -653,17 +627,24 @@ namespace he::scribe
             m_streamVertices.Size() + text.GetEstimatedVertexCount(),
             m_batches.Size() + text.GetDrawCount());
 
-        if (PrepareRetainedText(text) && text.HasCachedTransformedVertices())
+        if (ScribeContext* textContext = text.GetContext(); textContext && !textContext->IsInitialized() && m_device)
+        {
+            if (!textContext->Initialize(*m_device))
+            {
+                return;
+            }
+        }
+
+        if (text.UpdateRenderData())
         {
             const uint32_t firstVertex = m_streamVertices.Size();
-            const Span<const PackedGlyphVertex> cachedVertices = text.GetCachedTransformedVertices();
-            if (!cachedVertices.IsEmpty())
+            if (!text.m_cachedVertices.IsEmpty())
             {
-                m_streamVertices.Insert(m_streamVertices.Size(), cachedVertices.Data(), cachedVertices.Size());
+                m_streamVertices.Insert(m_streamVertices.Size(), text.m_cachedVertices.Data(), text.m_cachedVertices.Size());
             }
 
             uint32_t batchVertexStart = firstVertex;
-            for (const RetainedTextCachedBatch& cachedBatch : text.GetCachedTransformedBatches())
+            for (const RetainedTextCachedBatch& cachedBatch : text.m_cachedBatches)
             {
                 if (!cachedBatch.atlas || (cachedBatch.vertexCount == 0))
                 {
@@ -685,12 +666,10 @@ namespace he::scribe
                 batchVertexStart += cachedBatch.vertexCount;
             }
 
-            const Span<const PackedQuadVertex> cachedQuadVertices = text.GetCachedQuadVertices();
-            if (!cachedQuadVertices.IsEmpty())
+            if (!text.m_cachedQuadVertices.IsEmpty())
             {
-                m_quadVertices.Insert(m_quadVertices.Size(), cachedQuadVertices.Data(), cachedQuadVertices.Size());
+                m_quadVertices.Insert(m_quadVertices.Size(), text.m_cachedQuadVertices.Data(), text.m_cachedQuadVertices.Size());
             }
-            return;
         }
     }
 
@@ -700,17 +679,24 @@ namespace he::scribe
             m_streamVertices.Size() + image.GetEstimatedVertexCount(),
             m_batches.Size() + image.GetDrawCount());
 
-        if (PrepareRetainedVectorImage(image) && image.HasCachedTransformedVertices())
+        if (ScribeContext* imageContext = image.GetContext(); imageContext && !imageContext->IsInitialized() && m_device)
+        {
+            if (!imageContext->Initialize(*m_device))
+            {
+                return;
+            }
+        }
+
+        if (image.UpdateRenderData(*this))
         {
             const uint32_t firstVertex = m_streamVertices.Size();
-            const Span<const PackedGlyphVertex> cachedVertices = image.GetCachedTransformedVertices();
-            if (!cachedVertices.IsEmpty())
+            if (!image.m_cachedVertices.IsEmpty())
             {
-                m_streamVertices.Insert(m_streamVertices.Size(), cachedVertices.Data(), cachedVertices.Size());
+                m_streamVertices.Insert(m_streamVertices.Size(), image.m_cachedVertices.Data(), image.m_cachedVertices.Size());
             }
 
             uint32_t batchVertexStart = firstVertex;
-            for (const RetainedVectorImageCachedBatch& cachedBatch : image.GetCachedTransformedBatches())
+            for (const RetainedVectorImageCachedBatch& cachedBatch : image.m_cachedBatches)
             {
                 if (!cachedBatch.atlas || (cachedBatch.vertexCount == 0))
                 {
@@ -731,8 +717,6 @@ namespace he::scribe
 
                 batchVertexStart += cachedBatch.vertexCount;
             }
-
-            return;
         }
     }
 

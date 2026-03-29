@@ -1181,8 +1181,6 @@ HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_im
 
     NullRendererHarness harness;
     HE_ASSERT(harness.Initialize());
-    HE_EXPECT(harness.renderer.PrepareRetainedVectorImage(retainedImage));
-
     harness.renderer.QueueRetainedVectorImage(retainedImage);
 }
 
@@ -1201,7 +1199,6 @@ HE_TEST(scribe, retained_vector_image, shares_one_fill_atlas_across_prepared_sha
     desc.image = image;
     desc.imageWords = storage;
     HE_ASSERT(retainedImage.Build(desc));
-    HE_ASSERT(harness.renderer.PrepareRetainedVectorImage(retainedImage));
 
     const GlyphResource* shape0 = nullptr;
     const GlyphResource* shape1 = nullptr;
@@ -1238,23 +1235,24 @@ HE_TEST(scribe, retained_vector_image, transformed_vertex_cache_is_reused_for_sa
     desc.image = image;
     desc.imageWords = storage;
     HE_ASSERT(retainedImage.Build(desc));
-    HE_ASSERT(harness.renderer.PrepareRetainedVectorImage(retainedImage));
 
     retainedImage.SetOrigin({ 16.0f, 18.0f });
     retainedImage.SetScale(1.25f);
     retainedImage.SetTint({ 0.8f, 0.7f, 0.6f, 1.0f });
 
     harness.renderer.QueueRetainedVectorImage(retainedImage);
-    HE_EXPECT(retainedImage.HasCachedTransformedVertices());
-    const PackedGlyphVertex* cachedVertices = retainedImage.GetCachedTransformedVertices().Data();
-    const RetainedVectorImageCachedBatch* cachedBatches = retainedImage.GetCachedTransformedBatches().Data();
+    HE_EXPECT_GT(retainedImage.GetCachedVertexCount(), 0u);
+    HE_EXPECT_GT(retainedImage.GetCachedBatchCount(), 0u);
+    const uint32_t cacheGeneration = retainedImage.GetGeometryCacheGeneration();
 
     harness.renderer.QueueRetainedVectorImage(retainedImage);
-    HE_EXPECT_EQ_PTR(retainedImage.GetCachedTransformedVertices().Data(), cachedVertices);
-    HE_EXPECT_EQ_PTR(retainedImage.GetCachedTransformedBatches().Data(), cachedBatches);
+    HE_EXPECT_EQ(retainedImage.GetGeometryCacheGeneration(), cacheGeneration);
 
     retainedImage.SetScale(0.75f);
-    HE_EXPECT(!retainedImage.HasCachedTransformedVertices());
+    HE_EXPECT_EQ(retainedImage.GetCachedVertexCount(), 0u);
+    HE_EXPECT_EQ(retainedImage.GetCachedBatchCount(), 0u);
     harness.renderer.QueueRetainedVectorImage(retainedImage);
-    HE_EXPECT(retainedImage.HasCachedTransformedVertices());
+    HE_EXPECT_GT(retainedImage.GetCachedVertexCount(), 0u);
+    HE_EXPECT_GT(retainedImage.GetCachedBatchCount(), 0u);
+    HE_EXPECT_GT(retainedImage.GetGeometryCacheGeneration(), cacheGeneration);
 }

@@ -532,6 +532,7 @@ namespace he::scribe
         m_cachedBatches.Clear();
         m_hasCachedGeometry = false;
         m_hasCachedColor = false;
+        m_geometryCacheGeneration = 0;
         m_viewBoxSize = { 0.0f, 0.0f };
         m_estimatedVertexCount = 0;
     }
@@ -672,10 +673,10 @@ namespace he::scribe
 
         if (!m_hasCachedGeometry)
         {
-            Vector<PackedGlyphVertex> cachedVertices{};
-            cachedVertices.Reserve(m_estimatedVertexCount);
-            Vector<RetainedVectorImageCachedBatch> cachedBatches{};
-            cachedBatches.Reserve(GetDrawCount());
+            m_cachedVertices.Clear();
+            m_cachedVertices.Reserve(m_estimatedVertexCount);
+            m_cachedBatches.Clear();
+            m_cachedBatches.Reserve(GetDrawCount());
 
             for (const RetainedVectorImageDraw& draw : m_draws)
             {
@@ -692,16 +693,16 @@ namespace he::scribe
                 }
 
                 const DrawGlyphDesc desc = BuildShapeDrawDesc(*this, draw, *shapeResource);
-                const uint32_t oldSize = cachedVertices.Size();
-                cachedVertices.Expand(shapeResource->vertexCount, DefaultInit);
-                TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
-                if (!cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == shapeResource->atlas))
+                const uint32_t oldSize = m_cachedVertices.Size();
+                m_cachedVertices.Expand(shapeResource->vertexCount, DefaultInit);
+                TransformDrawVertices(m_cachedVertices.Data() + oldSize, desc);
+                if (!m_cachedBatches.IsEmpty() && (m_cachedBatches.Back().atlas == shapeResource->atlas))
                 {
-                    cachedBatches.Back().vertexCount += shapeResource->vertexCount;
+                    m_cachedBatches.Back().vertexCount += shapeResource->vertexCount;
                 }
                 else
                 {
-                    RetainedVectorImageCachedBatch& batch = cachedBatches.EmplaceBack();
+                    RetainedVectorImageCachedBatch& batch = m_cachedBatches.EmplaceBack();
                     batch.atlas = shapeResource->atlas;
                     batch.vertexCount = shapeResource->vertexCount;
                 }
@@ -719,22 +720,23 @@ namespace he::scribe
                 }
 
                 const DrawGlyphDesc desc = BuildTextDrawDesc(*this, draw, *glyphResource);
-                const uint32_t oldSize = cachedVertices.Size();
-                cachedVertices.Expand(glyphResource->vertexCount, DefaultInit);
-                TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
-                if (!cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == glyphResource->atlas))
+                const uint32_t oldSize = m_cachedVertices.Size();
+                m_cachedVertices.Expand(glyphResource->vertexCount, DefaultInit);
+                TransformDrawVertices(m_cachedVertices.Data() + oldSize, desc);
+                if (!m_cachedBatches.IsEmpty() && (m_cachedBatches.Back().atlas == glyphResource->atlas))
                 {
-                    cachedBatches.Back().vertexCount += glyphResource->vertexCount;
+                    m_cachedBatches.Back().vertexCount += glyphResource->vertexCount;
                 }
                 else
                 {
-                    RetainedVectorImageCachedBatch& batch = cachedBatches.EmplaceBack();
+                    RetainedVectorImageCachedBatch& batch = m_cachedBatches.EmplaceBack();
                     batch.atlas = glyphResource->atlas;
                     batch.vertexCount = glyphResource->vertexCount;
                 }
             }
-
-            SetCachedTransformedVertices(Move(cachedVertices), Move(cachedBatches));
+            m_hasCachedGeometry = true;
+            m_hasCachedColor = true;
+            ++m_geometryCacheGeneration;
             return true;
         }
 
@@ -782,30 +784,12 @@ namespace he::scribe
         return true;
     }
 
-    void RetainedVectorImageModel::SetCachedTransformedVertices(
-        Vector<PackedGlyphVertex>&& vertices,
-        Vector<RetainedVectorImageCachedBatch>&& batches) const
-    {
-        m_cachedVertices = Move(vertices);
-        m_cachedBatches = Move(batches);
-        m_hasCachedGeometry = true;
-        m_hasCachedColor = true;
-    }
-
     void RetainedVectorImageModel::ClearTransformedVertexCache() const
     {
         m_cachedVertices.Clear();
         m_cachedBatches.Clear();
         m_hasCachedGeometry = false;
         m_hasCachedColor = false;
-    }
-
-    bool RetainedVectorImageModel::HasCachedTransformedVertices() const
-    {
-        return m_hasCachedGeometry
-            && m_hasCachedColor
-            && !m_cachedVertices.IsEmpty()
-            && !m_cachedBatches.IsEmpty();
     }
 
     void RetainedVectorImageModel::InvalidateGeometry() const

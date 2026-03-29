@@ -1806,7 +1806,7 @@ namespace he
             retainedDesc.fontSize = fontSize;
             retainedDesc.darkBackgroundPreferred = true;
             retainedDesc.styles = styles;
-            return out.Build(retainedDesc) && m_renderer.PrepareRetainedText(out);
+            return out.Build(retainedDesc);
         };
 
         auto buildRetainedImage = [&](scribe::RetainedVectorImageModel& out, const LoadedDemoImage& image) -> bool
@@ -1817,7 +1817,7 @@ namespace he
             retainedDesc.context = &m_scribeContext;
             retainedDesc.image = image.blob;
             retainedDesc.imageWords = Span<const schema::Word>(image.blobWords.Data(), image.blobWords.Size());
-            return out.Build(retainedDesc) && m_renderer.PrepareRetainedVectorImage(out);
+            return out.Build(retainedDesc);
         };
 
         auto resolveBlockFaces = [&](const SceneTextBlock& block, Vector<scribe::FontFaceHandle>& out) -> bool
@@ -2743,7 +2743,7 @@ namespace he
             retainedDesc.layout = &layout;
             retainedDesc.fontSize = fontSize;
             retainedDesc.darkBackgroundPreferred = true;
-            return out.Build(retainedDesc) && m_renderer.PrepareRetainedText(out);
+            return out.Build(retainedDesc);
         };
 
         if (!buildRetainedText(m_retainedSceneStatsText, m_sceneStatsLayout, overlayFontSize)

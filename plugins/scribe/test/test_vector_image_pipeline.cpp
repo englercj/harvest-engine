@@ -1223,3 +1223,41 @@ HE_TEST(scribe, retained_vector_image, shares_one_fill_atlas_across_prepared_sha
     HE_EXPECT(shape0->atlas != nullptr);
     HE_EXPECT_EQ_PTR(shape0->atlas, shape1->atlas);
 }
+
+HE_TEST(scribe, retained_vector_image, transformed_vertex_cache_is_reused_for_same_instance)
+{
+    Vector<schema::Word> storage;
+    VectorImageResourceReader image{};
+    HE_ASSERT(BuildLoadedVectorImage(storage, image));
+
+    NullRendererHarness harness;
+    HE_ASSERT(harness.Initialize());
+
+    RetainedVectorImageModel retainedImage{};
+    RetainedVectorImageBuildDesc desc{};
+    desc.context = &harness.context;
+    desc.image = image;
+    desc.imageWords = storage;
+    HE_ASSERT(retainedImage.Build(desc));
+    HE_ASSERT(harness.renderer.PrepareRetainedVectorImage(retainedImage));
+
+    RetainedVectorImageInstanceDesc instance{};
+    instance.origin = { 16.0f, 18.0f };
+    instance.scale = 1.25f;
+    instance.tint = { 0.8f, 0.7f, 0.6f, 1.0f };
+
+    harness.renderer.QueueRetainedVectorImage(retainedImage, instance);
+    HE_EXPECT(retainedImage.HasCachedTransformedVertices(instance));
+    const PackedGlyphVertex* cachedVertices = retainedImage.GetCachedTransformedVertices().Data();
+    const RetainedVectorImageCachedBatch* cachedBatches = retainedImage.GetCachedTransformedBatches().Data();
+
+    harness.renderer.QueueRetainedVectorImage(retainedImage, instance);
+    HE_EXPECT_EQ_PTR(retainedImage.GetCachedTransformedVertices().Data(), cachedVertices);
+    HE_EXPECT_EQ_PTR(retainedImage.GetCachedTransformedBatches().Data(), cachedBatches);
+
+    RetainedVectorImageInstanceDesc scaledInstance = instance;
+    scaledInstance.scale = 0.75f;
+    harness.renderer.QueueRetainedVectorImage(retainedImage, scaledInstance);
+    HE_EXPECT(!retainedImage.HasCachedTransformedVertices(instance));
+    HE_EXPECT(retainedImage.HasCachedTransformedVertices(scaledInstance));
+}

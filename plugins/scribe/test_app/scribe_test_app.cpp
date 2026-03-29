@@ -936,22 +936,13 @@ namespace he
             return;
         }
 
-        const auto ApplySceneTransform = [this](const Vec2f& point) -> Vec2f
-        {
-            return {
-                (point.x * m_sceneZoom) + m_scenePan.x,
-                (point.y * m_sceneZoom) + m_scenePan.y
-            };
-        };
-        Vec2f transformedTitleOrigin = ApplySceneTransform(m_titleOrigin);
-        Vec2f transformedBodyOrigin = ApplySceneTransform(m_bodyOrigin);
         auto AlignTextOriginLeftEdgeX = [this](Vec2f& origin, const scribe::RetainedTextModel& text, const scribe::LayoutResult& layout)
         {
             float leftEdgeX = Limits<float>::Max;
             float renderedMinX = 0.0f;
             if (TryGetRenderedLineMinX(renderedMinX, text, layout, 0))
             {
-                leftEdgeX = origin.x + (renderedMinX * m_sceneZoom);
+                leftEdgeX = ((origin.x + renderedMinX) * m_sceneZoom) + m_scenePan.x;
             }
             else
             {
@@ -962,51 +953,52 @@ namespace he
                         continue;
                     }
 
-                    leftEdgeX = Min(leftEdgeX, origin.x + (cluster.x0 * m_sceneZoom));
+                    leftEdgeX = Min(leftEdgeX, ((origin.x + cluster.x0) * m_sceneZoom) + m_scenePan.x);
                 }
             }
 
             if (leftEdgeX != Limits<float>::Max)
             {
-                origin.x += Round(leftEdgeX) - leftEdgeX;
+                origin.x += (Round(leftEdgeX) - leftEdgeX) / Max(m_sceneZoom, 0.0001f);
             }
             else
             {
-                origin.x = Round(origin.x);
+                const float screenOriginX = (origin.x * m_sceneZoom) + m_scenePan.x;
+                origin.x += (Round(screenOriginX) - screenOriginX) / Max(m_sceneZoom, 0.0001f);
             }
         };
-        AlignTextOriginLeftEdgeX(transformedTitleOrigin, m_retainedTitleText, m_titleLayout);
-        AlignTextOriginLeftEdgeX(transformedBodyOrigin, m_retainedBodyText, m_bodyLayout);
+        Vec2f titleOrigin = m_titleOrigin;
+        Vec2f bodyOrigin = m_bodyOrigin;
+        AlignTextOriginLeftEdgeX(titleOrigin, m_retainedTitleText, m_titleLayout);
+        AlignTextOriginLeftEdgeX(bodyOrigin, m_retainedBodyText, m_bodyLayout);
 
-        scribe::FrameDesc frameDesc{};
-        frameDesc.cmdList = m_render.cmdList;
-        frameDesc.targetView = m_render.presentTarget.renderTargetView;
-        frameDesc.targetState = rhi::TextureState::Present;
-        frameDesc.targetSize = {
+        scribe::FrameDesc sceneFrameDesc{};
+        sceneFrameDesc.cmdList = m_render.cmdList;
+        sceneFrameDesc.targetView = m_render.presentTarget.renderTargetView;
+        sceneFrameDesc.targetState = rhi::TextureState::Present;
+        sceneFrameDesc.targetSize = {
             static_cast<uint32_t>(Max(m_view->GetSize().x, 0)),
             static_cast<uint32_t>(Max(m_view->GetSize().y, 0))
         };
-        frameDesc.clearTarget = true;
-        frameDesc.clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-        frameDesc.gpuTimer.querySet = m_render.frames[m_render.frameIndex].gpuTimerQueries;
-        frameDesc.gpuTimer.resolveBuffer = m_render.frames[m_render.frameIndex].gpuTimerReadback;
+        sceneFrameDesc.viewTransform.position = m_scenePan;
+        sceneFrameDesc.viewTransform.scale = { m_sceneZoom, m_sceneZoom };
+        sceneFrameDesc.clearTarget = true;
+        sceneFrameDesc.clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        sceneFrameDesc.gpuTimer.querySet = m_render.frames[m_render.frameIndex].gpuTimerQueries;
+        sceneFrameDesc.gpuTimer.resolveBuffer = m_render.frames[m_render.frameIndex].gpuTimerReadback;
 
-        if (!m_renderer.BeginFrame(frameDesc))
+        if (!m_renderer.BeginFrame(sceneFrameDesc))
         {
             EndFrame();
             return;
         }
 
-        const uint32_t reservedVertexCount = m_sceneVertexEstimate
-            + m_overlayVertexEstimate
-            + (m_hasCaret ? m_caretGlyph.vertexCount : 0);
-        m_renderer.ReserveQueuedVertexCapacity(reservedVertexCount);
+        m_renderer.ReserveQueuedVertexCapacity(m_sceneVertexEstimate + (m_hasCaret ? m_caretGlyph.vertexCount : 0));
 
         if (!m_retainedTitleText.IsEmpty())
         {
             scribe::RetainedTextInstanceDesc instance{};
-            instance.origin = transformedTitleOrigin;
-            instance.scale = m_sceneZoom;
+            instance.origin = titleOrigin;
             instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
             m_renderer.QueueRetainedText(m_retainedTitleText, instance);
         }
@@ -1014,8 +1006,7 @@ namespace he
         if (!m_retainedBodyText.IsEmpty())
         {
             scribe::RetainedTextInstanceDesc instance{};
-            instance.origin = transformedBodyOrigin;
-            instance.scale = m_sceneZoom;
+            instance.origin = bodyOrigin;
             instance.foregroundColor = { 0.0f, 0.0f, 0.0f, 1.0f };
             m_renderer.QueueRetainedText(m_retainedBodyText, instance);
         }
@@ -1029,7 +1020,6 @@ namespace he
 
             scribe::RetainedTextInstanceDesc instance{};
             instance.origin = GetSceneBlockRenderOrigin(block);
-            instance.scale = m_sceneZoom;
             instance.foregroundColor = block.color;
             m_renderer.QueueRetainedText(block.retainedText, instance);
         }
@@ -1043,9 +1033,29 @@ namespace he
 
             scribe::RetainedVectorImageInstanceDesc instance{};
             instance.origin = GetSceneImageRenderOrigin(block);
-            instance.scale = block.scale * m_sceneZoom;
+            instance.scale = block.scale;
             m_renderer.QueueRetainedVectorImage(block.retainedImage, instance);
         }
+
+        QueueCaret();
+        m_renderer.EndFrame();
+        const uint32_t sceneDrawCount = m_renderer.GetLastSubmittedDrawCount();
+
+        scribe::FrameDesc overlayFrameDesc{};
+        overlayFrameDesc.cmdList = m_render.cmdList;
+        overlayFrameDesc.targetView = m_render.presentTarget.renderTargetView;
+        overlayFrameDesc.targetState = rhi::TextureState::RenderTarget;
+        overlayFrameDesc.targetSize = sceneFrameDesc.targetSize;
+        overlayFrameDesc.clearTarget = false;
+        overlayFrameDesc.clearColor = sceneFrameDesc.clearColor;
+
+        if (!m_renderer.BeginFrame(overlayFrameDesc))
+        {
+            EndFrame();
+            return;
+        }
+
+        m_renderer.ReserveQueuedVertexCapacity(m_overlayVertexEstimate);
 
         if (!m_retainedSceneStatsText.IsEmpty())
         {
@@ -1169,10 +1179,10 @@ namespace he
                 }
             }
         }
-        QueueCaret();
 
         m_renderer.EndFrame();
         EndFrame();
+        m_lastDrawCount = sceneDrawCount + m_renderer.GetLastSubmittedDrawCount();
     }
 
     bool ScribeTestApp::Initialize()
@@ -2844,15 +2854,12 @@ namespace he
 
     Vec2f ScribeTestApp::GetSceneBlockRenderOrigin(const SceneTextBlock& block) const
     {
-        Vec2f origin{
-            (block.origin.x * m_sceneZoom) + m_scenePan.x,
-            (block.origin.y * m_sceneZoom) + m_scenePan.y
-        };
+        Vec2f origin = block.origin;
         float leftEdgeX = Limits<float>::Max;
         float renderedMinX = 0.0f;
         if (TryGetRenderedLineMinX(renderedMinX, block.retainedText, block.layout, 0))
         {
-            leftEdgeX = origin.x + (renderedMinX * m_sceneZoom);
+            leftEdgeX = ((origin.x + renderedMinX) * m_sceneZoom) + m_scenePan.x;
         }
         else
         {
@@ -2863,18 +2870,19 @@ namespace he
                     continue;
                 }
 
-                leftEdgeX = Min(leftEdgeX, origin.x + (cluster.x0 * m_sceneZoom));
+                leftEdgeX = Min(leftEdgeX, ((origin.x + cluster.x0) * m_sceneZoom) + m_scenePan.x);
             }
 
             if (leftEdgeX == Limits<float>::Max)
             {
-                origin.x = Round(origin.x);
+                const float screenOriginX = (origin.x * m_sceneZoom) + m_scenePan.x;
+                origin.x += (Round(screenOriginX) - screenOriginX) / Max(m_sceneZoom, 0.0001f);
             }
         }
 
         if (leftEdgeX != Limits<float>::Max)
         {
-            origin.x += Round(leftEdgeX) - leftEdgeX;
+            origin.x += (Round(leftEdgeX) - leftEdgeX) / Max(m_sceneZoom, 0.0001f);
         }
 
         if ((!block.pixelAlignBaseline && !block.pixelAlignCapHeight)
@@ -2889,7 +2897,7 @@ namespace he
         const scribe::FontFaceRuntimeMetadata::Reader metadata = m_fonts[block.fontFaceIndex].blob.GetMetadata();
         const float unitsPerEm = static_cast<float>(Max(metadata.GetUnitsPerEm(), 1u));
         const float scale = block.fontSize / unitsPerEm;
-        const float baselineY = origin.y + block.layout.lines[0].baselineY;
+        const float baselineY = origin.y + block.layout.lines[0].baselineY + m_scenePan.y;
 
         float deltaY = 0.0f;
         if (block.pixelAlignBaseline)
@@ -2911,10 +2919,7 @@ namespace he
 
     Vec2f ScribeTestApp::GetSceneImageRenderOrigin(const SceneVectorImageBlock& block) const
     {
-        return {
-            (block.origin.x * m_sceneZoom) + m_scenePan.x,
-            (block.origin.y * m_sceneZoom) + m_scenePan.y
-        };
+        return block.origin;
     }
 
     void ScribeTestApp::QueueCaret()

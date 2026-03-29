@@ -58,6 +58,14 @@ namespace he::scribe
         bool vertexColorIsWhite{ true };
     };
 
+    struct ViewTransform2D
+    {
+        Vec2f position{ 0.0f, 0.0f };
+        Vec2f scale{ 1.0f, 1.0f };
+        float rotationRadians{ 0.0f };
+        float skewX{ 0.0f };
+    };
+
     struct FrameDesc
     {
         struct GpuTimerDesc
@@ -73,6 +81,7 @@ namespace he::scribe
         const rhi::RenderTargetView* targetView{ nullptr };
         rhi::TextureState targetState{ rhi::TextureState::Common };
         Vec2u targetSize{ 0, 0 };
+        ViewTransform2D viewTransform{};
         bool clearTarget{ false };
         Vec4f clearColor{ 0, 0, 0, 0 };
         GpuTimerDesc gpuTimer{};
@@ -98,6 +107,11 @@ namespace he::scribe
         Vec2f basisY{ 0, 1 };
         Vec2f offset{ 0, 0 };
     };
+
+    void BuildFrameConstants(
+        float* outConstants,
+        const Vec2u& targetSize,
+        const ViewTransform2D& viewTransform);
 
     class Renderer
     {

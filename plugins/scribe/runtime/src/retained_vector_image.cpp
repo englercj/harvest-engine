@@ -17,6 +17,19 @@ namespace he::scribe
 {
     namespace
     {
+        bool MatchesCachedInstance(
+            const RetainedVectorImageInstanceDesc& a,
+            const RetainedVectorImageInstanceDesc& b)
+        {
+            return (a.origin.x == b.origin.x)
+                && (a.origin.y == b.origin.y)
+                && (a.scale == b.scale)
+                && (a.tint.x == b.tint.x)
+                && (a.tint.y == b.tint.y)
+                && (a.tint.z == b.tint.z)
+                && (a.tint.w == b.tint.w);
+        }
+
         StrokeJoinStyle ToRuntimeStrokeJoin(StrokeJoinKind value)
         {
             switch (value)
@@ -470,6 +483,10 @@ namespace he::scribe
         m_shapeResources.Clear();
         m_runtimeStrokeResources.Clear();
         m_sharedShapeAtlas = nullptr;
+        m_cachedVertices.Clear();
+        m_cachedBatches.Clear();
+        m_cachedInstance = {};
+        m_hasCachedInstance = false;
         m_viewBoxSize = { 0.0f, 0.0f };
         m_estimatedVertexCount = 0;
     }
@@ -544,5 +561,32 @@ namespace he::scribe
 
         out = &resource;
         return true;
+    }
+
+    bool RetainedVectorImageModel::HasCachedTransformedVertices(const RetainedVectorImageInstanceDesc& instance) const
+    {
+        return m_hasCachedInstance
+            && MatchesCachedInstance(m_cachedInstance, instance)
+            && !m_cachedVertices.IsEmpty()
+            && !m_cachedBatches.IsEmpty();
+    }
+
+    void RetainedVectorImageModel::SetCachedTransformedVertices(
+        const RetainedVectorImageInstanceDesc& instance,
+        Vector<PackedGlyphVertex>&& vertices,
+        Vector<RetainedVectorImageCachedBatch>&& batches) const
+    {
+        m_cachedInstance = instance;
+        m_cachedVertices = Move(vertices);
+        m_cachedBatches = Move(batches);
+        m_hasCachedInstance = !m_cachedVertices.IsEmpty() && !m_cachedBatches.IsEmpty();
+    }
+
+    void RetainedVectorImageModel::ClearTransformedVertexCache() const
+    {
+        m_cachedVertices.Clear();
+        m_cachedBatches.Clear();
+        m_cachedInstance = {};
+        m_hasCachedInstance = false;
     }
 }

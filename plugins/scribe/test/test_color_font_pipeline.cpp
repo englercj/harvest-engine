@@ -271,6 +271,20 @@ namespace
         }
     };
 
+    Vec2f ApplyClipTransform(const float* constants, const Vec2f& point)
+    {
+        return {
+            (point.x * constants[0]) + (point.y * constants[1]) + constants[3],
+            (point.x * constants[4]) + (point.y * constants[5]) + constants[7]
+        };
+    }
+
+    void ExpectVec2fNear(const Vec2f& actual, const Vec2f& expected, float epsilon = 1.0e-5f)
+    {
+        HE_EXPECT(Abs(actual.x - expected.x) <= epsilon, actual.x, expected.x, epsilon);
+        HE_EXPECT(Abs(actual.y - expected.y) <= epsilon, actual.y, expected.y, epsilon);
+    }
+
     class FreeTypeScope final
     {
     public:
@@ -1786,4 +1800,105 @@ HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_fac
 
     RetainedTextInstanceDesc instance{};
     harness.renderer.QueueRetainedText(retainedText, instance);
+}
+
+HE_TEST(scribe, renderer_frame_constants, identity_view_matches_screen_projection)
+{
+    float constants[20]{};
+    BuildFrameConstants(constants, { 200u, 100u }, {});
+
+    HE_EXPECT(Abs(constants[0] - 0.01f) <= 1.0e-6f, constants[0]);
+    HE_EXPECT(Abs(constants[1]) <= 1.0e-6f, constants[1]);
+    HE_EXPECT(Abs(constants[3] + 1.0f) <= 1.0e-6f, constants[3]);
+    HE_EXPECT(Abs(constants[4]) <= 1.0e-6f, constants[4]);
+    HE_EXPECT(Abs(constants[5] + 0.02f) <= 1.0e-6f, constants[5]);
+    HE_EXPECT(Abs(constants[7] - 1.0f) <= 1.0e-6f, constants[7]);
+
+    ExpectVec2fNear(ApplyClipTransform(constants, { 0.0f, 0.0f }), { -1.0f, 1.0f });
+    ExpectVec2fNear(ApplyClipTransform(constants, { 200.0f, 100.0f }), { 1.0f, -1.0f });
+}
+
+HE_TEST(scribe, renderer_frame_constants, composes_pan_and_zoom_into_mvp)
+{
+    ViewTransform2D view{};
+    view.scale = { 2.0f, 2.0f };
+    view.position = { 10.0f, 20.0f };
+
+    float constants[20]{};
+    BuildFrameConstants(constants, { 100u, 50u }, view);
+
+    HE_EXPECT(Abs(constants[0] - 0.04f) <= 1.0e-6f, constants[0]);
+    HE_EXPECT(Abs(constants[1]) <= 1.0e-6f, constants[1]);
+    HE_EXPECT(Abs(constants[3] + 0.8f) <= 1.0e-6f, constants[3]);
+    HE_EXPECT(Abs(constants[4]) <= 1.0e-6f, constants[4]);
+    HE_EXPECT(Abs(constants[5] + 0.08f) <= 1.0e-6f, constants[5]);
+    HE_EXPECT(Abs(constants[7] - 0.2f) <= 1.0e-6f, constants[7]);
+
+    ExpectVec2fNear(ApplyClipTransform(constants, { 0.0f, 0.0f }), { -0.8f, 0.2f });
+    ExpectVec2fNear(ApplyClipTransform(constants, { 5.0f, 7.0f }), { -0.6f, -0.36f });
+}
+
+HE_TEST(scribe, retained_text, transformed_vertex_cache_is_reused_when_only_frame_view_changes)
+{
+    String repoFontPath;
+    HE_ASSERT(ResolveRepoFontPath(repoFontPath, "NotoSans-Regular.ttf"));
+
+    Vector<uint8_t> fontBytes;
+    HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
+
+    Vector<schema::Word> storage;
+    FontFaceResourceReader font{};
+    HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
+
+    NullRendererHarness harness;
+    HE_ASSERT(harness.Initialize());
+
+    Vector<FontFaceHandle> handles{};
+    Vector<schema::Word>* storages[] = { &storage };
+    HE_ASSERT(RegisterFontFaces(harness.context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
+
+    LayoutEngine engine(harness.context);
+    LayoutResult layout{};
+    LayoutOptions options{};
+    options.fontSize = 30.0f;
+    options.wrap = false;
+    HE_ASSERT(engine.LayoutText(layout, Span<const FontFaceHandle>(handles.Data(), handles.Size()), "Cache me", options));
+
+    RetainedTextModel retainedText{};
+    RetainedTextBuildDesc retainedDesc{};
+    retainedDesc.context = &harness.context;
+    retainedDesc.fontFaces = Span<const FontFaceHandle>(handles.Data(), handles.Size());
+    retainedDesc.layout = &layout;
+    retainedDesc.fontSize = options.fontSize;
+    HE_ASSERT(retainedText.Build(retainedDesc));
+    HE_ASSERT(harness.renderer.PrepareRetainedText(retainedText));
+
+    RetainedTextInstanceDesc instance{};
+    instance.origin = { 12.0f, 24.0f };
+    instance.scale = 1.0f;
+    instance.foregroundColor = { 0.1f, 0.2f, 0.3f, 1.0f };
+
+    harness.renderer.QueueRetainedText(retainedText, instance);
+    HE_EXPECT(retainedText.HasCachedTransformedVertices(instance));
+    const PackedGlyphVertex* cachedVertices = retainedText.GetCachedTransformedVertices().Data();
+    const RetainedTextCachedBatch* cachedBatches = retainedText.GetCachedTransformedBatches().Data();
+
+    float constantsA[20]{};
+    BuildFrameConstants(constantsA, { 640u, 480u }, {});
+    float constantsB[20]{};
+    ViewTransform2D viewB{};
+    viewB.scale = { 1.5f, 1.5f };
+    viewB.position = { 48.0f, -32.0f };
+    BuildFrameConstants(constantsB, { 640u, 480u }, viewB);
+    HE_EXPECT_NE(constantsA[3], constantsB[3]);
+
+    harness.renderer.QueueRetainedText(retainedText, instance);
+    HE_EXPECT_EQ_PTR(retainedText.GetCachedTransformedVertices().Data(), cachedVertices);
+    HE_EXPECT_EQ_PTR(retainedText.GetCachedTransformedBatches().Data(), cachedBatches);
+
+    RetainedTextInstanceDesc movedInstance = instance;
+    movedInstance.origin.x += 100.0f;
+    harness.renderer.QueueRetainedText(retainedText, movedInstance);
+    HE_EXPECT(!retainedText.HasCachedTransformedVertices(instance));
+    HE_EXPECT(retainedText.HasCachedTransformedVertices(movedInstance));
 }

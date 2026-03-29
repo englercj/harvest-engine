@@ -53,6 +53,12 @@ namespace he::scribe
         Vec4f tint{ 1.0f, 1.0f, 1.0f, 1.0f };
     };
 
+    struct RetainedVectorImageCachedBatch
+    {
+        const GlyphAtlas* atlas{ nullptr };
+        uint32_t vertexCount{ 0 };
+    };
+
     class RetainedVectorImageModel
     {
     public:
@@ -76,6 +82,14 @@ namespace he::scribe
             const StrokeStyle& style,
             Renderer& renderer,
             const GlyphResource*& out) const;
+        bool HasCachedTransformedVertices(const RetainedVectorImageInstanceDesc& instance) const;
+        Span<const PackedGlyphVertex> GetCachedTransformedVertices() const { return m_cachedVertices; }
+        Span<const RetainedVectorImageCachedBatch> GetCachedTransformedBatches() const { return m_cachedBatches; }
+        void SetCachedTransformedVertices(
+            const RetainedVectorImageInstanceDesc& instance,
+            Vector<PackedGlyphVertex>&& vertices,
+            Vector<RetainedVectorImageCachedBatch>&& batches) const;
+        void ClearTransformedVertexCache() const;
 
     private:
         ScribeContext* m_context{ nullptr };
@@ -87,6 +101,10 @@ namespace he::scribe
         mutable Vector<GlyphResource> m_shapeResources{};
         mutable Vector<GlyphResource> m_runtimeStrokeResources{};
         mutable GlyphAtlas* m_sharedShapeAtlas{ nullptr };
+        mutable Vector<PackedGlyphVertex> m_cachedVertices{};
+        mutable Vector<RetainedVectorImageCachedBatch> m_cachedBatches{};
+        mutable RetainedVectorImageInstanceDesc m_cachedInstance{};
+        mutable bool m_hasCachedInstance{ false };
         Vec2f m_viewBoxSize{ 0.0f, 0.0f };
         uint32_t m_estimatedVertexCount{ 0 };
     };

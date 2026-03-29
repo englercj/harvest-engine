@@ -16,6 +16,7 @@
 
 #include "he/core/allocator.h"
 #include "he/core/assert.h"
+#include "he/core/math.h"
 #include "he/core/hash.h"
 #include "he/core/log.h"
 #include "he/core/memory_ops.h"
@@ -105,40 +106,6 @@ namespace he::scribe
                 color.z * color.w,
                 color.w
             };
-        }
-
-        void BuildFrameConstants(
-            float* outConstants,
-            const Vec2u& targetSize)
-        {
-            HE_ASSERT(outConstants);
-
-            const float width = static_cast<float>(targetSize.x);
-            const float height = static_cast<float>(targetSize.y);
-            outConstants[0] = 2.0f / width;
-            outConstants[1] = 0.0f;
-            outConstants[2] = 0.0f;
-            outConstants[3] = -1.0f;
-
-            outConstants[4] = 0.0f;
-            outConstants[5] = -2.0f / height;
-            outConstants[6] = 0.0f;
-            outConstants[7] = 1.0f;
-
-            outConstants[8] = 0.0f;
-            outConstants[9] = 0.0f;
-            outConstants[10] = 0.0f;
-            outConstants[11] = 0.5f;
-
-            outConstants[12] = 0.0f;
-            outConstants[13] = 0.0f;
-            outConstants[14] = 0.0f;
-            outConstants[15] = 1.0f;
-
-            outConstants[16] = width;
-            outConstants[17] = height;
-            outConstants[18] = 0.0f;
-            outConstants[19] = 0.0f;
         }
 
         GlyphTransformState BuildGlyphTransformState(const DrawGlyphDesc& draw)
@@ -274,6 +241,52 @@ namespace he::scribe
     Renderer::~Renderer() noexcept
     {
         Terminate();
+    }
+
+    void BuildFrameConstants(
+        float* outConstants,
+        const Vec2u& targetSize,
+        const ViewTransform2D& viewTransform)
+    {
+        HE_ASSERT(outConstants);
+
+        const float width = static_cast<float>(targetSize.x);
+        const float height = static_cast<float>(targetSize.y);
+        const float sx = 2.0f / width;
+        const float sy = -2.0f / height;
+        const float cosAngle = Cos(viewTransform.rotationRadians);
+        const float sinAngle = Sin(viewTransform.rotationRadians);
+        const float a00 = viewTransform.scale.x * cosAngle;
+        const float a01 = viewTransform.scale.y * ((cosAngle * viewTransform.skewX) - sinAngle);
+        const float a10 = viewTransform.scale.x * sinAngle;
+        const float a11 = viewTransform.scale.y * ((sinAngle * viewTransform.skewX) + cosAngle);
+        const float tx = viewTransform.position.x;
+        const float ty = viewTransform.position.y;
+
+        outConstants[0] = sx * a00;
+        outConstants[1] = sx * a01;
+        outConstants[2] = 0.0f;
+        outConstants[3] = (sx * tx) - 1.0f;
+
+        outConstants[4] = sy * a10;
+        outConstants[5] = sy * a11;
+        outConstants[6] = 0.0f;
+        outConstants[7] = (sy * ty) + 1.0f;
+
+        outConstants[8] = 0.0f;
+        outConstants[9] = 0.0f;
+        outConstants[10] = 0.0f;
+        outConstants[11] = 0.5f;
+
+        outConstants[12] = 0.0f;
+        outConstants[13] = 0.0f;
+        outConstants[14] = 0.0f;
+        outConstants[15] = 1.0f;
+
+        outConstants[16] = width;
+        outConstants[17] = height;
+        outConstants[18] = 0.0f;
+        outConstants[19] = 0.0f;
     }
 
     bool Renderer::Initialize(rhi::Format targetFormat)
@@ -566,6 +579,8 @@ namespace he::scribe
 
     bool Renderer::PrepareRetainedVectorImage(const RetainedVectorImageModel& image)
     {
+        image.ClearTransformedVertexCache();
+
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
@@ -770,6 +785,46 @@ namespace he::scribe
             m_streamVertices.Size() + image.GetEstimatedVertexCount(),
             m_batches.Size() + image.GetDrawCount());
 
+        if (image.HasCachedTransformedVertices(instance))
+        {
+            const uint32_t firstVertex = m_streamVertices.Size();
+            const Span<const PackedGlyphVertex> cachedVertices = image.GetCachedTransformedVertices();
+            if (!cachedVertices.IsEmpty())
+            {
+                m_streamVertices.Insert(m_streamVertices.Size(), cachedVertices.Data(), cachedVertices.Size());
+            }
+
+            uint32_t batchVertexStart = firstVertex;
+            for (const RetainedVectorImageCachedBatch& cachedBatch : image.GetCachedTransformedBatches())
+            {
+                if (!cachedBatch.atlas || (cachedBatch.vertexCount == 0))
+                {
+                    continue;
+                }
+
+                if (m_glyphBatchingEnabled && !m_batches.IsEmpty() && (m_batches.Back().atlas == cachedBatch.atlas))
+                {
+                    m_batches.Back().vertexCount += cachedBatch.vertexCount;
+                }
+                else
+                {
+                    StreamBatch& batch = m_batches.EmplaceBack();
+                    batch.atlas = cachedBatch.atlas;
+                    batch.vertexStart = batchVertexStart;
+                    batch.vertexCount = cachedBatch.vertexCount;
+                }
+
+                batchVertexStart += cachedBatch.vertexCount;
+            }
+
+            return;
+        }
+
+        Vector<PackedGlyphVertex> cachedVertices{};
+        cachedVertices.Reserve(image.GetEstimatedVertexCount());
+        Vector<RetainedVectorImageCachedBatch> cachedBatches{};
+        cachedBatches.Reserve(image.GetDrawCount());
+
         for (const RetainedVectorImageDraw& draw : image.GetDraws())
         {
             const GlyphResource* shapeResource = nullptr;
@@ -791,6 +846,20 @@ namespace he::scribe
             desc.color = MultiplyColor(draw.color, instance.tint);
             desc.offset = draw.offset;
             QueueDraw(desc);
+
+            const uint32_t oldSize = cachedVertices.Size();
+            cachedVertices.Expand(desc.glyph->vertexCount, DefaultInit);
+            TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
+            if (m_glyphBatchingEnabled && !cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == desc.glyph->atlas))
+            {
+                cachedBatches.Back().vertexCount += desc.glyph->vertexCount;
+            }
+            else
+            {
+                RetainedVectorImageCachedBatch& batch = cachedBatches.EmplaceBack();
+                batch.atlas = desc.glyph->atlas;
+                batch.vertexCount = desc.glyph->vertexCount;
+            }
         }
 
         for (const RetainedTextDraw& draw : image.GetTextDraws())
@@ -819,7 +888,23 @@ namespace he::scribe
             desc.basisY = draw.basisY;
             desc.offset = draw.offset;
             QueueDraw(desc);
+
+            const uint32_t oldSize = cachedVertices.Size();
+            cachedVertices.Expand(desc.glyph->vertexCount, DefaultInit);
+            TransformDrawVertices(cachedVertices.Data() + oldSize, desc);
+            if (m_glyphBatchingEnabled && !cachedBatches.IsEmpty() && (cachedBatches.Back().atlas == desc.glyph->atlas))
+            {
+                cachedBatches.Back().vertexCount += desc.glyph->vertexCount;
+            }
+            else
+            {
+                RetainedVectorImageCachedBatch& batch = cachedBatches.EmplaceBack();
+                batch.atlas = desc.glyph->atlas;
+                batch.vertexCount = desc.glyph->vertexCount;
+            }
         }
+
+        image.SetCachedTransformedVertices(instance, Move(cachedVertices), Move(cachedBatches));
     }
 
     void Renderer::EndFrame()
@@ -878,7 +963,7 @@ namespace he::scribe
                     m_device->Unmap(streamBuffer.buffer);
 
                     float constants[VertexShaderConstantCount]{};
-                    BuildFrameConstants(constants, m_frame.targetSize);
+                    BuildFrameConstants(constants, m_frame.targetSize, m_frame.viewTransform);
                     m_frame.cmdList->SetVertexBuffer(0, m_vertexBufferFormat, streamBuffer.buffer, 0, vertexDataSize);
                     m_frame.cmdList->SetRender32BitConstantValues(0, constants, VertexShaderConstantCount);
                     m_lastSubmittedDrawCount = m_batches.Size();
@@ -915,7 +1000,7 @@ namespace he::scribe
                     m_device->Unmap(quadStreamBuffer.buffer);
 
                     float constants[VertexShaderConstantCount]{};
-                    BuildFrameConstants(constants, m_frame.targetSize);
+                    BuildFrameConstants(constants, m_frame.targetSize, m_frame.viewTransform);
                     m_frame.cmdList->SetRenderRootSignature(m_quadRootSignature);
                     m_frame.cmdList->SetRenderPipeline(m_quadPipeline);
                     m_frame.cmdList->SetRender32BitConstantValues(0, constants, VertexShaderConstantCount);

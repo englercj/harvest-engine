@@ -47,6 +47,7 @@ namespace he::scribe
         uint32_t vertexCount{ 0 };
         TextureDataDesc curveTexture{};
         TextureDataDesc bandTexture{};
+        bool vertexColorIsWhite{ true };
     };
 
     struct GlyphResource
@@ -54,6 +55,7 @@ namespace he::scribe
         PackedGlyphVertex vertices[ScribeGlyphVertexCount]{};
         GlyphAtlas* atlas{ nullptr };
         uint32_t vertexCount{ 0 };
+        bool vertexColorIsWhite{ true };
     };
 
     struct FrameDesc

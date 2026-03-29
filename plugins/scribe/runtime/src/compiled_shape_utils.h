@@ -66,5 +66,6 @@ namespace he::scribe
         out.bandTexture.data = bandBytes.Data();
         out.bandTexture.size = { bandTextureWidth, bandTextureHeight };
         out.bandTexture.rowPitch = bandTextureWidth * sizeof(PackedBandTexel);
+        out.vertexColorIsWhite = true;
     }
 }

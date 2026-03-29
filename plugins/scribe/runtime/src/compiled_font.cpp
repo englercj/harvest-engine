@@ -198,6 +198,7 @@ namespace he::scribe
         out.createInfo.bandTexture.data = out.bandTexels.Data();
         out.createInfo.bandTexture.size = { shape.bandTextureWidth, shape.bandTextureHeight };
         out.createInfo.bandTexture.rowPitch = shape.bandTextureWidth * sizeof(PackedBandTexel);
+        out.createInfo.vertexColorIsWhite = true;
         return true;
     }
 

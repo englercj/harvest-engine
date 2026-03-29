@@ -46,7 +46,9 @@ namespace he::scribe
             float it10{ 0.0f };
             float it11{ 0.0f };
             bool hasInverseJacobian{ false };
+            bool hasAxisAlignedTransform{ false };
             Vec4f color{ 1.0f, 1.0f, 1.0f, 1.0f };
+            Vec4f premultipliedColor{ 1.0f, 1.0f, 1.0f, 1.0f };
         };
 
         RetainedVectorImageShapeResourceKind GetShapeResourceKind(const RetainedVectorImageDraw& draw)
@@ -149,6 +151,7 @@ namespace he::scribe
             state.offsetX = draw.position.x + (draw.size.x * draw.offset.x);
             state.offsetY = draw.position.y + (draw.size.y * draw.offset.y);
             state.color = draw.color;
+            state.premultipliedColor = PremultiplyColor(draw.color);
 
             const float det = (state.a00 * state.a11) - (state.a01 * state.a10);
             state.hasInverseJacobian = Abs(det) > 1.0e-8f;
@@ -161,23 +164,53 @@ namespace he::scribe
                 state.it11 = state.a00 * invDet;
             }
 
+            state.hasAxisAlignedTransform =
+                (Abs(state.a01) <= 1.0e-8f)
+                && (Abs(state.a10) <= 1.0e-8f)
+                && (Abs(state.a00) > 1.0e-8f)
+                && (Abs(state.a11) > 1.0e-8f);
+
             return state;
         }
 
-        PackedGlyphVertex TransformVertex(const PackedGlyphVertex& in, const GlyphTransformState& state)
+        HE_FORCE_INLINE Vec4f MultiplyPremultiplyColor(const Vec4f& a, const Vec4f& b)
         {
-            PackedGlyphVertex out = in;
-            out.pos.x = state.offsetX + (state.a00 * in.pos.x) + (state.a01 * in.pos.y);
-            out.pos.y = state.offsetY + (state.a10 * in.pos.x) + (state.a11 * in.pos.y);
-            out.pos.z = (state.a00 * in.pos.z) + (state.a01 * in.pos.w);
-            out.pos.w = (state.a10 * in.pos.z) + (state.a11 * in.pos.w);
+            return PremultiplyColor(MultiplyColor(a, b));
+        }
+
+        HE_FORCE_INLINE void TransformVertexGeometryAxisAligned(
+            PackedGlyphVertex& out,
+            const PackedGlyphVertex& src,
+            const GlyphTransformState& state)
+        {
+            out = src;
+            out.pos.x = state.offsetX + (state.a00 * src.pos.x);
+            out.pos.y = state.offsetY + (state.a11 * src.pos.y);
+            out.pos.z = state.a00 * src.pos.z;
+            out.pos.w = state.a11 * src.pos.w;
+            out.jac.x = state.it00 * src.jac.x;
+            out.jac.y = state.it11 * src.jac.y;
+            out.jac.z = state.it00 * src.jac.z;
+            out.jac.w = state.it11 * src.jac.w;
+        }
+
+        HE_FORCE_INLINE void TransformVertexGeometryGeneral(
+            PackedGlyphVertex& out,
+            const PackedGlyphVertex& src,
+            const GlyphTransformState& state)
+        {
+            out = src;
+            out.pos.x = state.offsetX + (state.a00 * src.pos.x) + (state.a01 * src.pos.y);
+            out.pos.y = state.offsetY + (state.a10 * src.pos.x) + (state.a11 * src.pos.y);
+            out.pos.z = (state.a00 * src.pos.z) + (state.a01 * src.pos.w);
+            out.pos.w = (state.a10 * src.pos.z) + (state.a11 * src.pos.w);
 
             if (state.hasInverseJacobian)
             {
-                const float j0x = in.jac.x;
-                const float j0y = in.jac.y;
-                const float j1x = in.jac.z;
-                const float j1y = in.jac.w;
+                const float j0x = src.jac.x;
+                const float j0y = src.jac.y;
+                const float j1x = src.jac.z;
+                const float j1y = src.jac.w;
                 out.jac.x = (state.it00 * j0x) + (state.it10 * j0y);
                 out.jac.y = (state.it01 * j0x) + (state.it11 * j0y);
                 out.jac.z = (state.it00 * j1x) + (state.it10 * j1y);
@@ -185,11 +218,17 @@ namespace he::scribe
             }
             else
             {
-                out.jac = in.jac;
+                out.jac = src.jac;
             }
+        }
 
-            out.col = PremultiplyColor(MultiplyColor(in.col, state.color));
-            return out;
+        HE_FORCE_INLINE void TransformVertexColor(
+            PackedGlyphVertex& out,
+            const PackedGlyphVertex& src,
+            const GlyphTransformState& state,
+            bool vertexColorIsWhite)
+        {
+            out.col = vertexColorIsWhite ? state.premultipliedColor : MultiplyPremultiplyColor(src.col, state.color);
         }
 
         PackedQuadVertex MakeQuadVertex(float x, float y, const Vec4f& color)
@@ -348,6 +387,7 @@ namespace he::scribe
         GlyphResource resource{};
         MemCopy(resource.vertices, desc.vertices, desc.vertexCount * sizeof(PackedGlyphVertex));
         resource.vertexCount = desc.vertexCount;
+        resource.vertexColorIsWhite = desc.vertexColorIsWhite;
         if (!CreateDedicatedAtlas(resource.atlas, desc.curveTexture, desc.bandTexture))
         {
             DestroyGlyphResource(resource);
@@ -423,6 +463,7 @@ namespace he::scribe
         createInfo.bandTexture.data = bandTexels.Data();
         createInfo.bandTexture.size = { ScribeBandTextureWidth, 1 };
         createInfo.bandTexture.rowPitch = ScribeBandTextureWidth * sizeof(PackedBandTexel);
+        createInfo.vertexColorIsWhite = false;
 
         return CreateGlyphResource(out, createInfo);
     }
@@ -854,9 +895,26 @@ namespace he::scribe
         const uint32_t oldSize = m_streamVertices.Size();
         m_streamVertices.Expand(draw.glyph->vertexCount, DefaultInit);
         const GlyphTransformState transformState = BuildGlyphTransformState(draw);
-        for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
+        const bool vertexColorIsWhite = draw.glyph->vertexColorIsWhite;
+        if (transformState.hasAxisAlignedTransform)
         {
-            m_streamVertices[oldSize + vertexIndex] = TransformVertex(draw.glyph->vertices[vertexIndex], transformState);
+            for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
+            {
+                const PackedGlyphVertex& src = draw.glyph->vertices[vertexIndex];
+                PackedGlyphVertex& dst = m_streamVertices[oldSize + vertexIndex];
+                TransformVertexGeometryAxisAligned(dst, src, transformState);
+                TransformVertexColor(dst, src, transformState, vertexColorIsWhite);
+            }
+        }
+        else
+        {
+            for (uint32_t vertexIndex = 0; vertexIndex < draw.glyph->vertexCount; ++vertexIndex)
+            {
+                const PackedGlyphVertex& src = draw.glyph->vertices[vertexIndex];
+                PackedGlyphVertex& dst = m_streamVertices[oldSize + vertexIndex];
+                TransformVertexGeometryGeneral(dst, src, transformState);
+                TransformVertexColor(dst, src, transformState, vertexColorIsWhite);
+            }
         }
 
         batch->vertexCount += draw.glyph->vertexCount;

@@ -155,6 +155,7 @@ namespace he::scribe
 
             MemCopy(out.vertices, createInfo.vertices, createInfo.vertexCount * sizeof(PackedGlyphVertex));
             out.vertexCount = createInfo.vertexCount;
+            out.vertexColorIsWhite = createInfo.vertexColorIsWhite;
             out.atlas = Allocator::GetDefault().New<GlyphAtlas>();
             if (!UploadTexturePair2D(
                     device,
@@ -524,6 +525,7 @@ namespace he::scribe
 
             MemCopy(resource.vertices, glyphData.vertices, sizeof(glyphData.vertices));
             resource.vertexCount = glyphData.createInfo.vertexCount;
+            resource.vertexColorIsWhite = glyphData.createInfo.vertexColorIsWhite;
             return true;
         });
     }

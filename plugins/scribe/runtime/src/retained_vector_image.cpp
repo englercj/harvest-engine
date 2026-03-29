@@ -2,11 +2,16 @@
 
 #include "he/scribe/retained_vector_image.h"
 
+#include "he/scribe/compiled_vector_image.h"
 #include "he/scribe/packed_data.h"
 #include "he/scribe/retained_text.h"
+#include "he/scribe/renderer.h"
+
+#include "glyph_atlas_utils.h"
 
 #include "he/core/log.h"
 #include "he/core/math.h"
+#include "he/core/memory_ops.h"
 
 namespace he::scribe
 {
@@ -124,14 +129,23 @@ namespace he::scribe
             return false;
         }
 
-        const VectorImageResourceReader image = desc.context->GetVectorImage(desc.image);
+        if (!desc.imageWords.IsEmpty())
+        {
+            m_imageWords = desc.imageWords;
+            m_image = schema::ReadRoot<VectorImageResource>(m_imageWords.Data());
+        }
+        else
+        {
+            m_image = desc.image;
+        }
+
+        const VectorImageResourceReader image = m_image;
         if (!image.IsValid() || !image.GetFill().IsValid() || !image.GetPaint().IsValid())
         {
             return false;
         }
 
         m_context = desc.context;
-        m_image = desc.image;
 
         const VectorImageRuntimeMetadata::Reader metadata = image.GetMetadata();
         m_viewBoxSize = {
@@ -146,6 +160,8 @@ namespace he::scribe
         const schema::List<schema::String>::Reader fontFaces = text.GetFontFaces();
         const schema::List<ScribeImage::TextRun>::Reader textRuns = text.GetRuns();
         const schema::List<VectorImageShapeRenderData>::Reader shapes = fill.GetShapes();
+        m_shapeResources.Resize(shapes.Size(), DefaultInit);
+        m_runtimeStrokeResources.Resize(shapes.Size(), DefaultInit);
         if (layers.IsEmpty() && textRuns.IsEmpty())
         {
             return false;
@@ -378,11 +394,79 @@ namespace he::scribe
 
     void RetainedVectorImageModel::Clear()
     {
+        if (m_context)
+        {
+            GlyphAtlas* const sharedShapeAtlas = m_sharedShapeAtlas;
+            bool releasedSharedShapeAtlas = false;
+            if (m_context->GetRenderer().IsInitialized())
+            {
+                Renderer& renderer = m_context->GetRenderer();
+                for (GlyphResource& resource : m_shapeResources)
+                {
+                    if ((resource.atlas != nullptr) && (resource.atlas == sharedShapeAtlas))
+                    {
+                        if (!releasedSharedShapeAtlas)
+                        {
+                            renderer.DestroyGlyphResource(resource);
+                            releasedSharedShapeAtlas = true;
+                        }
+                        else
+                        {
+                            resource = {};
+                        }
+
+                        continue;
+                    }
+
+                    renderer.DestroyGlyphResource(resource);
+                }
+
+                for (GlyphResource& resource : m_runtimeStrokeResources)
+                {
+                    renderer.DestroyGlyphResource(resource);
+                }
+            }
+            else if (rhi::Device* device = m_context->GetDevice())
+            {
+                for (GlyphResource& resource : m_shapeResources)
+                {
+                    if ((resource.atlas != nullptr) && (resource.atlas == sharedShapeAtlas))
+                    {
+                        if (!releasedSharedShapeAtlas)
+                        {
+                            DestroyAtlas(*device, resource.atlas);
+                            releasedSharedShapeAtlas = true;
+                        }
+                        else
+                        {
+                            resource.atlas = nullptr;
+                        }
+
+                        resource = {};
+                        continue;
+                    }
+
+                    DestroyAtlas(*device, resource.atlas);
+                    resource = {};
+                }
+
+                for (GlyphResource& resource : m_runtimeStrokeResources)
+                {
+                    DestroyAtlas(*device, resource.atlas);
+                    resource = {};
+                }
+            }
+        }
+
         m_context = nullptr;
+        m_imageWords.Clear();
         m_image = {};
         m_fontFaces.Clear();
         m_draws.Clear();
         m_textDraws.Clear();
+        m_shapeResources.Clear();
+        m_runtimeStrokeResources.Clear();
+        m_sharedShapeAtlas = nullptr;
         m_viewBoxSize = { 0.0f, 0.0f };
         m_estimatedVertexCount = 0;
     }
@@ -395,5 +479,67 @@ namespace he::scribe
         }
 
         return m_fontFaces[fontFaceIndex];
+    }
+
+    bool RetainedVectorImageModel::TryGetPreparedShapeResource(
+        uint32_t shapeIndex,
+        bool runtimeStroke,
+        const StrokeStyle& style,
+        Renderer& renderer,
+        const GlyphResource*& out) const
+    {
+        out = nullptr;
+        if ((shapeIndex >= m_shapeResources.Size()) || !m_image.IsValid())
+        {
+            return false;
+        }
+
+        Vector<GlyphResource>& resources = runtimeStroke
+            ? const_cast<Vector<GlyphResource>&>(m_runtimeStrokeResources)
+            : const_cast<Vector<GlyphResource>&>(m_shapeResources);
+        GlyphResource& resource = resources[shapeIndex];
+        if (resource.atlas == nullptr)
+        {
+            if (runtimeStroke)
+            {
+                CompiledStrokedVectorShapeResourceData shapeData{};
+                if (!BuildCompiledStrokedVectorShapeResourceData(shapeData, m_image, shapeIndex, style)
+                    || !renderer.CreateGlyphResource(resource, shapeData.createInfo))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                CompiledVectorShapeResourceData shapeData{};
+                if (!BuildCompiledVectorShapeResourceData(shapeData, m_image, shapeIndex))
+                {
+                    return false;
+                }
+
+                GlyphAtlas*& sharedShapeAtlas = const_cast<GlyphAtlas*&>(m_sharedShapeAtlas);
+                if (sharedShapeAtlas == nullptr)
+                {
+                    if (!renderer.CreateGlyphResource(resource, shapeData.createInfo))
+                    {
+                        return false;
+                    }
+
+                    sharedShapeAtlas = resource.atlas;
+                }
+                else
+                {
+                    MemCopy(
+                        resource.vertices,
+                        shapeData.vertices,
+                        shapeData.createInfo.vertexCount * sizeof(PackedGlyphVertex));
+                    resource.vertexCount = shapeData.createInfo.vertexCount;
+                    resource.atlas = sharedShapeAtlas;
+                }
+            }
+        }
+
+        out = &resource;
+        return true;
     }
 }

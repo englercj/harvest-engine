@@ -11,6 +11,8 @@
 
 namespace he::scribe
 {
+    struct GlyphAtlas;
+
     enum RetainedVectorImageDrawFlags : uint32_t
     {
         RetainedVectorImageDrawFlagStroke = 0x01u,
@@ -29,7 +31,8 @@ namespace he::scribe
     struct RetainedVectorImageBuildDesc
     {
         ScribeContext* context{ nullptr };
-        VectorImageHandle image{};
+        VectorImageResourceReader image{};
+        Span<const schema::Word> imageWords{};
         bool includeFill{ true };
         Vec4f strokeColor{ 0.0f, 0.0f, 0.0f, 0.0f };
         StrokeStyle strokeStyle{};
@@ -56,16 +59,21 @@ namespace he::scribe
         Span<const RetainedVectorImageDraw> GetDraws() const { return m_draws; }
         Span<const RetainedTextDraw> GetTextDraws() const { return m_textDraws; }
         ScribeContext* GetContext() const { return m_context; }
-        VectorImageHandle GetImageHandle() const { return m_image; }
+        VectorImageResourceReader GetImage() const { return m_image; }
         Vec2f GetViewBoxSize() const { return m_viewBoxSize; }
         FontFaceHandle GetFontFaceHandle(uint32_t fontFaceIndex) const;
+        bool TryGetPreparedShapeResource(uint32_t shapeIndex, bool runtimeStroke, const StrokeStyle& style, Renderer& renderer, const GlyphResource*& out) const;
 
     private:
         ScribeContext* m_context{ nullptr };
-        VectorImageHandle m_image{};
+        Vector<schema::Word> m_imageWords{};
+        VectorImageResourceReader m_image{};
         Vector<FontFaceHandle> m_fontFaces{};
         Vector<RetainedVectorImageDraw> m_draws{};
         Vector<RetainedTextDraw> m_textDraws{};
+        mutable Vector<GlyphResource> m_shapeResources{};
+        mutable Vector<GlyphResource> m_runtimeStrokeResources{};
+        mutable GlyphAtlas* m_sharedShapeAtlas{ nullptr };
         Vec2f m_viewBoxSize{ 0.0f, 0.0f };
         uint32_t m_estimatedVertexCount{ 0 };
     };

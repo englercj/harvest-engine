@@ -37,6 +37,17 @@ namespace
         4004u, // U+2728
     };
 
+    assets::AssetUuid MakeTestAssetUuid()
+    {
+        assets::AssetUuid id{ Uuid::CreateV4() };
+        while (id == assets::AssetUuid{})
+        {
+            id = assets::AssetUuid{ Uuid::CreateV4() };
+        }
+
+        return id;
+    }
+
     bool ResolveRepoFontPath(String& out, const char* fileName)
     {
         static const char* Candidates[] =
@@ -122,16 +133,21 @@ namespace
     bool BuildRetainedTextFromTemporaryFaceCopy(
         RetainedTextModel& out,
         ScribeContext& context,
-        Span<const FontFaceResourceReader> fontFaces,
+        Span<Vector<schema::Word>*> fontFaceStorages,
         const char* text,
         float fontSize,
         bool darkBackgroundPreferred = true)
     {
         Vector<FontFaceHandle> handles{};
-        handles.Reserve(fontFaces.Size());
-        for (const FontFaceResourceReader& fontFace : fontFaces)
+        handles.Reserve(fontFaceStorages.Size());
+        for (Vector<schema::Word>* fontFaceStorage : fontFaceStorages)
         {
-            const FontFaceHandle handle = context.RegisterFontFace(fontFace);
+            if (fontFaceStorage == nullptr)
+            {
+                return false;
+            }
+
+            const FontFaceHandle handle = context.RegisterFontFace(Move(*fontFaceStorage), MakeTestAssetUuid());
             if (!handle.IsValid())
             {
                 return false;
@@ -167,14 +183,20 @@ namespace
 
     bool RegisterFontFaces(
         ScribeContext& context,
-        Span<const FontFaceResourceReader> fontFaces,
+        Span<Vector<schema::Word>*> fontFaceStorages,
         Vector<FontFaceHandle>& out)
     {
         out.Clear();
-        out.Reserve(fontFaces.Size());
-        for (const FontFaceResourceReader& fontFace : fontFaces)
+        out.Reserve(fontFaceStorages.Size());
+        for (Vector<schema::Word>* fontFaceStorage : fontFaceStorages)
         {
-            const FontFaceHandle handle = context.RegisterFontFace(fontFace);
+            if (fontFaceStorage == nullptr)
+            {
+                out.Clear();
+                return false;
+            }
+
+            const FontFaceHandle handle = context.RegisterFontFace(Move(*fontFaceStorage), MakeTestAssetUuid());
             if (!handle.IsValid())
             {
                 out.Clear();
@@ -794,8 +816,9 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_bounds_match_freetype_ou
 
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
-    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
-        LayoutEngine& engine = context.GetLayoutEngine();
+    Vector<schema::Word>* storages[] = { &storage };
+    HE_ASSERT(RegisterFontFaces(context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
+    LayoutEngine& engine = context.GetLayoutEngine();
     LayoutResult layout;
     LayoutOptions options{};
     options.fontSize = 96.0f;
@@ -855,7 +878,8 @@ HE_TEST(scribe, color_font_pipeline, compiled_capital_t_has_no_detached_left_edg
 
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
-    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    Vector<schema::Word>* storages[] = { &storage };
+    HE_ASSERT(RegisterFontFaces(context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
     LayoutEngine& engine = context.GetLayoutEngine();
     LayoutResult layout;
     LayoutOptions options{};
@@ -1012,7 +1036,8 @@ HE_TEST(scribe, color_font_pipeline, segoeui_capital_t_mid_left_bounds_coverage_
 
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
-    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    Vector<schema::Word>* storages[] = { &storage };
+    HE_ASSERT(RegisterFontFaces(context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
     LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
@@ -1116,15 +1141,10 @@ HE_TEST(scribe, color_font_pipeline, layout_prefers_color_face_for_emoji_scene)
     HE_ASSERT(BuildLoadedCompiledFontFace(repoStorage, repoFont, repoFontBytes, "NotoSans-Regular.ttf"));
     HE_ASSERT(BuildLoadedCompiledFontFace(colorStorage, colorFont, colorFontBytes, "seguiemj.ttf"));
 
-    const FontFaceResourceReader faces[] =
-    {
-        repoFont,
-        colorFont,
-    };
-
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
-    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces), handles));
+    Vector<schema::Word>* storages[] = { &repoStorage, &colorStorage };
+    HE_ASSERT(RegisterFontFaces(context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
     LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
@@ -1178,15 +1198,11 @@ HE_TEST(scribe, color_font_pipeline, shaped_emoji_scene_resolves_nonwhite_layers
     HE_ASSERT(BuildLoadedCompiledFontFace(repoStorage, repoFont, repoFontBytes, "NotoSans-Regular.ttf"));
     HE_ASSERT(BuildLoadedCompiledFontFace(colorStorage, colorFont, colorFontBytes, "seguiemj.ttf"));
 
-    const FontFaceResourceReader faces[] =
-    {
-        repoFont,
-        colorFont,
-    };
-
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
-    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces), handles));
+    Vector<schema::Word>* storages[] = { &repoStorage, &colorStorage };
+    HE_ASSERT(RegisterFontFaces(context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
+    colorFont = context.GetFontFace(handles[1]);
     LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
@@ -1247,7 +1263,8 @@ HE_TEST(scribe, retained_text, builds_monochrome_draws_from_layout)
 
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
-    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    Vector<schema::Word>* storages[] = { &storage };
+    HE_ASSERT(RegisterFontFaces(context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
     LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
@@ -1295,10 +1312,10 @@ HE_TEST(scribe, retained_text, applies_styled_run_color_and_transform)
     HE_ASSERT(BuildLoadedCompiledFontFace(sansStorage, sans, sansBytes, "Noto Sans"));
     HE_ASSERT(BuildLoadedCompiledFontFace(monoStorage, mono, monoBytes, "Noto Mono"));
 
-    const FontFaceResourceReader faces[] = { sans, mono };
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
-    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)), handles));
+    Vector<schema::Word>* storages[] = { &sansStorage, &monoStorage };
+    HE_ASSERT(RegisterFontFaces(context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
     const String text = "alpha beta";
     const uint32_t betaStart = 6;
     const uint32_t betaEnd = 10;
@@ -1373,9 +1390,9 @@ HE_TEST(scribe, retained_text, textsub_demo_line_starts_are_the_leftmost_rendere
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
-    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    Vector<schema::Word>* storages[] = { &storage };
+    HE_ASSERT(RegisterFontFaces(context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
 
-    const FontFaceResourceReader faces[] = { font };
     const String text = "TextSub1 Sub2\nTextSup1 Sup2";
 
     TextStyle styles[5]{};
@@ -1472,9 +1489,9 @@ HE_TEST(scribe, retained_text, emits_decoration_quads_for_styled_runs)
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
-    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    Vector<schema::Word>* storages[] = { &storage };
+    HE_ASSERT(RegisterFontFaces(context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
 
-    const FontFaceResourceReader faces[] = { font };
     const String text = "Underline\nStrike-through";
 
     TextStyle styles[3]{};
@@ -1542,9 +1559,9 @@ HE_TEST(scribe, retained_text, emits_runtime_stroke_draws_for_outline_effects)
     HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, "Noto Sans"));
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
-    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    Vector<schema::Word>* storages[] = { &storage };
+    HE_ASSERT(RegisterFontFaces(context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
 
-    const FontFaceResourceReader faces[] = { font };
     const String text = "Both";
 
     TextStyle styles[2]{};
@@ -1635,7 +1652,9 @@ HE_TEST(scribe, retained_text, expands_color_glyphs_into_layered_draws)
 
     ScribeContext context{};
     Vector<FontFaceHandle> handles{};
-    HE_ASSERT(RegisterFontFaces(context, Span<const FontFaceResourceReader>(&font, 1), handles));
+    Vector<schema::Word>* storages[] = { &storage };
+    HE_ASSERT(RegisterFontFaces(context, Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)), handles));
+    font = context.GetFontFace(handles[0]);
     LayoutEngine engine(context);
     LayoutResult layout;
     LayoutOptions options{};
@@ -1689,10 +1708,11 @@ HE_TEST(scribe, retained_text, prepares_with_renderer_after_temporary_face_span_
     ScribeContext context{};
 
     RetainedTextModel retainedText;
+    Vector<schema::Word>* storages[] = { &storage };
     HE_ASSERT(BuildRetainedTextFromTemporaryFaceCopy(
         retainedText,
         context,
-        Span<const FontFaceResourceReader>(&font, 1),
+        Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)),
         "Retained text",
         28.0f));
 
@@ -1735,18 +1755,14 @@ HE_TEST(scribe, retained_text, prepares_emoji_fallback_scene_after_temporary_fac
     HE_ASSERT(BuildLoadedCompiledFontFace(repoStorage, repoFont, repoFontBytes, "NotoSans-Regular.ttf"));
     HE_ASSERT(BuildLoadedCompiledFontFace(colorStorage, colorFont, colorFontBytes, "seguiemj.ttf"));
 
-    const FontFaceResourceReader faces[] =
-    {
-        repoFont,
-        colorFont,
-    };
     ScribeContext context{};
 
     RetainedTextModel retainedText;
+    Vector<schema::Word>* storages[] = { &repoStorage, &colorStorage };
     HE_ASSERT(BuildRetainedTextFromTemporaryFaceCopy(
         retainedText,
         context,
-        Span<const FontFaceResourceReader>(faces, HE_LENGTH_OF(faces)),
+        Span<Vector<schema::Word>*>(storages, HE_LENGTH_OF(storages)),
         "\xF0\x9F\x99\x82 \xF0\x9F\x98\x80 \xF0\x9F\x8E\xA8 \xF0\x9F\x8C\x88 \xE2\x9C\xA8",
         44.0f));
 

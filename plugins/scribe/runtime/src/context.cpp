@@ -3,7 +3,6 @@
 #include "he/scribe/context.h"
 
 #include "he/scribe/compiled_font.h"
-#include "he/scribe/compiled_vector_image.h"
 #include "he/scribe/layout_engine.h"
 #include "he/scribe/renderer.h"
 
@@ -75,6 +74,10 @@ namespace he::scribe
 
     struct ScribeContext::RegisteredFontFace
     {
+        RegisteredFontFace() noexcept
+        {
+        }
+
         assets::AssetUuid key;
         Vector<schema::Word> data;
         ScribeFontFace::RuntimeResource::Reader resource;
@@ -83,17 +86,6 @@ namespace he::scribe
         ::hb_blob_t* blob{ nullptr };
         ::hb_face_t* face{ nullptr };
         ::hb_font_t* font{ nullptr };
-        GlyphAtlas* atlas{ nullptr };
-        HashMap<uint32_t, GlyphResource> resources{};
-        HashMap<StrokeResourceKey, GlyphResource> strokeResources{};
-    };
-
-    struct ScribeContext::RegisteredVectorImage
-    {
-        assets::AssetUuid key;
-        Vector<schema::Word> data;
-        ScribeImage::RuntimeResource::Reader resource;
-
         GlyphAtlas* atlas{ nullptr };
         HashMap<uint32_t, GlyphResource> resources{};
         HashMap<StrokeResourceKey, GlyphResource> strokeResources{};
@@ -309,16 +301,6 @@ namespace he::scribe
                 }
             }
 
-            for (auto& hashAndImage : m_images)
-            {
-                RegisteredVectorImage& image = *hashAndImage.value;
-                DestroyAtlas(*m_device, image.atlas);
-                for (HashMapEntry<StrokeResourceKey, GlyphResource>& indexAndResource : image.strokeResources)
-                {
-                    GlyphResource& resource = indexAndResource.value;
-                    DestroyAtlas(*m_device, resource.atlas);
-                }
-            }
         }
 
         for (auto& hashAndFont : m_fonts)
@@ -326,13 +308,7 @@ namespace he::scribe
             Allocator::GetDefault().Delete(hashAndFont.value);
         }
 
-        for (auto& hashAndImage : m_images)
-        {
-            Allocator::GetDefault().Delete(hashAndImage.value);
-        }
-
         m_fonts.Clear();
-        m_images.Clear();
         m_device = nullptr;
     }
 
@@ -414,34 +390,6 @@ namespace he::scribe
         return true;
     }
 
-    VectorImageHandle ScribeContext::RegisterVectorImage(Vector<schema::Word>&& imageWords, assets::AssetUuid resourceId)
-    {
-        if ((resourceId == assets::AssetUuid{}) || imageWords.IsEmpty())
-        {
-            return {};
-        }
-
-        auto result = m_images.Emplace(resourceId);
-
-        if (result.inserted)
-        {
-            RegisteredVectorImage* registered = Allocator::GetDefault().New<RegisteredVectorImage>();
-            result.entry.value = registered;
-            registered->data = Move(imageWords);
-            registered->resource = schema::ReadRoot<ScribeImage::RuntimeResource>(registered->data.Data());
-            if (!registered->resource.IsValid())
-            {
-                Allocator::GetDefault().Delete(registered);
-                result.entry.value = nullptr;
-                m_images.Erase(resourceId);
-                return {};
-            }
-            registered->key = resourceId;
-        }
-
-        return { resourceId };
-    }
-
     ScribeFontFace::RuntimeResource::Reader ScribeContext::GetFontFace(FontFaceHandle handle) const
     {
         if (!handle.IsValid())
@@ -480,17 +428,6 @@ namespace he::scribe
         }
 
         return false;
-    }
-
-    ScribeImage::RuntimeResource::Reader ScribeContext::GetVectorImage(VectorImageHandle handle) const
-    {
-        if (!handle.IsValid())
-        {
-            return {};
-        }
-
-        const RegisteredVectorImage* const* image = m_images.Find(handle.value);
-        return image ? (*image)->resource : ScribeImage::RuntimeResource::Reader{};
     }
 
     hb_font_t* ScribeContext::GetHbFont(FontFaceHandle handle)
@@ -626,71 +563,4 @@ namespace he::scribe
         });
     }
 
-    bool ScribeContext::TryGetVectorShapeResource(VectorImageHandle handle, uint32_t shapeIndex, const GlyphResource*& out)
-    {
-        out = nullptr;
-        if (!m_device || !handle.IsValid())
-        {
-            return false;
-        }
-
-        RegisteredVectorImage** image = m_images.Find(handle.value);
-        if (!image)
-        {
-            return false;
-        }
-
-        if (shapeIndex >= (*image)->resource.GetFill().GetShapes().Size())
-        {
-            return false;
-        }
-
-        return EnsureCachedResource(*m_device, **image, shapeIndex, out, [&](GlyphResource& resource) -> bool
-        {
-            CompiledVectorShapeResourceData shapeData{};
-            if (!BuildCompiledVectorShapeResourceData(shapeData, (*image)->resource, shapeIndex))
-            {
-                return false;
-            }
-
-            MemCopy(resource.vertices, shapeData.vertices, sizeof(shapeData.vertices));
-            resource.vertexCount = shapeData.createInfo.vertexCount;
-            return true;
-        });
-    }
-
-    bool ScribeContext::TryGetStrokedVectorShapeResource(
-        VectorImageHandle handle,
-        uint32_t shapeIndex,
-        const StrokeStyle& style,
-        const GlyphResource*& out)
-    {
-        out = nullptr;
-        if (!m_device || !handle.IsValid() || !style.IsVisible())
-        {
-            return false;
-        }
-
-        RegisteredVectorImage** image = m_images.Find(handle.value);
-        if (!image)
-        {
-            return false;
-        }
-
-        if (shapeIndex >= (*image)->resource.GetFill().GetShapes().Size())
-        {
-            return false;
-        }
-
-        return EnsureCachedStrokeResource(**image, shapeIndex, style, out, [&](GlyphResource& resource) -> bool
-        {
-            CompiledStrokedVectorShapeResourceData shapeData{};
-            if (!BuildCompiledStrokedVectorShapeResourceData(shapeData, (*image)->resource, shapeIndex, style))
-            {
-                return false;
-            }
-
-            return CreateDedicatedResource(*m_device, resource, shapeData.createInfo);
-        });
-    }
 }

@@ -21,6 +21,17 @@ using namespace he::scribe::editor;
 
 namespace
 {
+    assets::AssetUuid MakeTestAssetUuid()
+    {
+        assets::AssetUuid id{ Uuid::CreateV4() };
+        while (id == assets::AssetUuid{})
+        {
+            id = assets::AssetUuid{ Uuid::CreateV4() };
+        }
+
+        return id;
+    }
+
     constexpr const char* kSvgSource =
         "<svg viewBox=\"0 0 180 180\" xmlns=\"http://www.w3.org/2000/svg\">"
         "<path fill=\"#111827\" d=\"M0 0 L180 0 L180 180 L0 180 Z\"/>"
@@ -274,17 +285,13 @@ namespace
     bool BuildRetainedVectorImageFromTemporaryCopy(
         RetainedVectorImageModel& out,
         ScribeContext& context,
+        Span<const schema::Word> imageWords,
         const VectorImageResourceReader& image)
     {
-        const VectorImageHandle handle = context.RegisterVectorImage(image);
-        if (!handle.IsValid())
-        {
-            return false;
-        }
-
         RetainedVectorImageBuildDesc desc{};
         desc.context = &context;
-        desc.image = handle;
+        desc.image = image;
+        desc.imageWords = imageWords;
         return out.Build(desc);
     }
 
@@ -905,18 +912,17 @@ HE_TEST(scribe, retained_vector_image, builds_layered_draws_from_runtime_resourc
 
     RetainedVectorImageModel retainedImage;
     ScribeContext context{};
-    const VectorImageHandle handle = context.RegisterVectorImage(image);
-    HE_ASSERT(handle.IsValid());
     RetainedVectorImageBuildDesc desc{};
     desc.context = &context;
-    desc.image = handle;
+    desc.image = image;
+    desc.imageWords = storage;
     HE_ASSERT(retainedImage.Build(desc));
 
     HE_EXPECT_EQ(retainedImage.GetDrawCount(), image.GetPaint().GetLayers().Size());
     HE_EXPECT_EQ(retainedImage.GetEstimatedVertexCount(), retainedImage.GetDrawCount() * ScribeGlyphVertexCount);
     HE_EXPECT_EQ(retainedImage.GetViewBoxSize().x, 180.0f);
     HE_EXPECT_EQ(retainedImage.GetViewBoxSize().y, 180.0f);
-    HE_EXPECT(retainedImage.GetImageHandle().IsValid());
+    HE_EXPECT(retainedImage.GetImage().IsValid());
 }
 
 HE_TEST(scribe, retained_vector_image, builds_runtime_stroke_draws_from_runtime_resource)
@@ -927,12 +933,10 @@ HE_TEST(scribe, retained_vector_image, builds_runtime_stroke_draws_from_runtime_
 
     RetainedVectorImageModel retainedImage;
     ScribeContext context{};
-    const VectorImageHandle handle = context.RegisterVectorImage(image);
-    HE_ASSERT(handle.IsValid());
-
     RetainedVectorImageBuildDesc desc{};
     desc.context = &context;
-    desc.image = handle;
+    desc.image = image;
+    desc.imageWords = storage;
     desc.strokeColor = { 0.1f, 0.2f, 0.3f, 1.0f };
     desc.strokeStyle.width = 6.0f;
     desc.strokeStyle.joinStyle = StrokeJoinStyle::Round;
@@ -980,12 +984,10 @@ HE_TEST(scribe, retained_vector_image, builds_authored_stroke_draws_from_runtime
 
     RetainedVectorImageModel retainedImage;
     ScribeContext context{};
-    const VectorImageHandle handle = context.RegisterVectorImage(image);
-    HE_ASSERT(handle.IsValid());
-
     RetainedVectorImageBuildDesc desc{};
     desc.context = &context;
-    desc.image = handle;
+    desc.image = image;
+    desc.imageWords = storage;
     HE_ASSERT(retainedImage.Build(desc));
 
     uint32_t authoredStrokeDrawCount = 0;
@@ -1043,14 +1045,12 @@ HE_TEST(scribe, retained_vector_image, builds_draws_from_svg_text_elements)
         fontStorage,
         fontFace,
         "C:/Users/engle/source/repos/harvest-engine/plugins/editor/src/fonts/NotoSans-Regular.ttf"));
-    const FontFaceHandle fontHandle = context.RegisterFontFace(fontFace, "Noto Sans");
+    const FontFaceHandle fontHandle = context.RegisterFontFace(Move(fontStorage), MakeTestAssetUuid(), "Noto Sans");
     HE_ASSERT(fontHandle.IsValid());
-    const VectorImageHandle handle = context.RegisterVectorImage(image);
-    HE_ASSERT(handle.IsValid());
-
     RetainedVectorImageBuildDesc desc{};
     desc.context = &context;
-    desc.image = handle;
+    desc.image = image;
+    desc.imageWords = storage;
     HE_ASSERT(retainedImage.Build(desc));
     HE_EXPECT_GT(retainedImage.GetDrawCount(), 0u);
     bool foundOffsetTextDraw = false;
@@ -1104,7 +1104,7 @@ HE_TEST(scribe, retained_vector_image, falls_back_to_other_registered_svg_font_f
         iconFontStorage,
         iconFontFace,
         "C:/Users/engle/source/repos/harvest-engine/plugins/editor/src/fonts/materialdesignicons.ttf"));
-    HE_ASSERT(context.RegisterFontFace(iconFontFace, "Material Design Icons").IsValid());
+    HE_ASSERT(context.RegisterFontFace(Move(iconFontStorage), MakeTestAssetUuid(), "Material Design Icons").IsValid());
 
     Vector<schema::Word> textFontStorage{};
     FontFaceResourceReader textFontFace{};
@@ -1112,15 +1112,13 @@ HE_TEST(scribe, retained_vector_image, falls_back_to_other_registered_svg_font_f
         textFontStorage,
         textFontFace,
         "C:/Windows/Fonts/arial.ttf"));
-    HE_ASSERT(context.RegisterFontFace(textFontFace, "ArialMT").IsValid());
-
-    const VectorImageHandle handle = context.RegisterVectorImage(image);
-    HE_ASSERT(handle.IsValid());
+    HE_ASSERT(context.RegisterFontFace(Move(textFontStorage), MakeTestAssetUuid(), "ArialMT").IsValid());
 
     RetainedVectorImageModel retainedImage{};
     RetainedVectorImageBuildDesc desc{};
     desc.context = &context;
-    desc.image = handle;
+    desc.image = image;
+    desc.imageWords = storage;
     HE_ASSERT(retainedImage.Build(desc));
 
     HE_EXPECT_GT(retainedImage.GetTextDrawCount(), 0u);
@@ -1153,12 +1151,11 @@ HE_TEST(scribe, retained_vector_image, skips_unresolved_svg_text_runs_without_fa
 
     RetainedVectorImageModel retainedImage;
     ScribeContext context{};
-    const VectorImageHandle handle = context.RegisterVectorImage(image);
-    HE_ASSERT(handle.IsValid());
 
     RetainedVectorImageBuildDesc desc{};
     desc.context = &context;
-    desc.image = handle;
+    desc.image = image;
+    desc.imageWords = storage;
     HE_ASSERT(retainedImage.Build(desc));
     HE_EXPECT_EQ(retainedImage.GetShapeDrawCount(), 1u);
     HE_EXPECT_EQ(retainedImage.GetTextDrawCount(), 0u);
@@ -1172,9 +1169,9 @@ HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_im
 
     RetainedVectorImageModel retainedImage;
     ScribeContext context{};
-    HE_ASSERT(BuildRetainedVectorImageFromTemporaryCopy(retainedImage, context, image));
+    HE_ASSERT(BuildRetainedVectorImageFromTemporaryCopy(retainedImage, context, storage, image));
     HE_EXPECT_GT(retainedImage.GetDrawCount(), 0u);
-    HE_EXPECT(retainedImage.GetImageHandle().IsValid());
+    HE_EXPECT(retainedImage.GetImage().IsValid());
     storage.Clear();
 
     NullRendererHarness harness;
@@ -1183,4 +1180,31 @@ HE_TEST(scribe, retained_vector_image, prepares_with_renderer_after_temporary_im
 
     RetainedVectorImageInstanceDesc instance{};
     harness.renderer.QueueRetainedVectorImage(retainedImage, instance);
+}
+
+HE_TEST(scribe, retained_vector_image, shares_one_fill_atlas_across_prepared_shapes)
+{
+    Vector<schema::Word> storage;
+    VectorImageResourceReader image{};
+    HE_ASSERT(BuildLoadedVectorImage(storage, image));
+
+    NullRendererHarness harness;
+    HE_ASSERT(harness.Initialize());
+
+    RetainedVectorImageModel retainedImage;
+    RetainedVectorImageBuildDesc desc{};
+    desc.context = &harness.context;
+    desc.image = image;
+    desc.imageWords = storage;
+    HE_ASSERT(retainedImage.Build(desc));
+    HE_ASSERT(harness.renderer.PrepareRetainedVectorImage(retainedImage));
+
+    const GlyphResource* shape0 = nullptr;
+    const GlyphResource* shape1 = nullptr;
+    HE_ASSERT(retainedImage.TryGetPreparedShapeResource(0, false, {}, harness.renderer, shape0));
+    HE_ASSERT(retainedImage.TryGetPreparedShapeResource(1, false, {}, harness.renderer, shape1));
+    HE_ASSERT(shape0 != nullptr);
+    HE_ASSERT(shape1 != nullptr);
+    HE_EXPECT(shape0->atlas != nullptr);
+    HE_EXPECT_EQ(shape0->atlas, shape1->atlas);
 }

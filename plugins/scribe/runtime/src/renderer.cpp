@@ -460,9 +460,7 @@ namespace he::scribe
             const bool useRuntimeStroke =
                 ((draw.flags & RetainedVectorImageDrawFlagStroke) != 0)
                 && ((draw.flags & RetainedVectorImageDrawFlagUseCompiledShape) == 0);
-            const bool ok = useRuntimeStroke
-                ? m_context.TryGetStrokedVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, draw.strokeStyle, shapeResource)
-                : m_context.TryGetVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource);
+            const bool ok = image.TryGetPreparedShapeResource(draw.shapeIndex, useRuntimeStroke, draw.strokeStyle, *this, shapeResource);
             if (!ok)
             {
                 continue;
@@ -587,9 +585,7 @@ namespace he::scribe
             const bool useRuntimeStroke =
                 ((draw.flags & RetainedVectorImageDrawFlagStroke) != 0)
                 && ((draw.flags & RetainedVectorImageDrawFlagUseCompiledShape) == 0);
-            const bool ok = useRuntimeStroke
-                ? m_context.TryGetStrokedVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, draw.strokeStyle, shapeResource)
-                : m_context.TryGetVectorShapeResource(image.GetImageHandle(), draw.shapeIndex, shapeResource);
+            const bool ok = image.TryGetPreparedShapeResource(draw.shapeIndex, useRuntimeStroke, draw.strokeStyle, *this, shapeResource);
             if (!ok)
             {
                 continue;

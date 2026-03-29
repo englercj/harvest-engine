@@ -1210,12 +1210,6 @@ namespace he
 
         if (m_render.device)
         {
-            for (CachedImageShape& shape : m_cachedImageShapes)
-            {
-                m_renderer.DestroyGlyphResource(shape.resource);
-            }
-            m_cachedImageShapes.Clear();
-
             m_renderer.DestroyGlyphResource(m_caretGlyph);
         }
 
@@ -1726,15 +1720,8 @@ namespace he
             return false;
         }
 
-        out.handle = m_scribeContext.RegisterVectorImage(
-            Move(blobWords),
-            BuildDemoRuntimeResourceId("svg", fileName));
-        if (!out.handle.IsValid())
-        {
-            return false;
-        }
-
-        out.blob = m_scribeContext.GetVectorImage(out.handle);
+        out.blobWords = Move(blobWords);
+        out.blob = blob;
         return out.blob.IsValid();
     }
 
@@ -1826,7 +1813,8 @@ namespace he
 
             scribe::RetainedVectorImageBuildDesc retainedDesc{};
             retainedDesc.context = &m_scribeContext;
-            retainedDesc.image = image.handle;
+            retainedDesc.image = image.blob;
+            retainedDesc.imageWords = Span<const schema::Word>(image.blobWords.Data(), image.blobWords.Size());
             return out.Build(retainedDesc) && m_renderer.PrepareRetainedVectorImage(out);
         };
 

@@ -76,15 +76,8 @@ namespace he
         struct LoadedDemoImage
         {
             String name{};
+            Vector<schema::Word> blobWords{};
             scribe::VectorImageResourceReader blob{};
-            scribe::VectorImageHandle handle{};
-        };
-
-        struct CachedImageShape
-        {
-            uint32_t imageIndex{ 0 };
-            uint32_t shapeIndex{ 0 };
-            scribe::GlyphResource resource{};
         };
 
         struct SceneTextBlock
@@ -163,7 +156,6 @@ namespace he
         Vector<LoadedDemoFont> m_fonts{};
         Vector<LoadedDemoImage> m_images{};
         Vector<String> m_svgLoadErrors{};
-        Vector<CachedImageShape> m_cachedImageShapes{};
         String m_titleText{};
         String m_bodyText{};
         String m_sceneStatsText{};

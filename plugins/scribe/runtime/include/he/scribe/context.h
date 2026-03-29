@@ -73,17 +73,6 @@ namespace he::scribe
         bool operator<(const FontFaceHandle& x) const = default;
     };
 
-    struct VectorImageHandle
-    {
-        assets::AssetUuid value{};
-
-        [[nodiscard]] bool IsValid() const { return value != assets::AssetUuid{}; }
-        [[nodiscard]] uint64_t HashCode() const { return value.HashCode(); }
-
-        bool operator==(const VectorImageHandle& x) const = default;
-        bool operator<(const VectorImageHandle& x) const = default;
-    };
-
     class ScribeContext
     {
     public:
@@ -107,10 +96,8 @@ namespace he::scribe
         FontFaceHandle RegisterFontFace(Vector<schema::Word>&& fontFaceWords, assets::AssetUuid resourceId);
         FontFaceHandle RegisterFontFace(Vector<schema::Word>&& fontFaceWords, assets::AssetUuid resourceId, StringView alias);
         bool AddFontFaceAlias(FontFaceHandle handle, StringView alias);
-        VectorImageHandle RegisterVectorImage(Vector<schema::Word>&& imageWords, assets::AssetUuid resourceId);
 
         [[nodiscard]] ScribeFontFace::RuntimeResource::Reader GetFontFace(FontFaceHandle handle) const;
-        [[nodiscard]] ScribeImage::RuntimeResource::Reader GetVectorImage(VectorImageHandle handle) const;
         bool TryFindFontFaceByAlias(StringView alias, FontFaceHandle& out) const;
 
         [[nodiscard]] ::hb_font_t* GetHbFont(FontFaceHandle handle);
@@ -119,12 +106,6 @@ namespace he::scribe
         bool TryGetStrokedGlyphResource(
             FontFaceHandle handle,
             uint32_t glyphIndex,
-            const StrokeStyle& style,
-            const GlyphResource*& out);
-        bool TryGetVectorShapeResource(VectorImageHandle handle, uint32_t shapeIndex, const GlyphResource*& out);
-        bool TryGetStrokedVectorShapeResource(
-            VectorImageHandle handle,
-            uint32_t shapeIndex,
             const StrokeStyle& style,
             const GlyphResource*& out);
 
@@ -136,11 +117,9 @@ namespace he::scribe
 
     private:
         struct RegisteredFontFace;
-        struct RegisteredVectorImage;
 
         rhi::Device* m_device{ nullptr };
         HashMap<assets::AssetUuid, RegisteredFontFace*> m_fonts;
-        HashMap<assets::AssetUuid, RegisteredVectorImage*> m_images;
         Renderer* m_renderer{ nullptr };
         LayoutEngine* m_layoutEngine{ nullptr };
     };

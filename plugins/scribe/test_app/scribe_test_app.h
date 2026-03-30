@@ -20,6 +20,7 @@ namespace he
     {
         struct CmdAllocator;
         struct CpuFence;
+        struct GpuFence;
         class Device;
         class Instance;
         class RenderCmdList;

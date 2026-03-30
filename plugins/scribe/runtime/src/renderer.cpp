@@ -348,6 +348,14 @@ namespace he::scribe
         HE_ASSERT(m_device);
         m_targetFormat = targetFormat;
 
+        rhi::GpuFenceDesc streamReuseFenceDesc{};
+        Result r = m_device->CreateGpuFence(streamReuseFenceDesc, m_streamReuseFence);
+        if (!r)
+        {
+            Terminate();
+            return false;
+        }
+
         if (!CreateDeviceResources())
         {
             Terminate();
@@ -369,16 +377,18 @@ namespace he::scribe
         m_streamVertices.Clear();
         m_quadVertices.Clear();
         m_drawPass = {};
-        for (StreamBuffer& streamBuffer : m_streamBuffers)
+        m_activeDrawCompletionValue = 0;
+        m_pendingSubmittedCompletionValue = 0;
+        m_nextCompletionValue = 1;
+        m_streamBufferSetIndex = 0xFFFFFFFFu;
+        for (StreamBufferSet& streamBufferSet : m_streamBufferSets)
         {
-            m_device->SafeDestroy(streamBuffer.buffer);
-            streamBuffer = {};
+            m_device->SafeDestroy(streamBufferSet.glyph.buffer);
+            m_device->SafeDestroy(streamBufferSet.quad.buffer);
+            streamBufferSet = {};
         }
-        for (StreamBuffer& streamBuffer : m_quadStreamBuffers)
-        {
-            m_device->SafeDestroy(streamBuffer.buffer);
-            streamBuffer = {};
-        }
+        m_streamBufferSets.Clear();
+        m_device->SafeDestroy(m_streamReuseFence);
         DestroyDeviceResources();
         m_targetFormat = rhi::Format::Invalid;
         m_device = nullptr;
@@ -585,12 +595,24 @@ namespace he::scribe
         }
 
         m_drawPass = desc;
-        m_streamBufferIndex = (m_streamBufferIndex + 1) % HE_LENGTH_OF(m_streamBuffers);
+        m_streamBufferSetIndex = AcquireStreamBufferSet();
+        m_activeDrawCompletionValue = m_nextCompletionValue++;
         m_batches.Clear();
         m_streamVertices.Clear();
         m_quadVertices.Clear();
         m_lastSubmittedDrawCount = 0;
         return true;
+    }
+
+    void Renderer::NotifySubmittedWork()
+    {
+        if (!m_device || !m_streamReuseFence || (m_pendingSubmittedCompletionValue == 0))
+        {
+            return;
+        }
+
+        m_device->GetRenderCmdQueue().Signal(m_streamReuseFence, m_pendingSubmittedCompletionValue);
+        m_pendingSubmittedCompletionValue = 0;
     }
 
     void Renderer::EnsureQueuedCapacity(uint32_t vertexCount, uint32_t batchCount)
@@ -727,6 +749,10 @@ namespace he::scribe
             return;
         }
 
+        HE_ASSERT(m_streamBufferSetIndex != 0xFFFFFFFFu);
+        StreamBufferSet& streamBufferSet = m_streamBufferSets[m_streamBufferSetIndex];
+        const bool usedStreamBuffers = !m_streamVertices.IsEmpty() || !m_quadVertices.IsEmpty();
+
         rhi::ColorAttachment colorAttachment{};
         colorAttachment.action.load = m_drawPass.clearTarget ? rhi::LoadOp::Clear : rhi::LoadOp::Load;
         colorAttachment.action.store = rhi::StoreOp::Store;
@@ -761,7 +787,7 @@ namespace he::scribe
             m_drawPass.cmdList->SetRenderPipeline(m_pipeline);
             m_drawPass.cmdList->SetBlendColor({ 0, 0, 0, 0 });
 
-            StreamBuffer& streamBuffer = m_streamBuffers[m_streamBufferIndex];
+            StreamBuffer& streamBuffer = streamBufferSet.glyph;
             const uint32_t vertexDataSize = m_streamVertices.Size() * sizeof(PackedGlyphVertex);
             if (EnsureStreamBufferCapacity(
                     streamBuffer,
@@ -798,7 +824,7 @@ namespace he::scribe
 
         if (!m_quadVertices.IsEmpty())
         {
-            StreamBuffer& quadStreamBuffer = m_quadStreamBuffers[m_streamBufferIndex];
+            StreamBuffer& quadStreamBuffer = streamBufferSet.quad;
             const uint32_t quadVertexDataSize = m_quadVertices.Size() * sizeof(PackedQuadVertex);
             if (EnsureStreamBufferCapacity(
                     quadStreamBuffer,
@@ -849,10 +875,58 @@ namespace he::scribe
                 m_drawPass.gpuTimer.resolveBufferOffset);
         }
 
+        if (usedStreamBuffers)
+        {
+            streamBufferSet.pending = true;
+            streamBufferSet.completionValue = m_activeDrawCompletionValue;
+            m_pendingSubmittedCompletionValue = Max(m_pendingSubmittedCompletionValue, m_activeDrawCompletionValue);
+        }
+        else
+        {
+            streamBufferSet.pending = false;
+            streamBufferSet.completionValue = 0;
+        }
+
         m_drawPass = {};
+        m_activeDrawCompletionValue = 0;
+        m_streamBufferSetIndex = 0xFFFFFFFFu;
         m_batches.Clear();
         m_streamVertices.Clear();
         m_quadVertices.Clear();
+    }
+
+    uint32_t Renderer::AcquireStreamBufferSet()
+    {
+        for (uint32_t streamBufferSetIndex = 0; streamBufferSetIndex < m_streamBufferSets.Size(); ++streamBufferSetIndex)
+        {
+            StreamBufferSet& streamBufferSet = m_streamBufferSets[streamBufferSetIndex];
+            if (!IsStreamBufferSetReady(streamBufferSet))
+            {
+                continue;
+            }
+
+            streamBufferSet.pending = false;
+            streamBufferSet.completionValue = 0;
+            return streamBufferSetIndex;
+        }
+
+        m_streamBufferSets.EmplaceBack();
+        return m_streamBufferSets.Size() - 1u;
+    }
+
+    bool Renderer::IsStreamBufferSetReady(const StreamBufferSet& streamBufferSet) const
+    {
+        if (!streamBufferSet.pending)
+        {
+            return true;
+        }
+
+        if (!m_streamReuseFence || (streamBufferSet.completionValue == 0))
+        {
+            return false;
+        }
+
+        return m_device->GetFenceValue(m_streamReuseFence) >= streamBufferSet.completionValue;
     }
 
     bool Renderer::EnsureStreamBufferCapacity(StreamBuffer& streamBuffer, uint32_t minSize, uint32_t stride, const char* name)

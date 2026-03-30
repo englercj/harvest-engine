@@ -1303,6 +1303,8 @@ namespace he
 
         rhi::RenderCmdQueue& cmdQueue = m_render.device->GetRenderCmdQueue();
         m_render.renderQueueTimestampFrequency = cmdQueue.GetTimestampFrequency();
+        Result r{};
+
         for (uint32_t i = 0; i < HE_LENGTH_OF(m_render.frames); ++i)
         {
             RenderFrameData& frame = m_render.frames[i];
@@ -1311,7 +1313,7 @@ namespace he
             allocDesc.type = rhi::CmdListType::Render;
             HE_RHI_SET_NAME(allocDesc, "Scribe Testbed Frame Command Allocator");
 
-            Result r = m_render.device->CreateCmdAllocator(allocDesc, frame.cmdAlloc);
+            r = m_render.device->CreateCmdAllocator(allocDesc, frame.cmdAlloc);
             if (!r)
             {
                 HE_LOG_ERROR(he_scribe,
@@ -1368,7 +1370,7 @@ namespace he
             desc.alloc = m_render.frames[0].cmdAlloc;
             HE_RHI_SET_NAME(desc, "Scribe Testbed Command List");
 
-            Result r = m_render.device->CreateRenderCmdList(desc, m_render.cmdList);
+            r = m_render.device->CreateRenderCmdList(desc, m_render.cmdList);
             if (!r)
             {
                 HE_LOG_ERROR(he_scribe,
@@ -1388,7 +1390,7 @@ namespace he
             desc.size = m_view->GetSize();
             desc.enableVSync = true;
 
-            Result r = m_render.device->CreateSwapChain(desc, m_render.swapChain);
+            r = m_render.device->CreateSwapChain(desc, m_render.swapChain);
             if (!r)
             {
                 HE_LOG_ERROR(he_scribe,
@@ -3168,6 +3170,7 @@ namespace he
 
         rhi::RenderCmdQueue& cmdQueue = m_render.device->GetRenderCmdQueue();
         cmdQueue.Submit(m_render.cmdList);
+        m_renderer.NotifySubmittedWork();
         cmdQueue.Signal(m_render.frames[m_render.frameIndex].fence);
         m_render.frames[m_render.frameIndex].hasSubmittedWork = true;
         m_lastDrawCount = m_renderer.GetLastSubmittedDrawCount();

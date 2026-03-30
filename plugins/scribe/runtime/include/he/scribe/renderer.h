@@ -13,10 +13,6 @@
 
 namespace he::scribe
 {
-    // The draw-oriented API can submit multiple scribe passes before the caller advances to the
-    // next frame fence, so keep a deeper upload-buffer ring than MaxFrameCount alone.
-    constexpr uint32_t ScribeStreamBufferRingSize = rhi::MaxFrameCount * 8u;
-
     struct GlyphAtlas;
     class RetainedTextModel;
     class RetainedVectorImageModel;
@@ -148,6 +144,7 @@ namespace he::scribe
         uint32_t GetLastSubmittedDrawCount() const { return m_lastSubmittedDrawCount; }
 
         bool BeginDraw(const DrawPassDesc& desc);
+        void NotifySubmittedWork();
         void DrawGlyph(const DrawGlyphDesc& desc);
         void DrawQuad(const DrawQuadDesc& desc);
         void DrawText(const RetainedTextModel& text);
@@ -168,11 +165,21 @@ namespace he::scribe
             uint32_t size{ 0 };
         };
 
+        struct StreamBufferSet
+        {
+            StreamBuffer glyph{};
+            StreamBuffer quad{};
+            uint64_t completionValue{ 0 };
+            bool pending{ false };
+        };
+
         bool CreateDedicatedAtlas(
             GlyphAtlas*& out,
             const TextureDataDesc& curveTexture,
             const TextureDataDesc& bandTexture);
         void ReleaseAtlas(GlyphAtlas*& atlas);
+        uint32_t AcquireStreamBufferSet();
+        bool IsStreamBufferSetReady(const StreamBufferSet& streamBufferSet) const;
         void EnsureQueuedCapacity(uint32_t vertexCount, uint32_t batchCount = 0);
         bool EnsureStreamBufferCapacity(StreamBuffer& streamBuffer, uint32_t minSize, uint32_t stride, const char* name);
         bool CreateDeviceResources();
@@ -188,11 +195,14 @@ namespace he::scribe
         rhi::RootSignature* m_quadRootSignature{ nullptr };
         rhi::VertexBufferFormat* m_quadVertexBufferFormat{ nullptr };
         rhi::RenderPipeline* m_quadPipeline{ nullptr };
+        rhi::GpuFence* m_streamReuseFence{ nullptr };
         rhi::Format m_targetFormat{ rhi::Format::Invalid };
         DrawPassDesc m_drawPass{};
-        StreamBuffer m_streamBuffers[ScribeStreamBufferRingSize]{};
-        StreamBuffer m_quadStreamBuffers[ScribeStreamBufferRingSize]{};
-        uint32_t m_streamBufferIndex{ 0 };
+        uint64_t m_activeDrawCompletionValue{ 0 };
+        uint64_t m_pendingSubmittedCompletionValue{ 0 };
+        uint64_t m_nextCompletionValue{ 1 };
+        Vector<StreamBufferSet> m_streamBufferSets{};
+        uint32_t m_streamBufferSetIndex{ 0xFFFFFFFFu };
         Vector<StreamBatch> m_batches{};
         Vector<PackedGlyphVertex> m_streamVertices{};
         Vector<PackedQuadVertex> m_quadVertices{};

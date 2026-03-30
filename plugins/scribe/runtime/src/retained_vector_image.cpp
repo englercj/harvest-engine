@@ -286,7 +286,7 @@ namespace he::scribe
 
         const Vec2f drawOffset{
             -metadata.GetSourceViewBoxMinX(),
-            metadata.GetSourceViewBoxMinY()
+            -metadata.GetSourceViewBoxMinY()
         };
 
         const bool addStroke = desc.strokeStyle.IsVisible() && (desc.strokeColor.w > 0.0f);

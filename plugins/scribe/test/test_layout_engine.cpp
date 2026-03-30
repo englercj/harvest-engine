@@ -42,6 +42,7 @@ namespace
         {
             "plugins/editor/src/fonts/",
             "../../../plugins/editor/src/fonts/",
+            "C:/Windows/Fonts/",
         };
 
         for (const char* base : Candidates)

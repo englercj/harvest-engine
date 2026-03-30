@@ -80,6 +80,7 @@ namespace he::scribe::editor
             float boundsMaxX{ 0.0f };
             float boundsMaxY{ 0.0f };
             bool hasViewBox{ false };
+            bool hasExplicitViewBox{ false };
         };
 
         struct StyleState
@@ -1581,28 +1582,6 @@ namespace he::scribe::editor
             return value;
         }
 
-        bool ResolveRepoFontPath(String& out, const char* fileName)
-        {
-            static const char* Candidates[] =
-            {
-                "plugins/editor/src/fonts/",
-                "../../../plugins/editor/src/fonts/",
-            };
-
-            for (const char* base : Candidates)
-            {
-                out = base;
-                out += fileName;
-                if (File::Exists(out.Data()))
-                {
-                    return true;
-                }
-            }
-
-            out.Clear();
-            return false;
-        }
-
         StringView GetPrimaryFontFamilyName(StringView value)
         {
             value = TrimView(value);
@@ -1875,111 +1854,6 @@ namespace he::scribe::editor
             }
 
             return defaultValue;
-        }
-
-        bool ResolveWindowsFontPath(String& out, const char* fileName)
-        {
-            String path = "C:/Windows/Fonts/";
-            path += fileName;
-            if (!File::Exists(path.Data()))
-            {
-                return false;
-            }
-
-            out = path;
-            return true;
-        }
-
-        bool ResolveSvgFontPath(String& out, StringView familyName, StringView fontStyle, StringView fontWeight)
-        {
-            familyName = GetPrimaryFontFamilyName(familyName);
-            familyName = StripSvgSubsetFontPrefix(familyName);
-            fontStyle = TrimQuotes(TrimView(fontStyle));
-            fontWeight = TrimQuotes(TrimView(fontWeight));
-
-            const bool wantsItalic = fontStyle.EqualToI("italic")
-                || familyName.EqualToI("TimesNewRomanPS-ItalicMT")
-                || familyName.EqualToI("TimesNewRomanPS-BoldItalicMT");
-            const bool wantsBold = fontWeight.EqualToI("bold")
-                || familyName.EqualToI("TimesNewRomanPS-BoldMT")
-                || familyName.EqualToI("TimesNewRomanPS-BoldItalicMT");
-
-            if (familyName.IsEmpty()
-                || familyName.EqualToI("sans-serif")
-                || familyName.EqualToI("sans")
-                || familyName.EqualToI("Noto Sans"))
-            {
-                if (ResolveRepoFontPath(out, "NotoSans-Regular.ttf"))
-                {
-                    return true;
-                }
-            }
-
-            if (familyName.EqualToI("monospace")
-                || familyName.EqualToI("mono")
-                || familyName.EqualToI("Noto Mono"))
-            {
-                if (ResolveRepoFontPath(out, "NotoMono-Regular.ttf"))
-                {
-                    return true;
-                }
-            }
-
-            if (familyName.EqualToI("Times New Roman")
-                || familyName.EqualToI("TimesNewRomanPSMT")
-                || familyName.EqualToI("TimesNewRomanPS-ItalicMT")
-                || familyName.EqualToI("TimesNewRomanPS-BoldMT")
-                || familyName.EqualToI("TimesNewRomanPS-BoldItalicMT"))
-            {
-                const char* fileName = wantsBold
-                    ? (wantsItalic ? "timesbi.ttf" : "timesbd.ttf")
-                    : (wantsItalic ? "timesi.ttf" : "times.ttf");
-                if (ResolveWindowsFontPath(out, fileName))
-                {
-                    return true;
-                }
-            }
-
-            if (familyName.EqualToI("SymbolMT"))
-            {
-                if (ResolveWindowsFontPath(out, "symbol.ttf"))
-                {
-                    return true;
-                }
-            }
-
-            if (familyName.EqualToI("Material Design Icons"))
-            {
-                if (ResolveRepoFontPath(out, "materialdesignicons.ttf"))
-                {
-                    return true;
-                }
-            }
-
-            static const char* WindowsCandidates[] =
-            {
-                "C:/Windows/Fonts/segoeui.ttf",
-                "C:/Windows/Fonts/segoeuib.ttf",
-                "C:/Windows/Fonts/segoeuii.ttf",
-                "C:/Windows/Fonts/segoeuiz.ttf",
-                "C:/Windows/Fonts/arial.ttf",
-                "C:/Windows/Fonts/arialbd.ttf",
-                "C:/Windows/Fonts/ariali.ttf",
-                "C:/Windows/Fonts/arialbi.ttf",
-                "C:/Windows/Fonts/calibri.ttf",
-                "C:/Windows/Fonts/tahoma.ttf",
-            };
-            for (const char* candidate : WindowsCandidates)
-            {
-                if (File::Exists(candidate))
-                {
-                    out = candidate;
-                    return true;
-                }
-            }
-
-            out.Clear();
-            return false;
         }
 
         bool ParseFloat(StringView text, float& out)
@@ -2948,6 +2822,7 @@ namespace he::scribe::editor
                         out.viewBoxWidth = Max(values[2], 1.0f);
                         out.viewBoxHeight = Max(values[3], 1.0f);
                         out.hasViewBox = true;
+                        out.hasExplicitViewBox = true;
                     }
                 }
                 else if (!out.hasViewBox && attr.name.EqualToI("width"))
@@ -4437,6 +4312,14 @@ namespace he::scribe::editor
             return false;
         }
 
+        if (!parsed.hasExplicitViewBox)
+        {
+            parsed.viewBoxMinX = parsed.boundsMinX;
+            parsed.viewBoxMinY = parsed.boundsMinY;
+            parsed.viewBoxWidth = Max(parsed.boundsMaxX - parsed.boundsMinX, 1.0f);
+            parsed.viewBoxHeight = Max(parsed.boundsMaxY - parsed.boundsMinY, 1.0f);
+            parsed.hasViewBox = true;
+        }
         out.bandOverlapEpsilon = DefaultBandOverlapEpsilon;
         out.curveTextureWidth = CurveTextureWidth;
         out.bandTextureWidth = ScribeBandTextureWidth;

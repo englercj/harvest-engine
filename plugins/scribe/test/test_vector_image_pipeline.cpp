@@ -93,6 +93,22 @@ namespace
         "</g>"
         "</svg>";
 
+    constexpr const char* kSvgWithClipPathMergeCandidates =
+        "<svg viewBox=\"0 0 32 32\" xmlns=\"http://www.w3.org/2000/svg\">"
+        "<defs><clipPath id=\"clipBox\"><rect x=\"0\" y=\"0\" width=\"32\" height=\"32\"/></clipPath></defs>"
+        "<g clip-path=\"url(#clipBox)\" fill=\"#111827\">"
+        "<rect x=\"0\" y=\"0\" width=\"8\" height=\"8\"/>"
+        "<rect x=\"8\" y=\"0\" width=\"8\" height=\"8\"/>"
+        "</g>"
+        "</svg>";
+
+    constexpr const char* kSvgWithoutViewBoxTranslatedGroup =
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"64\">"
+        "<g transform=\"translate(10,20)\">"
+        "<rect fill=\"#111827\" x=\"0\" y=\"0\" width=\"30\" height=\"40\"/>"
+        "</g>"
+        "</svg>";
+
     constexpr const char* kSvgWithTextElement =
         "<svg viewBox=\"0 0 160 48\" xmlns=\"http://www.w3.org/2000/svg\">"
         "<text x=\"8\" y=\"30\" font-family=\"Noto Sans\" font-size=\"24\" fill=\"#111827\">SVG</text>"
@@ -702,6 +718,19 @@ HE_TEST(scribe, vector_image_pipeline, skips_shapes_outside_simple_clip_paths)
     HE_EXPECT_EQ(imageData.layers[0].red, 17.0f / 255.0f);
 }
 
+HE_TEST(scribe, vector_image_pipeline, does_not_merge_layers_inside_clip_paths)
+{
+    CompiledVectorImageData imageData{};
+    const bool ok = BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithClipPathMergeCandidates), StrLen(kSvgWithClipPathMergeCandidates)),
+        0.25f);
+
+    HE_EXPECT(ok);
+    HE_EXPECT_EQ(imageData.shapes.Size(), 2u);
+    HE_EXPECT_EQ(imageData.layers.Size(), 2u);
+}
+
 HE_TEST(scribe, vector_image_pipeline, compiles_svg_text_elements_to_geometry)
 {
     CompiledVectorImageData imageData{};
@@ -1049,7 +1078,7 @@ HE_TEST(scribe, retained_vector_image, builds_draws_from_svg_text_elements)
     HE_ASSERT(BuildLoadedFontFace(
         fontStorage,
         fontFace,
-        "C:/Users/engle/source/repos/harvest-engine/plugins/editor/src/fonts/NotoSans-Regular.ttf"));
+        "plugins/editor/src/fonts/NotoSans-Regular.ttf"));
     const FontFaceHandle fontHandle = context.RegisterFontFace(Move(fontStorage), MakeTestAssetUuid(), "Noto Sans");
     HE_ASSERT(fontHandle.IsValid());
     RetainedVectorImageBuildDesc desc{};
@@ -1069,6 +1098,42 @@ HE_TEST(scribe, retained_vector_image, builds_draws_from_svg_text_elements)
         }
     }
     HE_EXPECT(foundOffsetTextDraw);
+}
+
+HE_TEST(scribe, retained_vector_image, normalizes_translated_group_origin_without_viewbox)
+{
+    CompiledVectorImageData imageData{};
+    HE_ASSERT(BuildCompiledVectorImageData(
+        imageData,
+        Span(reinterpret_cast<const uint8_t*>(kSvgWithoutViewBoxTranslatedGroup), StrLen(kSvgWithoutViewBoxTranslatedGroup)),
+        0.25f));
+
+    schema::Builder rootBuilder;
+    VectorImageResource::Builder root = rootBuilder.AddStruct<VectorImageResource>();
+    FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
+    FillVectorImageResourceFillData(root.GetFill(), imageData);
+    FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
+    FillVectorImageResourcePaintData(root.GetPaint(), imageData);
+    FillVectorImageResourceTextData(rootBuilder, root.GetText(), imageData);
+    root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
+    root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
+    rootBuilder.SetRoot(root);
+
+    Vector<schema::Word> storage;
+    storage = Span<const schema::Word>(rootBuilder);
+    const VectorImageResourceReader image = schema::ReadRoot<VectorImageResource>(storage.Data());
+    HE_ASSERT(image.IsValid());
+
+    RetainedVectorImageModel retainedImage{};
+    ScribeContext context{};
+    RetainedVectorImageBuildDesc desc{};
+    desc.context = &context;
+    desc.image = image;
+    desc.imageWords = storage;
+    HE_ASSERT(retainedImage.Build(desc));
+    HE_EXPECT_EQ(retainedImage.GetShapeDrawCount(), 1u);
+    HE_EXPECT(IsNearlyEqual(retainedImage.GetDraws()[0].offset.x, 0.0f, 0.001f));
+    HE_EXPECT(IsNearlyEqual(retainedImage.GetDraws()[0].offset.y, 0.0f, 0.001f));
 }
 
 HE_TEST(scribe, retained_vector_image, falls_back_to_other_registered_svg_font_faces_for_missing_glyphs)
@@ -1108,7 +1173,7 @@ HE_TEST(scribe, retained_vector_image, falls_back_to_other_registered_svg_font_f
     HE_ASSERT(BuildLoadedFontFace(
         iconFontStorage,
         iconFontFace,
-        "C:/Users/engle/source/repos/harvest-engine/plugins/editor/src/fonts/materialdesignicons.ttf"));
+        "plugins/editor/src/fonts/materialdesignicons.ttf"));
     HE_ASSERT(context.RegisterFontFace(Move(iconFontStorage), MakeTestAssetUuid(), "Material Design Icons").IsValid());
 
     Vector<schema::Word> textFontStorage{};

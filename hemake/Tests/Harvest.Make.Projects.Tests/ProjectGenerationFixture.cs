@@ -25,6 +25,7 @@ public sealed class ProjectGenerationFixture : IDisposable
     public ResolvedProjectTree DebugTree { get; }
 
     public ModuleNode AppModule { get; }
+    public ModuleNode DepModule { get; }
     public ModuleNode LibModule { get; }
     public ModuleNode ToolModule { get; }
     public PluginNode PluginNode { get; }
@@ -74,6 +75,7 @@ public sealed class ProjectGenerationFixture : IDisposable
         ProjectNode = ProjectService.GetGlobalNode<ProjectNode>();
 
         AppModule = DebugTree.IndexedNodes.GetNode<ModuleNode>("test_app");
+        DepModule = DebugTree.IndexedNodes.GetNode<ModuleNode>("test_dep");
         LibModule = DebugTree.IndexedNodes.GetNode<ModuleNode>("test_lib");
         ToolModule = DebugTree.IndexedNodes.GetNode<ModuleNode>("test_tool");
         PluginNode = DebugTree.GetNodes<PluginNode>(DebugTree.ProjectNode.Node).Single();
@@ -133,6 +135,7 @@ public sealed class ProjectGenerationFixture : IDisposable
     private void WriteSourceFiles()
     {
         WriteFile("src/main.cpp", "int main() { return 0; }");
+        WriteFile("src/dep.cpp", "int dep() { return 3; }");
         WriteFile("src/lib.cpp", "int lib() { return 1; }");
         WriteFile("src/pch.cpp", "#include \"pch.h\"");
         WriteFile("src/win32/platform.cpp", "int platform() { return 2; }");
@@ -241,6 +244,12 @@ public sealed class ProjectGenerationFixture : IDisposable
                     fetch archive url="https://example.com/unit_dep.zip" archive_format=zip base_dir="dep-root" install_dir_priority=5
                 }
 
+                module test_dep kind=lib_static group="libs/core" {
+                    files {
+                        "./src/dep.cpp"
+                    }
+                }
+
                 module test_lib kind=lib_static group="libs/core" target_name="test_lib_target" make_map_file=#true {
                     public {
                         defines {
@@ -251,6 +260,9 @@ public sealed class ProjectGenerationFixture : IDisposable
                         }
                         lib_dirs {
                             "./lib/public"
+                        }
+                        dependencies {
+                            test_dep
                         }
                     }
 

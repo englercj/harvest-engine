@@ -580,7 +580,9 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
                 SymbolsNode symbols = projectTree.GetMergedNode<SymbolsNode>(module.Node);
                 WarningsNode warnings = projectTree.GetMergedNode<WarningsNode>(module.Node);
 
-                List<DependenciesNode> dependencies = [.. projectTree.GetNodes<DependenciesNode>(module.Node, module.IsBinary)];
+                List<ModuleDependency> moduleDependencies = module.IsBinary
+                    ? projectTree.GetModuleDependencies(module, ENodeDependencyInheritance.All)
+                    : [];
                 LibDirsNode libDirs = projectTree.GetMergedNode<LibDirsNode>(module.Node, true);
 
                 bool isOptimizedBuild = VisualStudioUtils.IsOptimizedBuild(optimize);
@@ -989,8 +991,7 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
 
                 if (module.IsBinary)
                 {
-                    IEnumerable<string> linkDeps = dependencies
-                        .SelectMany((entry) => entry.Entries)
+                    IEnumerable<string> linkDeps = moduleDependencies
                         .Where((entry) => entry.Kind == EDependencyKind.File || entry.Kind == EDependencyKind.System)
                         .Select((entry) => VisualStudioUtils.EnsureLibraryExtension(entry.DependencyName));
                     VisualStudioUtils.WriteArrayElement(writer, linkDeps, "AdditionalDependencies", "%(AdditionalDependencies)");
@@ -1002,7 +1003,7 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
                 writer.WriteElementBoolIfTrue("TreatLinkerWarningAsErrors", warnings.AreAllWarningsFatal);
 
                 // TODO: support for individual fatal link errors by adding `/wx:a,b,c` automatically?
-                IEnumerable<string> wholeArchiveOptions = GetWholeArchiveOptions(projectTree, buildOutput, dependencies);
+                IEnumerable<string> wholeArchiveOptions = GetWholeArchiveOptions(projectTree, buildOutput, moduleDependencies);
                 IEnumerable<string> linkerOptions = wholeArchiveOptions.Concat(linkOptions.Entries.Select((entry) => entry.OptionName));
                 VisualStudioUtils.WriteArrayElement(writer, linkerOptions, "AdditionalOptions", "%(AdditionalOptions)", " ");
 
@@ -1164,9 +1165,9 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
     private IEnumerable<string> GetWholeArchiveOptions(
         ResolvedProjectTree projectTree,
         BuildOutputNode buildOutput,
-        IEnumerable<DependenciesNode> dependencies)
+        IEnumerable<ModuleDependency> dependencies)
     {
-        foreach (DependenciesEntryNode dependency in dependencies.SelectMany((entry) => entry.Entries))
+        foreach (ModuleDependency dependency in dependencies)
         {
             if (!dependency.IsWholeArchive)
             {
@@ -1218,9 +1219,9 @@ internal class VcxprojGenerator(string platformToolset, IProjectService projectS
 
             bool isManaged = VisualStudioUtils.IsManaged(module, buildOptions);
             bool isClrMixed = VisualStudioUtils.IsClrMixed(module, buildOptions);
-            List<DependenciesNode> dependencies = [.. projectTree.GetNodes<DependenciesNode>(module.Node, module.IsBinary)];
+            List<ModuleDependency> dependencies = projectTree.GetModuleDependencies(module, ENodeDependencyInheritance.All);
 
-            foreach (DependenciesEntryNode depEntry in dependencies.SelectMany((entry) => entry.Entries))
+            foreach (ModuleDependency depEntry in dependencies)
             {
                 if (depEntry.Kind != EDependencyKind.Default && depEntry.Kind != EDependencyKind.Link)
                 {

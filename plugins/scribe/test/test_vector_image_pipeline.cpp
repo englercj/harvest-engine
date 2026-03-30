@@ -954,6 +954,68 @@ HE_TEST(scribe, retained_vector_image, builds_layered_draws_from_runtime_resourc
     HE_EXPECT(retainedImage.GetImage().IsValid());
 }
 
+HE_TEST(scribe, vector_image_builder, builds_vector_image_runtime_resource)
+{
+    VectorImageBuilder builder{};
+    builder.SetViewBox(0.0f, 0.0f, 64.0f, 48.0f);
+    builder.SetFillStyle({ 0.1f, 0.2f, 0.3f, 1.0f });
+    builder.BeginPath();
+    builder.Rect(4.0f, 6.0f, 18.0f, 12.0f);
+    HE_ASSERT(builder.Fill());
+
+    builder.SetStrokeStyle({ 0.8f, 0.2f, 0.1f, 1.0f });
+    builder.SetLineWidth(3.0f);
+    builder.SetLineJoin(StrokeJoinStyle::Round);
+    builder.BeginPath();
+    builder.Ellipse(36.0f, 22.0f, 8.0f, 6.0f);
+    HE_ASSERT(builder.Stroke());
+
+    Vector<schema::Word> storage{};
+    VectorImageResourceReader image{};
+    HE_ASSERT(builder.Build(storage, image));
+    HE_EXPECT(image.IsValid());
+    HE_EXPECT_EQ(image.GetMetadata().GetSourceViewBoxWidth(), 64.0f);
+    HE_EXPECT_EQ(image.GetMetadata().GetSourceViewBoxHeight(), 48.0f);
+    HE_EXPECT_EQ(image.GetPaint().GetLayers().Size(), 2u);
+    HE_EXPECT_EQ(image.GetFill().GetShapes().Size(), 2u);
+    HE_EXPECT(image.GetText().GetRuns().IsEmpty());
+}
+
+HE_TEST(scribe, vector_image_builder, builds_retained_images_through_vector_image_path)
+{
+    NullRendererHarness harness{};
+    HE_ASSERT(harness.Initialize());
+
+    const Vec2f polygon[] =
+    {
+        { 6.0f, 6.0f },
+        { 26.0f, 8.0f },
+        { 20.0f, 24.0f },
+        { 8.0f, 22.0f },
+    };
+
+    VectorImageBuilder builder{};
+    builder.BeginPath();
+    builder.SetFillStyle({ 0.2f, 0.6f, 0.3f, 1.0f });
+    builder.Polygon(Span<const Vec2f>(polygon, HE_LENGTH_OF(polygon)));
+    HE_ASSERT(builder.Fill());
+
+    builder.BeginPath();
+    builder.SetStrokeStyle({ 0.0f, 0.0f, 0.0f, 1.0f });
+    builder.SetLineWidth(2.0f);
+    builder.Line(2.0f, 30.0f, 28.0f, 30.0f);
+    HE_ASSERT(builder.Stroke());
+
+    RetainedVectorImageModel retainedImage{};
+    HE_ASSERT(builder.Build(retainedImage, harness.context));
+    HE_EXPECT_EQ(retainedImage.GetShapeDrawCount(), 2u);
+    HE_EXPECT_EQ(retainedImage.GetTextDrawCount(), 0u);
+
+    harness.renderer.DrawImage(retainedImage);
+    HE_EXPECT_GT(retainedImage.GetCachedVertexCount(), 0u);
+    HE_EXPECT_GT(retainedImage.GetCachedBatchCount(), 0u);
+}
+
 HE_TEST(scribe, retained_vector_image, builds_runtime_stroke_draws_from_runtime_resource)
 {
     Vector<schema::Word> storage;

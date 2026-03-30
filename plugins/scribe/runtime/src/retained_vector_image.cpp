@@ -9,14 +9,24 @@
 
 #include "glyph_atlas_utils.h"
 
+#include "../../editor/src/image_compile_geometry.h"
+#include "../../editor/src/outline_build_utils.h"
+#include "../../editor/src/packed_geometry_compile_utils.h"
+#include "../../editor/src/resource_build_utils.h"
+
 #include "he/core/log.h"
 #include "he/core/math.h"
 #include "he/core/memory_ops.h"
+#include "he/schema/schema.h"
+#include "he/scribe/stroke_outline.h"
 
 namespace he::scribe
 {
     namespace
     {
+        constexpr float RuntimeVectorImageBandOverlapEpsilon = 1.0f / 1024.0f;
+        constexpr float RuntimeEllipseKappa = 0.5522847498307936f;
+
         bool EqualColor(const Vec4f& a, const Vec4f& b)
         {
             return (a.x == b.x)
@@ -72,6 +82,157 @@ namespace he::scribe
             aabb.min.y = Min(aabb.min.y, point.y);
             aabb.max.x = Max(aabb.max.x, point.x);
             aabb.max.y = Max(aabb.max.y, point.y);
+        }
+
+        StrokeJoinKind ToSchemaStrokeJoin(StrokeJoinStyle value)
+        {
+            switch (value)
+            {
+                case StrokeJoinStyle::Bevel: return StrokeJoinKind::Bevel;
+                case StrokeJoinStyle::Round: return StrokeJoinKind::Round;
+                case StrokeJoinStyle::Miter:
+                default:
+                    return StrokeJoinKind::Miter;
+            }
+        }
+
+        StrokeCapKind ToSchemaStrokeCap(StrokeCapStyle value)
+        {
+            switch (value)
+            {
+                case StrokeCapStyle::Square: return StrokeCapKind::Square;
+                case StrokeCapStyle::Round: return StrokeCapKind::Round;
+                case StrokeCapStyle::Butt:
+                default:
+                    return StrokeCapKind::Butt;
+            }
+        }
+
+        bool BuildStrokedFillCurves(
+            Vector<editor::curve_compile::CurveData>& out,
+            Span<const editor::StrokeSourcePoint> strokePoints,
+            Span<const editor::StrokeSourceCommand> strokeCommands,
+            const StrokeStyle& style,
+            float flatteningTolerance)
+        {
+            out.Clear();
+            if (!style.IsVisible() || strokePoints.IsEmpty() || strokeCommands.IsEmpty())
+            {
+                return false;
+            }
+
+            Vector<StrokeOutlineSourcePoint> outlinePoints{};
+            outlinePoints.Resize(strokePoints.Size());
+            for (uint32_t pointIndex = 0; pointIndex < strokePoints.Size(); ++pointIndex)
+            {
+                outlinePoints[pointIndex].x = strokePoints[pointIndex].x;
+                outlinePoints[pointIndex].y = strokePoints[pointIndex].y;
+            }
+
+            Vector<StrokeOutlineSourceCommand> outlineCommands{};
+            outlineCommands.Resize(strokeCommands.Size());
+            for (uint32_t commandIndex = 0; commandIndex < strokeCommands.Size(); ++commandIndex)
+            {
+                outlineCommands[commandIndex].type = strokeCommands[commandIndex].type;
+                outlineCommands[commandIndex].firstPoint = strokeCommands[commandIndex].firstPoint;
+            }
+
+            StrokeOutlineStyle outlineStyle{};
+            outlineStyle.width = style.width;
+            outlineStyle.join = ToSchemaStrokeJoin(style.joinStyle);
+            outlineStyle.cap = ToSchemaStrokeCap(style.capStyle);
+            outlineStyle.miterLimit = style.miterLimit;
+
+            Vector<StrokeOutlineCurve> strokedCurves{};
+            if (!BuildStrokedOutlineCurves(
+                    strokedCurves,
+                    Span<const StrokeOutlineSourcePoint>(outlinePoints.Data(), outlinePoints.Size()),
+                    Span<const StrokeOutlineSourceCommand>(outlineCommands.Data(), outlineCommands.Size()),
+                    outlineStyle))
+            {
+                return false;
+            }
+
+            editor::curve_compile::CurveBuilder builder(flatteningTolerance);
+            for (const StrokeOutlineCurve& curve : strokedCurves)
+            {
+                const editor::curve_compile::Point2 p0{ curve.x0, curve.y0 };
+                switch (curve.kind)
+                {
+                    case StrokeOutlineCurveKind::Line:
+                        builder.AddLine(p0, { curve.x1, curve.y1 });
+                        break;
+
+                    case StrokeOutlineCurveKind::Quadratic:
+                        builder.AddQuadratic(p0, { curve.x1, curve.y1 }, { curve.x2, curve.y2 });
+                        break;
+
+                    case StrokeOutlineCurveKind::Cubic:
+                    default:
+                        builder.AddCubic(p0, { curve.x1, curve.y1 }, { curve.x2, curve.y2 }, { curve.x3, curve.y3 });
+                        break;
+                }
+            }
+
+            out = Move(builder.Curves());
+            return !out.IsEmpty();
+        }
+
+        bool AppendCompiledVectorShape(
+            editor::CompiledVectorImageData& outImageData,
+            Span<const editor::curve_compile::CurveData> curves,
+            Span<const editor::StrokeSourcePoint> strokePoints,
+            Span<const editor::StrokeSourceCommand> strokeCommands,
+            FillRule fillRule,
+            uint32_t& outShapeIndex)
+        {
+            editor::CompiledVectorShapeRenderEntry& compiledShape = outImageData.shapes.EmplaceBack();
+            editor::PackedBandStats bandStats{};
+            editor::CompiledShapeBuildOptions options{};
+            options.bandOverlapEpsilon = outImageData.bandOverlapEpsilon;
+            options.normalizeOriginToBoundsMin = true;
+            options.useSingleBandForSmallNonZeroShape = true;
+            if (!editor::BuildCompiledShapeGeometry(
+                    compiledShape,
+                    outImageData.curveTexels,
+                    outImageData.bandTexels,
+                    outImageData.strokePoints,
+                    outImageData.strokeCommands,
+                    bandStats,
+                    curves,
+                    strokePoints,
+                    strokeCommands,
+                    fillRule,
+                    options))
+            {
+                outImageData.shapes.Resize(outImageData.shapes.Size() - 1u);
+                return false;
+            }
+
+            outImageData.bandHeaderCount += bandStats.headerCount;
+            outImageData.emittedBandPayloadTexelCount += bandStats.emittedPayloadTexelCount;
+            outImageData.reusedBandCount += bandStats.reusedBandCount;
+            outImageData.reusedBandPayloadTexelCount += bandStats.reusedPayloadTexelCount;
+            const float minX = compiledShape.originX + compiledShape.boundsMinX;
+            const float minY = compiledShape.originY + compiledShape.boundsMinY;
+            const float maxX = compiledShape.originX + compiledShape.boundsMaxX;
+            const float maxY = compiledShape.originY + compiledShape.boundsMaxY;
+            if (outImageData.shapes.Size() == 1u)
+            {
+                outImageData.boundsMinX = minX;
+                outImageData.boundsMinY = minY;
+                outImageData.boundsMaxX = maxX;
+                outImageData.boundsMaxY = maxY;
+            }
+            else
+            {
+                outImageData.boundsMinX = Min(outImageData.boundsMinX, minX);
+                outImageData.boundsMinY = Min(outImageData.boundsMinY, minY);
+                outImageData.boundsMaxX = Max(outImageData.boundsMaxX, maxX);
+                outImageData.boundsMaxY = Max(outImageData.boundsMaxY, maxY);
+            }
+            outShapeIndex = outImageData.shapes.Size() - 1u;
+            return true;
         }
 
         DrawGlyphDesc BuildShapeDrawDesc(const RetainedVectorImageModel& model, const RetainedVectorImageDraw& draw, const GlyphResource& glyph)
@@ -920,5 +1081,429 @@ namespace he::scribe
     void RetainedVectorImageModel::InvalidateColor() const
     {
         m_hasCachedColor = false;
+    }
+
+    void VectorImageBuilder::Clear()
+    {
+        m_drawPaths.Clear();
+        m_currentPath.Clear();
+        m_fillStyle = { 0.0f, 0.0f, 0.0f, 1.0f };
+        m_strokeColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+        m_strokeStyle = { 1.0f, StrokeJoinStyle::Miter, StrokeCapStyle::Butt, 4.0f };
+        m_fillRule = FillRule::NonZero;
+        m_viewBoxMinX = 0.0f;
+        m_viewBoxMinY = 0.0f;
+        m_viewBoxWidth = 0.0f;
+        m_viewBoxHeight = 0.0f;
+        m_flatteningTolerance = 0.25f;
+        m_hasViewBox = false;
+    }
+
+    void VectorImageBuilder::SetViewBox(float minX, float minY, float width, float height)
+    {
+        m_viewBoxMinX = minX;
+        m_viewBoxMinY = minY;
+        m_viewBoxWidth = Max(width, 1.0f);
+        m_viewBoxHeight = Max(height, 1.0f);
+        m_hasViewBox = true;
+    }
+
+    void VectorImageBuilder::ClearViewBox()
+    {
+        m_viewBoxMinX = 0.0f;
+        m_viewBoxMinY = 0.0f;
+        m_viewBoxWidth = 0.0f;
+        m_viewBoxHeight = 0.0f;
+        m_hasViewBox = false;
+    }
+
+    void VectorImageBuilder::BeginPath()
+    {
+        m_currentPath.Clear();
+    }
+
+    void VectorImageBuilder::MoveTo(float x, float y)
+    {
+        PathCommand& command = m_currentPath.EmplaceBack();
+        command.type = PathCommandType::MoveTo;
+        command.p0 = { x, y };
+    }
+
+    void VectorImageBuilder::LineTo(float x, float y)
+    {
+        PathCommand& command = m_currentPath.EmplaceBack();
+        command.type = PathCommandType::LineTo;
+        command.p0 = { x, y };
+    }
+
+    void VectorImageBuilder::QuadraticCurveTo(float cx, float cy, float x, float y)
+    {
+        PathCommand& command = m_currentPath.EmplaceBack();
+        command.type = PathCommandType::QuadraticCurveTo;
+        command.p0 = { cx, cy };
+        command.p1 = { x, y };
+    }
+
+    void VectorImageBuilder::BezierCurveTo(float c1x, float c1y, float c2x, float c2y, float x, float y)
+    {
+        PathCommand& command = m_currentPath.EmplaceBack();
+        command.type = PathCommandType::BezierCurveTo;
+        command.p0 = { c1x, c1y };
+        command.p1 = { c2x, c2y };
+        command.p2 = { x, y };
+    }
+
+    void VectorImageBuilder::ClosePath()
+    {
+        PathCommand& command = m_currentPath.EmplaceBack();
+        command.type = PathCommandType::ClosePath;
+    }
+
+    void VectorImageBuilder::Rect(float x, float y, float width, float height)
+    {
+        if ((width <= 0.0f) || (height <= 0.0f))
+        {
+            return;
+        }
+
+        MoveTo(x, y);
+        LineTo(x + width, y);
+        LineTo(x + width, y + height);
+        LineTo(x, y + height);
+        ClosePath();
+    }
+
+    void VectorImageBuilder::Ellipse(float cx, float cy, float radiusX, float radiusY)
+    {
+        if ((radiusX <= 0.0f) || (radiusY <= 0.0f))
+        {
+            return;
+        }
+
+        const float ox = radiusX * RuntimeEllipseKappa;
+        const float oy = radiusY * RuntimeEllipseKappa;
+        MoveTo(cx + radiusX, cy);
+        BezierCurveTo(cx + radiusX, cy + oy, cx + ox, cy + radiusY, cx, cy + radiusY);
+        BezierCurveTo(cx - ox, cy + radiusY, cx - radiusX, cy + oy, cx - radiusX, cy);
+        BezierCurveTo(cx - radiusX, cy - oy, cx - ox, cy - radiusY, cx, cy - radiusY);
+        BezierCurveTo(cx + ox, cy - radiusY, cx + radiusX, cy - oy, cx + radiusX, cy);
+        ClosePath();
+    }
+
+    void VectorImageBuilder::Line(float x0, float y0, float x1, float y1)
+    {
+        MoveTo(x0, y0);
+        LineTo(x1, y1);
+    }
+
+    void VectorImageBuilder::Polyline(Span<const Vec2f> points)
+    {
+        if (points.Size() < 2u)
+        {
+            return;
+        }
+
+        MoveTo(points[0]);
+        for (uint32_t pointIndex = 1; pointIndex < points.Size(); ++pointIndex)
+        {
+            LineTo(points[pointIndex]);
+        }
+    }
+
+    void VectorImageBuilder::Polygon(Span<const Vec2f> points)
+    {
+        if (points.Size() < 3u)
+        {
+            return;
+        }
+
+        Polyline(points);
+        ClosePath();
+    }
+
+    bool VectorImageBuilder::Fill()
+    {
+        if (m_currentPath.IsEmpty())
+        {
+            return false;
+        }
+
+        DrawPath& drawPath = m_drawPaths.EmplaceBack();
+        drawPath.commands = m_currentPath;
+        drawPath.fill = true;
+        drawPath.stroke = false;
+        drawPath.fillRule = m_fillRule;
+        drawPath.fillStyle = m_fillStyle;
+        drawPath.strokeColor = m_strokeColor;
+        drawPath.strokeStyle = m_strokeStyle;
+        return true;
+    }
+
+    bool VectorImageBuilder::Stroke()
+    {
+        if (m_currentPath.IsEmpty())
+        {
+            return false;
+        }
+
+        DrawPath& drawPath = m_drawPaths.EmplaceBack();
+        drawPath.commands = m_currentPath;
+        drawPath.fill = false;
+        drawPath.stroke = true;
+        drawPath.fillRule = m_fillRule;
+        drawPath.fillStyle = m_fillStyle;
+        drawPath.strokeColor = m_strokeColor;
+        drawPath.strokeStyle = m_strokeStyle;
+        return true;
+    }
+
+    bool VectorImageBuilder::Build(Vector<schema::Word>& outWords, VectorImageResourceReader& outImage) const
+    {
+        outWords.Clear();
+        outImage = {};
+        if (m_drawPaths.IsEmpty())
+        {
+            return false;
+        }
+
+        editor::CompiledVectorImageData imageData{};
+        imageData.bandOverlapEpsilon = RuntimeVectorImageBandOverlapEpsilon;
+        imageData.curveTextureWidth = editor::curve_compile::CurveTextureWidth;
+        imageData.bandTextureWidth = ScribeBandTextureWidth;
+
+        auto compilePathGeometry = [&](Vector<editor::curve_compile::CurveData>& outCurves,
+                                       Vector<editor::StrokeSourcePoint>& outStrokePoints,
+                                       Vector<editor::StrokeSourceCommand>& outStrokeCommands,
+                                       Span<const PathCommand> commands,
+                                       bool closeOpenSubpaths) -> bool
+        {
+            outCurves.Clear();
+            outStrokePoints.Clear();
+            outStrokeCommands.Clear();
+            if (commands.IsEmpty())
+            {
+                return false;
+            }
+
+            editor::OutlineBuilder builder(m_flatteningTolerance);
+            bool hasCurrent = false;
+            for (const PathCommand& command : commands)
+            {
+                switch (command.type)
+                {
+                    case PathCommandType::MoveTo:
+                        if (builder.HasOpenSubpath())
+                        {
+                            builder.EndOpenSubpath(closeOpenSubpaths);
+                        }
+                        builder.BeginSubpath({ command.p0.x, command.p0.y });
+                        hasCurrent = true;
+                        break;
+
+                    case PathCommandType::LineTo:
+                        if (!hasCurrent)
+                        {
+                            builder.BeginSubpath({ command.p0.x, command.p0.y });
+                            hasCurrent = true;
+                        }
+                        else
+                        {
+                            builder.LineTo({ command.p0.x, command.p0.y });
+                        }
+                        break;
+
+                    case PathCommandType::QuadraticCurveTo:
+                        if (!hasCurrent)
+                        {
+                            builder.BeginSubpath({ command.p1.x, command.p1.y });
+                            hasCurrent = true;
+                        }
+                        else
+                        {
+                            builder.QuadraticTo(
+                                { command.p0.x, command.p0.y },
+                                { command.p1.x, command.p1.y });
+                        }
+                        break;
+
+                    case PathCommandType::BezierCurveTo:
+                        if (!hasCurrent)
+                        {
+                            builder.BeginSubpath({ command.p2.x, command.p2.y });
+                            hasCurrent = true;
+                        }
+                        else
+                        {
+                            builder.CubicTo(
+                                { command.p0.x, command.p0.y },
+                                { command.p1.x, command.p1.y },
+                                { command.p2.x, command.p2.y });
+                        }
+                        break;
+
+                    case PathCommandType::ClosePath:
+                        if (builder.HasOpenSubpath())
+                        {
+                            builder.CloseSubpath(true);
+                        }
+                        hasCurrent = false;
+                        break;
+                }
+            }
+
+            if (builder.HasOpenSubpath())
+            {
+                builder.EndOpenSubpath(closeOpenSubpaths);
+            }
+
+            outCurves = Move(builder.Curves());
+            outStrokePoints = Move(builder.Points());
+            outStrokeCommands = Move(builder.Commands());
+            return !outCurves.IsEmpty() || !outStrokeCommands.IsEmpty();
+        };
+
+        for (const DrawPath& drawPath : m_drawPaths)
+        {
+            if (drawPath.fill && (drawPath.fillStyle.w > 0.0f))
+            {
+                Vector<editor::curve_compile::CurveData> fillCurves{};
+                Vector<editor::StrokeSourcePoint> fillStrokePoints{};
+                Vector<editor::StrokeSourceCommand> fillStrokeCommands{};
+                if (!compilePathGeometry(
+                        fillCurves,
+                        fillStrokePoints,
+                        fillStrokeCommands,
+                        Span<const PathCommand>(drawPath.commands.Data(), drawPath.commands.Size()),
+                        true))
+                {
+                    continue;
+                }
+
+                uint32_t shapeIndex = 0;
+                if (!AppendCompiledVectorShape(
+                        imageData,
+                        Span<const editor::curve_compile::CurveData>(fillCurves.Data(), fillCurves.Size()),
+                        Span<const editor::StrokeSourcePoint>(fillStrokePoints.Data(), fillStrokePoints.Size()),
+                        Span<const editor::StrokeSourceCommand>(fillStrokeCommands.Data(), fillStrokeCommands.Size()),
+                        drawPath.fillRule,
+                        shapeIndex))
+                {
+                    return false;
+                }
+
+                editor::CompiledVectorImageLayerEntry& layer = imageData.layers.EmplaceBack();
+                layer.shapeIndex = shapeIndex;
+                layer.kind = VectorLayerKind::Fill;
+                layer.red = drawPath.fillStyle.x;
+                layer.green = drawPath.fillStyle.y;
+                layer.blue = drawPath.fillStyle.z;
+                layer.alpha = drawPath.fillStyle.w;
+            }
+
+            if (drawPath.stroke && (drawPath.strokeColor.w > 0.0f) && drawPath.strokeStyle.IsVisible())
+            {
+                Vector<editor::curve_compile::CurveData> strokePathCurves{};
+                Vector<editor::StrokeSourcePoint> strokeSourcePoints{};
+                Vector<editor::StrokeSourceCommand> strokeSourceCommands{};
+                if (!compilePathGeometry(
+                        strokePathCurves,
+                        strokeSourcePoints,
+                        strokeSourceCommands,
+                        Span<const PathCommand>(drawPath.commands.Data(), drawPath.commands.Size()),
+                        false))
+                {
+                    continue;
+                }
+
+                Vector<editor::curve_compile::CurveData> strokeCurves{};
+                if (!BuildStrokedFillCurves(
+                        strokeCurves,
+                        Span<const editor::StrokeSourcePoint>(strokeSourcePoints.Data(), strokeSourcePoints.Size()),
+                        Span<const editor::StrokeSourceCommand>(strokeSourceCommands.Data(), strokeSourceCommands.Size()),
+                        drawPath.strokeStyle,
+                        m_flatteningTolerance))
+                {
+                    continue;
+                }
+
+                uint32_t shapeIndex = 0;
+                if (!AppendCompiledVectorShape(
+                        imageData,
+                        Span<const editor::curve_compile::CurveData>(strokeCurves.Data(), strokeCurves.Size()),
+                        {},
+                        {},
+                        FillRule::NonZero,
+                        shapeIndex))
+                {
+                    return false;
+                }
+
+                editor::CompiledVectorImageLayerEntry& layer = imageData.layers.EmplaceBack();
+                layer.shapeIndex = shapeIndex;
+                layer.kind = VectorLayerKind::Stroke;
+                layer.red = drawPath.strokeColor.x;
+                layer.green = drawPath.strokeColor.y;
+                layer.blue = drawPath.strokeColor.z;
+                layer.alpha = drawPath.strokeColor.w;
+                layer.strokeWidth = drawPath.strokeStyle.width;
+                layer.strokeJoin = ToSchemaStrokeJoin(drawPath.strokeStyle.joinStyle);
+                layer.strokeCap = ToSchemaStrokeCap(drawPath.strokeStyle.capStyle);
+                layer.strokeMiterLimit = drawPath.strokeStyle.miterLimit;
+            }
+        }
+
+        if (imageData.shapes.IsEmpty() || imageData.layers.IsEmpty())
+        {
+            return false;
+        }
+
+        editor::PadCurveTexture(imageData.curveTexels, imageData.curveTextureWidth, imageData.curveTextureHeight);
+        editor::PadBandTexture(imageData.bandTexels, imageData.bandTextureWidth, imageData.bandTextureHeight);
+
+        if (m_hasViewBox)
+        {
+            imageData.viewBoxMinX = m_viewBoxMinX;
+            imageData.viewBoxMinY = m_viewBoxMinY;
+            imageData.viewBoxWidth = Max(m_viewBoxWidth, 1.0f);
+            imageData.viewBoxHeight = Max(m_viewBoxHeight, 1.0f);
+        }
+        else
+        {
+            imageData.viewBoxMinX = imageData.boundsMinX;
+            imageData.viewBoxMinY = imageData.boundsMinY;
+            imageData.viewBoxWidth = Max(imageData.boundsMaxX - imageData.boundsMinX, 1.0f);
+            imageData.viewBoxHeight = Max(imageData.boundsMaxY - imageData.boundsMinY, 1.0f);
+        }
+
+        schema::Builder rootBuilder;
+        VectorImageResource::Builder root = rootBuilder.AddStruct<VectorImageResource>();
+        editor::FillVectorImageResourceMetadata(root.GetMetadata(), imageData);
+        editor::FillVectorImageResourceFillData(root.GetFill(), imageData);
+        editor::FillVectorImageResourceStrokeData(root.GetStroke(), imageData);
+        editor::FillVectorImageResourcePaintData(root.GetPaint(), imageData);
+        editor::FillVectorImageResourceTextData(rootBuilder, root.GetText(), imageData);
+        root.GetFill().SetCurveData(rootBuilder.AddBlob(Span<const PackedCurveTexel>(imageData.curveTexels.Data(), imageData.curveTexels.Size()).AsBytes()));
+        root.GetFill().SetBandData(rootBuilder.AddBlob(Span<const PackedBandTexel>(imageData.bandTexels.Data(), imageData.bandTexels.Size()).AsBytes()));
+        rootBuilder.SetRoot(root);
+
+        outWords = Span<const schema::Word>(rootBuilder);
+        outImage = schema::ReadRoot<VectorImageResource>(outWords.Data());
+        return outImage.IsValid();
+    }
+
+    bool VectorImageBuilder::Build(RetainedVectorImageModel& outImage, ScribeContext& context) const
+    {
+        Vector<schema::Word> words{};
+        VectorImageResourceReader image{};
+        if (!Build(words, image))
+        {
+            return false;
+        }
+
+        RetainedVectorImageBuildDesc desc{};
+        desc.context = &context;
+        desc.image = image;
+        desc.imageWords = Span<const schema::Word>(words.Data(), words.Size());
+        return outImage.Build(desc);
     }
 }

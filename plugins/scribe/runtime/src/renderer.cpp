@@ -454,6 +454,69 @@ namespace he::scribe
         return true;
     }
 
+    bool Renderer::CreateGlyphPipeline(const rhi::Shader* pixelShader, rhi::RenderPipeline*& out)
+    {
+        out = nullptr;
+        if ((m_device == nullptr) || (m_rootSignature == nullptr) || (m_vertexBufferFormat == nullptr) || (m_vertexShader == nullptr))
+        {
+            return false;
+        }
+
+        const rhi::VertexBufferFormat* vbfs[]{ m_vertexBufferFormat };
+        rhi::RenderPipelineDesc desc{};
+        desc.rootSignature = m_rootSignature;
+        desc.vertexShader = m_vertexShader;
+        desc.pixelShader = pixelShader;
+        desc.vertexBufferCount = 1;
+        desc.vertexBufferFormats = vbfs;
+        desc.primitiveType = rhi::PrimitiveType::TriList;
+        desc.blend.targets[0].enable = true;
+        desc.blend.targets[0].srcRgb = rhi::BlendFactor::One;
+        desc.blend.targets[0].dstRgb = rhi::BlendFactor::InvSrcAlpha;
+        desc.blend.targets[0].opRgb = rhi::BlendOp::Add;
+        desc.blend.targets[0].srcAlpha = rhi::BlendFactor::One;
+        desc.blend.targets[0].dstAlpha = rhi::BlendFactor::InvSrcAlpha;
+        desc.blend.targets[0].opAlpha = rhi::BlendOp::Add;
+        desc.raster.cullMode = rhi::CullMode::None;
+        desc.raster.depthClamp = true;
+        desc.depth.testEnable = false;
+        desc.depth.writeEnable = false;
+        desc.depth.func = rhi::ComparisonFunc::Always;
+        desc.targets.renderTargetCount = 1;
+        desc.targets.renderTargetFormats[0] = m_targetFormat;
+        HE_RHI_SET_NAME(desc, "Scribe Custom Render Pipeline");
+
+        Result r = m_device->CreateRenderPipeline(desc, out);
+        if (!r)
+        {
+            HE_LOGF_ERROR(scribe_render, "Failed to create custom scribe render pipeline. Error: {}", r);
+            return false;
+        }
+
+        return true;
+    }
+
+    const rhi::RenderPipeline* Renderer::ResolveGlyphPipeline(const rhi::Shader* pixelShader)
+    {
+        if (pixelShader == nullptr)
+        {
+            return m_pipeline;
+        }
+
+        if (rhi::RenderPipeline* const* existing = m_customPipelines.Find(pixelShader))
+        {
+            return *existing;
+        }
+
+        rhi::RenderPipeline* pipeline = nullptr;
+        if (!CreateGlyphPipeline(pixelShader, pipeline))
+        {
+            return m_pipeline;
+        }
+
+        return m_customPipelines.Emplace(pixelShader, pipeline).entry.value;
+    }
+
     void Renderer::ReleaseAtlas(GlyphAtlas*& atlas)
     {
         if (!atlas || !m_device)
@@ -673,7 +736,10 @@ namespace he::scribe
                     continue;
                 }
 
-                if (m_glyphBatchingEnabled && !m_batches.IsEmpty() && (m_batches.Back().atlas == cachedBatch.atlas))
+                if (m_glyphBatchingEnabled
+                    && !m_batches.IsEmpty()
+                    && (m_batches.Back().atlas == cachedBatch.atlas)
+                    && (m_batches.Back().pixelShader == cachedBatch.pixelShader))
                 {
                     m_batches.Back().vertexCount += cachedBatch.vertexCount;
                 }
@@ -681,6 +747,7 @@ namespace he::scribe
                 {
                     StreamBatch& batch = m_batches.EmplaceBack();
                     batch.atlas = cachedBatch.atlas;
+                    batch.pixelShader = cachedBatch.pixelShader;
                     batch.vertexStart = batchVertexStart;
                     batch.vertexCount = cachedBatch.vertexCount;
                 }
@@ -725,7 +792,10 @@ namespace he::scribe
                     continue;
                 }
 
-                if (m_glyphBatchingEnabled && !m_batches.IsEmpty() && (m_batches.Back().atlas == cachedBatch.atlas))
+                if (m_glyphBatchingEnabled
+                    && !m_batches.IsEmpty()
+                    && (m_batches.Back().atlas == cachedBatch.atlas)
+                    && (m_batches.Back().pixelShader == cachedBatch.pixelShader))
                 {
                     m_batches.Back().vertexCount += cachedBatch.vertexCount;
                 }
@@ -733,6 +803,7 @@ namespace he::scribe
                 {
                     StreamBatch& batch = m_batches.EmplaceBack();
                     batch.atlas = cachedBatch.atlas;
+                    batch.pixelShader = cachedBatch.pixelShader;
                     batch.vertexStart = batchVertexStart;
                     batch.vertexCount = cachedBatch.vertexCount;
                 }
@@ -784,7 +855,6 @@ namespace he::scribe
             m_drawPass.cmdList->SetViewport(viewport);
             m_drawPass.cmdList->SetScissor({ 0, 0 }, m_drawPass.targetSize);
             m_drawPass.cmdList->SetRenderRootSignature(m_rootSignature);
-            m_drawPass.cmdList->SetRenderPipeline(m_pipeline);
             m_drawPass.cmdList->SetBlendColor({ 0, 0, 0, 0 });
 
             StreamBuffer& streamBuffer = streamBufferSet.glyph;
@@ -809,6 +879,7 @@ namespace he::scribe
 
                     for (const StreamBatch& batch : m_batches)
                     {
+                        m_drawPass.cmdList->SetRenderPipeline(ResolveGlyphPipeline(batch.pixelShader));
                         m_drawPass.cmdList->SetRenderDescriptorTable(1, batch.atlas->descriptorTable);
 
                         rhi::DrawDesc desc{};
@@ -955,7 +1026,10 @@ namespace he::scribe
         HE_ASSERT(draw.glyph->atlas);
 
         StreamBatch* batch = nullptr;
-        if (m_glyphBatchingEnabled && !m_batches.IsEmpty() && (m_batches.Back().atlas == draw.glyph->atlas))
+        if (m_glyphBatchingEnabled
+            && !m_batches.IsEmpty()
+            && (m_batches.Back().atlas == draw.glyph->atlas)
+            && (m_batches.Back().pixelShader == draw.pixelShader))
         {
             batch = &m_batches.Back();
         }
@@ -963,6 +1037,7 @@ namespace he::scribe
         {
             StreamBatch& newBatch = m_batches.EmplaceBack();
             newBatch.atlas = draw.glyph->atlas;
+            newBatch.pixelShader = draw.pixelShader;
             newBatch.vertexStart = m_streamVertices.Size();
             newBatch.vertexCount = 0;
             batch = &newBatch;
@@ -1244,10 +1319,10 @@ namespace he::scribe
             }
         }
 
+        m_vertexShader = vs;
         m_device->SafeDestroy(quadPs);
         m_device->SafeDestroy(quadVs);
         m_device->SafeDestroy(ps);
-        m_device->SafeDestroy(vs);
         return true;
     }
 
@@ -1258,10 +1333,16 @@ namespace he::scribe
             return;
         }
 
+        for (auto& entry : m_customPipelines.Entries())
+        {
+            m_device->SafeDestroy(entry.value);
+        }
+        m_customPipelines.Clear();
         m_device->SafeDestroy(m_quadPipeline);
         m_device->SafeDestroy(m_quadVertexBufferFormat);
         m_device->SafeDestroy(m_quadRootSignature);
         m_device->SafeDestroy(m_pipeline);
+        m_device->SafeDestroy(m_vertexShader);
         m_device->SafeDestroy(m_vertexBufferFormat);
         m_device->SafeDestroy(m_rootSignature);
     }

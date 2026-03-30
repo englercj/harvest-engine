@@ -85,6 +85,7 @@ namespace he::scribe
         {
             DrawGlyphDesc desc{};
             desc.glyph = &glyph;
+            desc.pixelShader = model.PixelShader();
             desc.position = {
                 model.GetOrigin().x + (draw.position.x * model.GetScale()),
                 model.GetOrigin().y + (draw.position.y * model.GetScale())
@@ -483,6 +484,20 @@ namespace he::scribe
         InvalidateColor();
     }
 
+    void RetainedTextModel::SetPixelShader(const rhi::Shader* pixelShader)
+    {
+        if (m_pixelShader == pixelShader)
+        {
+            return;
+        }
+
+        m_pixelShader = pixelShader;
+        for (RetainedTextCachedBatch& batch : m_cachedBatches)
+        {
+            batch.pixelShader = pixelShader;
+        }
+    }
+
     FontFaceHandle RetainedTextModel::GetFontFaceHandle(uint32_t fontFaceIndex) const
     {
         return fontFaceIndex < m_fontFaces.Size() ? m_fontFaces[fontFaceIndex] : FontFaceHandle{};
@@ -637,6 +652,7 @@ namespace he::scribe
                 {
                     RetainedTextCachedBatch& batch = m_cachedBatches.EmplaceBack();
                     batch.atlas = glyphResource->atlas;
+                    batch.pixelShader = m_pixelShader;
                     batch.vertexCount = glyphResource->vertexCount;
                 }
             }

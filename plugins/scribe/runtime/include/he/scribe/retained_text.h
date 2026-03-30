@@ -9,6 +9,11 @@
 #include "he/core/math.h"
 #include "he/core/span.h"
 
+namespace he::rhi
+{
+    struct Shader;
+}
+
 namespace he::scribe
 {
     enum RetainedTextDrawFlags : uint32_t
@@ -54,6 +59,7 @@ namespace he::scribe
     struct RetainedTextCachedBatch
     {
         const GlyphAtlas* atlas{ nullptr };
+        const rhi::Shader* pixelShader{ nullptr };
         uint32_t vertexCount{ 0 };
     };
 
@@ -84,10 +90,12 @@ namespace he::scribe
         Vec2f GetOrigin() const { return m_origin; }
         float GetScale() const { return m_scale; }
         Vec4f GetForegroundColor() const { return m_foregroundColor; }
+        const rhi::Shader* PixelShader() const { return m_pixelShader; }
         RetainedAabb GetAabb() const { return m_aabb; }
         void SetOrigin(const Vec2f& origin);
         void SetScale(float scale);
         void SetForegroundColor(const Vec4f& color);
+        void SetPixelShader(const rhi::Shader* pixelShader);
         FontFaceHandle GetFontFaceHandle(uint32_t fontFaceIndex) const;
         uint32_t GetCachedVertexCount() const { return m_cachedVertices.Size(); }
         uint32_t GetCachedBatchCount() const { return m_cachedBatches.Size(); }
@@ -115,6 +123,7 @@ namespace he::scribe
         Vec2f m_origin{ 0.0f, 0.0f };
         float m_scale{ 1.0f };
         Vec4f m_foregroundColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+        const rhi::Shader* m_pixelShader{ nullptr };
         mutable Vector<GlyphResource> m_preparedGlyphs{};
         mutable Vector<PackedGlyphVertex> m_cachedVertices{};
         mutable Vector<RetainedTextCachedBatch> m_cachedBatches{};

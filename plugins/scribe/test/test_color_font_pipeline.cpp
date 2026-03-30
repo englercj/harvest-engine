@@ -1894,3 +1894,49 @@ HE_TEST(scribe, retained_text, transformed_vertex_cache_is_reused_when_only_fram
     HE_EXPECT_GT(retainedText.GetCachedBatchCount(), 0u);
     HE_EXPECT_GT(retainedText.GetGeometryCacheGeneration(), cacheGeneration);
 }
+
+HE_TEST(scribe, retained_text, custom_pixel_shader_does_not_invalidate_geometry_cache)
+{
+    String repoFontPath;
+    HE_ASSERT(ResolveRepoFontPath(repoFontPath, "NotoSans-Regular.ttf"));
+
+    Vector<uint8_t> fontBytes{};
+    HE_ASSERT(ReadFontFile(fontBytes, repoFontPath.Data()));
+
+    Vector<schema::Word> storage{};
+    FontFaceResourceReader font{};
+    HE_ASSERT(BuildLoadedCompiledFontFace(storage, font, fontBytes, repoFontPath.Data()));
+
+    NullRendererHarness harness{};
+    HE_ASSERT(harness.Initialize());
+
+    FontFaceHandle handles[]{ harness.context.RegisterFontFace(Move(storage), MakeTestAssetUuid()) };
+    HE_ASSERT(handles[0].IsValid());
+
+    StyledTextLayoutDesc layoutDesc{};
+    layoutDesc.fontFaces = Span<const FontFaceHandle>(handles, HE_LENGTH_OF(handles));
+    layoutDesc.text = "Shader";
+    layoutDesc.options.fontSize = 26.0f;
+
+    LayoutResult layout{};
+    HE_ASSERT(harness.context.GetLayoutEngine().LayoutStyledText(layout, layoutDesc));
+
+    RetainedTextModel retainedText{};
+    RetainedTextBuildDesc retainedDesc{};
+    retainedDesc.context = &harness.context;
+    retainedDesc.fontFaces = Span<const FontFaceHandle>(handles, HE_LENGTH_OF(handles));
+    retainedDesc.layout = &layout;
+    retainedDesc.fontSize = layoutDesc.options.fontSize;
+    HE_ASSERT(retainedText.Build(retainedDesc));
+
+    harness.renderer.DrawText(retainedText);
+    HE_EXPECT_GT(retainedText.GetCachedVertexCount(), 0u);
+    const uint32_t cachedVertexCount = retainedText.GetCachedVertexCount();
+    const uint32_t cacheGeneration = retainedText.GetGeometryCacheGeneration();
+
+    const rhi::Shader* const fakeShader = reinterpret_cast<const rhi::Shader*>(static_cast<uintptr_t>(1));
+    retainedText.SetPixelShader(fakeShader);
+    HE_EXPECT_EQ_PTR(retainedText.PixelShader(), fakeShader);
+    HE_EXPECT_EQ(retainedText.GetCachedVertexCount(), cachedVertexCount);
+    HE_EXPECT_EQ(retainedText.GetGeometryCacheGeneration(), cacheGeneration);
+}

@@ -1383,3 +1383,31 @@ HE_TEST(scribe, retained_vector_image, transformed_vertex_cache_is_reused_for_sa
     HE_EXPECT_GT(retainedImage.GetCachedBatchCount(), 0u);
     HE_EXPECT_GT(retainedImage.GetGeometryCacheGeneration(), cacheGeneration);
 }
+
+HE_TEST(scribe, retained_vector_image, custom_pixel_shader_does_not_invalidate_geometry_cache)
+{
+    Vector<schema::Word> storage;
+    VectorImageResourceReader image{};
+    HE_ASSERT(BuildLoadedVectorImage(storage, image));
+
+    NullRendererHarness harness{};
+    HE_ASSERT(harness.Initialize());
+
+    RetainedVectorImageModel retainedImage{};
+    RetainedVectorImageBuildDesc desc{};
+    desc.context = &harness.context;
+    desc.image = image;
+    desc.imageWords = storage;
+    HE_ASSERT(retainedImage.Build(desc));
+
+    harness.renderer.DrawImage(retainedImage);
+    HE_EXPECT_GT(retainedImage.GetCachedVertexCount(), 0u);
+    const uint32_t cachedVertexCount = retainedImage.GetCachedVertexCount();
+    const uint32_t cacheGeneration = retainedImage.GetGeometryCacheGeneration();
+
+    const rhi::Shader* const fakeShader = reinterpret_cast<const rhi::Shader*>(static_cast<uintptr_t>(1));
+    retainedImage.SetPixelShader(fakeShader);
+    HE_EXPECT_EQ_PTR(retainedImage.PixelShader(), fakeShader);
+    HE_EXPECT_EQ(retainedImage.GetCachedVertexCount(), cachedVertexCount);
+    HE_EXPECT_EQ(retainedImage.GetGeometryCacheGeneration(), cacheGeneration);
+}

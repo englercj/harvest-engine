@@ -11,6 +11,11 @@
 
 #include <cstdint>
 
+namespace he::rhi
+{
+    struct Shader;
+}
+
 namespace he::scribe
 {
     struct GlyphAtlas;
@@ -50,6 +55,7 @@ namespace he::scribe
     struct RetainedVectorImageCachedBatch
     {
         const GlyphAtlas* atlas{ nullptr };
+        const rhi::Shader* pixelShader{ nullptr };
         uint32_t vertexCount{ 0 };
     };
 
@@ -167,10 +173,12 @@ namespace he::scribe
         Vec2f GetOrigin() const { return m_origin; }
         float GetScale() const { return m_scale; }
         Vec4f GetTint() const { return m_tint; }
+        const rhi::Shader* PixelShader() const { return m_pixelShader; }
         RetainedAabb GetAabb() const { return m_aabb; }
         void SetOrigin(const Vec2f& origin);
         void SetScale(float scale);
         void SetTint(const Vec4f& tint);
+        void SetPixelShader(const rhi::Shader* pixelShader);
         FontFaceHandle GetFontFaceHandle(uint32_t fontFaceIndex) const;
         bool TryGetPreparedShapeResource(
             uint32_t shapeIndex,
@@ -202,6 +210,7 @@ namespace he::scribe
         Vec2f m_origin{ 0.0f, 0.0f };
         float m_scale{ 1.0f };
         Vec4f m_tint{ 1.0f, 1.0f, 1.0f, 1.0f };
+        const rhi::Shader* m_pixelShader{ nullptr };
         mutable Vector<GlyphResource> m_shapeResources{};
         mutable Vector<GlyphResource> m_runtimeStrokeResources{};
         mutable GlyphAtlas* m_sharedShapeAtlas{ nullptr };

@@ -6,6 +6,7 @@
 #include "he/scribe/packed_data.h"
 #include "he/scribe/schema_types.h"
 
+#include "he/core/hash_table.h"
 #include "he/core/types.h"
 #include "he/core/vector.h"
 #include "he/math/types.h"
@@ -90,6 +91,7 @@ namespace he::scribe
     struct DrawGlyphDesc
     {
         const GlyphResource* glyph{ nullptr };
+        const rhi::Shader* pixelShader{ nullptr };
         Vec2f position{ 0, 0 };
         Vec2f size{ 1, 1 };
         Vec4f color{ 1, 1, 1, 1 };
@@ -155,6 +157,7 @@ namespace he::scribe
         struct StreamBatch
         {
             const GlyphAtlas* atlas{ nullptr };
+            const rhi::Shader* pixelShader{ nullptr };
             uint32_t vertexStart{ 0 };
             uint32_t vertexCount{ 0 };
         };
@@ -177,6 +180,8 @@ namespace he::scribe
             GlyphAtlas*& out,
             const TextureDataDesc& curveTexture,
             const TextureDataDesc& bandTexture);
+        const rhi::RenderPipeline* ResolveGlyphPipeline(const rhi::Shader* pixelShader);
+        bool CreateGlyphPipeline(const rhi::Shader* pixelShader, rhi::RenderPipeline*& out);
         void ReleaseAtlas(GlyphAtlas*& atlas);
         uint32_t AcquireStreamBufferSet();
         bool IsStreamBufferSetReady(const StreamBufferSet& streamBufferSet) const;
@@ -191,6 +196,7 @@ namespace he::scribe
         rhi::Device* m_device{ nullptr };
         rhi::RootSignature* m_rootSignature{ nullptr };
         rhi::VertexBufferFormat* m_vertexBufferFormat{ nullptr };
+        rhi::Shader* m_vertexShader{ nullptr };
         rhi::RenderPipeline* m_pipeline{ nullptr };
         rhi::RootSignature* m_quadRootSignature{ nullptr };
         rhi::VertexBufferFormat* m_quadVertexBufferFormat{ nullptr };
@@ -206,6 +212,7 @@ namespace he::scribe
         Vector<StreamBatch> m_batches{};
         Vector<PackedGlyphVertex> m_streamVertices{};
         Vector<PackedQuadVertex> m_quadVertices{};
+        HashMap<const rhi::Shader*, rhi::RenderPipeline*> m_customPipelines{};
         bool m_glyphBatchingEnabled{ true };
         uint32_t m_lastSubmittedDrawCount{ 0 };
     };

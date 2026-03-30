@@ -239,6 +239,7 @@ namespace he::scribe
         {
             DrawGlyphDesc desc{};
             desc.glyph = &glyph;
+            desc.pixelShader = model.PixelShader();
             desc.position = model.GetOrigin();
             desc.size = { model.GetScale(), model.GetScale() };
             desc.color = MultiplyColor(draw.color, model.GetTint());
@@ -268,6 +269,7 @@ namespace he::scribe
         {
             DrawGlyphDesc desc{};
             desc.glyph = &glyph;
+            desc.pixelShader = model.PixelShader();
             desc.position = {
                 model.GetOrigin().x + (draw.position.x * model.GetScale()),
                 model.GetOrigin().y + (draw.position.y * model.GetScale())
@@ -784,6 +786,20 @@ namespace he::scribe
         InvalidateColor();
     }
 
+    void RetainedVectorImageModel::SetPixelShader(const rhi::Shader* pixelShader)
+    {
+        if (m_pixelShader == pixelShader)
+        {
+            return;
+        }
+
+        m_pixelShader = pixelShader;
+        for (RetainedVectorImageCachedBatch& batch : m_cachedBatches)
+        {
+            batch.pixelShader = pixelShader;
+        }
+    }
+
     FontFaceHandle RetainedVectorImageModel::GetFontFaceHandle(uint32_t fontFaceIndex) const
     {
         if (fontFaceIndex >= m_fontFaces.Size())
@@ -985,6 +1001,7 @@ namespace he::scribe
                 {
                     RetainedVectorImageCachedBatch& batch = m_cachedBatches.EmplaceBack();
                     batch.atlas = shapeResource->atlas;
+                    batch.pixelShader = m_pixelShader;
                     batch.vertexCount = shapeResource->vertexCount;
                 }
             }
@@ -1012,6 +1029,7 @@ namespace he::scribe
                 {
                     RetainedVectorImageCachedBatch& batch = m_cachedBatches.EmplaceBack();
                     batch.atlas = glyphResource->atlas;
+                    batch.pixelShader = m_pixelShader;
                     batch.vertexCount = glyphResource->vertexCount;
                 }
             }

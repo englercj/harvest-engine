@@ -284,6 +284,19 @@ namespace he
             return outMinX != Limits<float>::Max;
         }
 
+        bool IntersectsSceneViewport(const scribe::RetainedAabb& aabb, const Vec2f& viewportMin, const Vec2f& viewportMax)
+        {
+            if (aabb.IsEmpty())
+            {
+                return true;
+            }
+
+            return (aabb.max.x >= viewportMin.x)
+                && (aabb.max.y >= viewportMin.y)
+                && (aabb.min.x <= viewportMax.x)
+                && (aabb.min.y <= viewportMax.y);
+        }
+
         float ComputeCapAlignedFontSize(const scribe::FontFaceResourceReader& font, float capHeightPixels)
         {
             const scribe::FontFaceRuntimeMetadata::Reader metadata = font.GetMetadata();
@@ -987,6 +1000,23 @@ namespace he
         sceneDrawPassDesc.clearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
         sceneDrawPassDesc.gpuTimer.querySet = m_render.frames[m_render.frameIndex].gpuTimerQueries;
         sceneDrawPassDesc.gpuTimer.resolveBuffer = m_render.frames[m_render.frameIndex].gpuTimerReadback;
+        const float inverseSceneZoom = Abs(m_sceneZoom) > 1.0e-4f ? (1.0f / m_sceneZoom) : 0.0f;
+        const Vec2f sceneViewportCorner0{
+            -m_scenePan.x * inverseSceneZoom,
+            -m_scenePan.y * inverseSceneZoom
+        };
+        const Vec2f sceneViewportCorner1{
+            (static_cast<float>(sceneDrawPassDesc.targetSize.x) - m_scenePan.x) * inverseSceneZoom,
+            (static_cast<float>(sceneDrawPassDesc.targetSize.y) - m_scenePan.y) * inverseSceneZoom
+        };
+        const Vec2f sceneViewportMin{
+            Min(sceneViewportCorner0.x, sceneViewportCorner1.x),
+            Min(sceneViewportCorner0.y, sceneViewportCorner1.y)
+        };
+        const Vec2f sceneViewportMax{
+            Max(sceneViewportCorner0.x, sceneViewportCorner1.x),
+            Max(sceneViewportCorner0.y, sceneViewportCorner1.y)
+        };
 
         if (!m_renderer.BeginDraw(sceneDrawPassDesc))
         {
@@ -998,14 +1028,20 @@ namespace he
         {
             m_retainedTitleText.SetOrigin(titleOrigin);
             m_retainedTitleText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
-            m_renderer.DrawText(m_retainedTitleText);
+            if (IntersectsSceneViewport(m_retainedTitleText.GetAabb(), sceneViewportMin, sceneViewportMax))
+            {
+                m_renderer.DrawText(m_retainedTitleText);
+            }
         }
 
         if (!m_retainedBodyText.IsEmpty())
         {
             m_retainedBodyText.SetOrigin(bodyOrigin);
             m_retainedBodyText.SetForegroundColor({ 0.0f, 0.0f, 0.0f, 1.0f });
-            m_renderer.DrawText(m_retainedBodyText);
+            if (IntersectsSceneViewport(m_retainedBodyText.GetAabb(), sceneViewportMin, sceneViewportMax))
+            {
+                m_renderer.DrawText(m_retainedBodyText);
+            }
         }
 
         for (SceneTextBlock& block : m_sceneBlocks)
@@ -1017,7 +1053,10 @@ namespace he
 
             block.retainedText.SetOrigin(GetSceneBlockRenderOrigin(block));
             block.retainedText.SetForegroundColor(block.color);
-            m_renderer.DrawText(block.retainedText);
+            if (IntersectsSceneViewport(block.retainedText.GetAabb(), sceneViewportMin, sceneViewportMax))
+            {
+                m_renderer.DrawText(block.retainedText);
+            }
         }
 
         for (SceneVectorImageBlock& block : m_sceneImages)
@@ -1029,7 +1068,10 @@ namespace he
 
             block.retainedImage.SetOrigin(GetSceneImageRenderOrigin(block));
             block.retainedImage.SetScale(block.scale);
-            m_renderer.DrawImage(block.retainedImage);
+            if (IntersectsSceneViewport(block.retainedImage.GetAabb(), sceneViewportMin, sceneViewportMax))
+            {
+                m_renderer.DrawImage(block.retainedImage);
+            }
         }
 
         QueueCaret();
@@ -2485,9 +2527,52 @@ namespace he
                     return false;
                 }
 
-                if (!buildRetainedText(m_retainedBodyText, faceSpan, m_bodyLayout, bodyFontSize))
+                const char* bodyTextData = m_bodyText.Data();
+                uint32_t lineTextStart = 0;
+                float lineY = 0.0f;
+                uint32_t layoutLineIndex = 0;
+                for (uint32_t textIndex = 0; textIndex <= m_bodyText.Size(); ++textIndex)
                 {
-                    return false;
+                    const bool reachedLineEnd =
+                        (textIndex == m_bodyText.Size())
+                        || (bodyTextData[textIndex] == '\n');
+                    if (!reachedLineEnd)
+                    {
+                        continue;
+                    }
+
+                    const uint32_t lineTextEnd = textIndex;
+                    if (lineTextEnd > lineTextStart)
+                    {
+                        const StringView lineText(bodyTextData + lineTextStart, lineTextEnd - lineTextStart);
+                        if (!addSceneBlock(
+                                String(lineText).Data(),
+                                { 0.0f, lineY },
+                                bodyFontSize,
+                                bodyWidth,
+                                true,
+                                scribe::TextDirection::LeftToRight,
+                                { 0.0f, 0.0f, 0.0f, 1.0f },
+                                0,
+                                false,
+                                false,
+                                false))
+                        {
+                            return false;
+                        }
+                    }
+
+                    if (layoutLineIndex < m_bodyLayout.lines.Size())
+                    {
+                        lineY += m_bodyLayout.lines[layoutLineIndex].height;
+                    }
+                    else
+                    {
+                        lineY += bodyFontSize;
+                    }
+
+                    ++layoutLineIndex;
+                    lineTextStart = textIndex + 1u;
                 }
                 break;
             }
@@ -2650,6 +2735,21 @@ namespace he
                 block.origin.x + blockOffset.x,
                 block.origin.y + blockOffset.y
             };
+        }
+
+        if (m_scene == DemoScene::EmojiPage)
+        {
+            const Vec2f emojiBodyOffset{
+                m_bodyOrigin.x - blockOffset.x,
+                m_bodyOrigin.y - blockOffset.y
+            };
+            for (SceneTextBlock& block : m_sceneBlocks)
+            {
+                block.origin = {
+                    block.origin.x + emojiBodyOffset.x,
+                    block.origin.y + emojiBodyOffset.y
+                };
+            }
         }
 
         m_hasCaret = false;

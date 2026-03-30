@@ -71,6 +71,7 @@ namespace he::scribe
         Vec2f GetOrigin() const { return m_origin; }
         float GetScale() const { return m_scale; }
         Vec4f GetTint() const { return m_tint; }
+        RetainedAabb GetAabb() const { return m_aabb; }
         void SetOrigin(const Vec2f& origin);
         void SetScale(float scale);
         void SetTint(const Vec4f& tint);
@@ -89,6 +90,8 @@ namespace he::scribe
         friend class Renderer;
 
         bool UpdateRenderData(Renderer& renderer) const;
+        void RebuildLocalAabb(Renderer& renderer);
+        void UpdateAabbFromLocal();
         void ClearTransformedVertexCache() const;
         void InvalidateGeometry() const;
         void InvalidateColor() const;
@@ -112,6 +115,8 @@ namespace he::scribe
         mutable bool m_hasCachedColor{ false };
         mutable uint32_t m_geometryCacheGeneration{ 0 };
         Vec2f m_viewBoxSize{ 0.0f, 0.0f };
+        RetainedAabb m_localAabb{};
+        RetainedAabb m_aabb{};
         uint32_t m_estimatedVertexCount{ 0 };
     };
 }

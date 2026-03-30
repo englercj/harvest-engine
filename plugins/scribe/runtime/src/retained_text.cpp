@@ -38,6 +38,46 @@ namespace he::scribe
             };
         }
 
+        void ExpandAabb(RetainedAabb& aabb, const Vec2f& point)
+        {
+            if (aabb.IsEmpty())
+            {
+                aabb.min = point;
+                aabb.max = point;
+                return;
+            }
+
+            aabb.min.x = Min(aabb.min.x, point.x);
+            aabb.min.y = Min(aabb.min.y, point.y);
+            aabb.max.x = Max(aabb.max.x, point.x);
+            aabb.max.y = Max(aabb.max.y, point.y);
+        }
+
+        DrawGlyphDesc BuildLocalDrawDesc(const RetainedTextDraw& draw, const GlyphResource& glyph)
+        {
+            DrawGlyphDesc desc{};
+            desc.glyph = &glyph;
+            desc.position = draw.position;
+            desc.size = draw.size;
+            desc.color = draw.color;
+            desc.basisX = draw.basisX;
+            desc.basisY = draw.basisY;
+            desc.offset = draw.offset;
+            return desc;
+        }
+
+        DrawQuadDesc BuildLocalQuadDesc(const RetainedTextQuad& quad)
+        {
+            DrawQuadDesc desc{};
+            desc.position = quad.position;
+            desc.size = quad.size;
+            desc.color = quad.color;
+            desc.basisX = quad.basisX;
+            desc.basisY = quad.basisY;
+            desc.offset = quad.offset;
+            return desc;
+        }
+
         DrawGlyphDesc BuildDrawDesc(
             const RetainedTextModel& model,
             const RetainedTextDraw& draw,
@@ -382,6 +422,8 @@ namespace he::scribe
             }
         }
 
+        RebuildLocalAabb();
+        UpdateAabbFromLocal();
         return true;
     }
 
@@ -401,6 +443,8 @@ namespace he::scribe
         m_hasCachedGeometry = false;
         m_hasCachedColor = false;
         m_geometryCacheGeneration = 0;
+        m_localAabb = {};
+        m_aabb = {};
         m_estimatedVertexCount = 0;
     }
 
@@ -412,6 +456,7 @@ namespace he::scribe
         }
 
         m_origin = origin;
+        UpdateAabbFromLocal();
         InvalidateGeometry();
     }
 
@@ -423,6 +468,7 @@ namespace he::scribe
         }
 
         m_scale = scale;
+        UpdateAabbFromLocal();
         InvalidateGeometry();
     }
 
@@ -442,23 +488,7 @@ namespace he::scribe
         return fontFaceIndex < m_fontFaces.Size() ? m_fontFaces[fontFaceIndex] : FontFaceHandle{};
     }
 
-    const GlyphResource* RetainedTextModel::GetPreparedGlyphResource(uint32_t drawIndex) const
-    {
-        if ((drawIndex >= m_preparedGlyphs.Size()) || (m_preparedGlyphs[drawIndex].atlas == nullptr))
-        {
-            return nullptr;
-        }
-
-        return &m_preparedGlyphs[drawIndex];
-    }
-
-    void RetainedTextModel::ClearPreparedGlyphResources() const
-    {
-        m_preparedGlyphs.Clear();
-        InvalidateGeometry();
-    }
-
-    bool RetainedTextModel::UpdateRenderData() const
+    bool RetainedTextModel::EnsurePreparedGlyphResources() const
     {
         if (m_context == nullptr)
         {
@@ -494,11 +524,93 @@ namespace he::scribe
             preparedAny = true;
         }
 
-        if (!preparedAny && m_quads.IsEmpty())
+        return preparedAny || !m_quads.IsEmpty();
+    }
+
+    const GlyphResource* RetainedTextModel::GetPreparedGlyphResource(uint32_t drawIndex) const
+    {
+        if ((drawIndex >= m_preparedGlyphs.Size()) || (m_preparedGlyphs[drawIndex].atlas == nullptr))
+        {
+            return nullptr;
+        }
+
+        return &m_preparedGlyphs[drawIndex];
+    }
+
+    void RetainedTextModel::ClearPreparedGlyphResources() const
+    {
+        m_preparedGlyphs.Clear();
+        InvalidateGeometry();
+    }
+
+    void RetainedTextModel::RebuildLocalAabb()
+    {
+        m_localAabb = {};
+
+        if (!EnsurePreparedGlyphResources())
+        {
+            return;
+        }
+
+        PackedGlyphVertex transformedGlyphVertices[ScribeGlyphVertexCount]{};
+        for (uint32_t drawIndex = 0; drawIndex < m_draws.Size(); ++drawIndex)
+        {
+            const GlyphResource* glyphResource = GetPreparedGlyphResource(drawIndex);
+            if (glyphResource == nullptr)
+            {
+                continue;
+            }
+
+            TransformDrawVertices(transformedGlyphVertices, BuildLocalDrawDesc(m_draws[drawIndex], *glyphResource));
+            for (uint32_t vertexIndex = 0; vertexIndex < glyphResource->vertexCount; ++vertexIndex)
+            {
+                ExpandAabb(m_localAabb, { transformedGlyphVertices[vertexIndex].pos.x, transformedGlyphVertices[vertexIndex].pos.y });
+            }
+        }
+
+        Vector<PackedQuadVertex> transformedQuadVertices{};
+        transformedQuadVertices.Reserve(6u);
+        for (const RetainedTextQuad& quad : m_quads)
+        {
+            transformedQuadVertices.Clear();
+            AppendQuadVertices(transformedQuadVertices, BuildLocalQuadDesc(quad));
+            for (const PackedQuadVertex& vertex : transformedQuadVertices)
+            {
+                ExpandAabb(m_localAabb, vertex.pos);
+            }
+        }
+    }
+
+    void RetainedTextModel::UpdateAabbFromLocal()
+    {
+        if (m_localAabb.IsEmpty())
+        {
+            m_aabb = {};
+            return;
+        }
+
+        const float scaledMinX = m_localAabb.min.x * m_scale;
+        const float scaledMinY = m_localAabb.min.y * m_scale;
+        const float scaledMaxX = m_localAabb.max.x * m_scale;
+        const float scaledMaxY = m_localAabb.max.y * m_scale;
+        m_aabb.min = {
+            m_origin.x + Min(scaledMinX, scaledMaxX),
+            m_origin.y + Min(scaledMinY, scaledMaxY)
+        };
+        m_aabb.max = {
+            m_origin.x + Max(scaledMinX, scaledMaxX),
+            m_origin.y + Max(scaledMinY, scaledMaxY)
+        };
+    }
+
+    bool RetainedTextModel::UpdateRenderData() const
+    {
+        if (!EnsurePreparedGlyphResources())
         {
             return false;
         }
 
+        const Span<const RetainedTextDraw> draws = m_draws;
         if (!m_hasCachedGeometry)
         {
             m_cachedVertices.Clear();

@@ -6,6 +6,7 @@
 #include "he/scribe/layout_engine.h"
 #include "he/scribe/renderer.h"
 
+#include "he/core/math.h"
 #include "he/core/span.h"
 
 namespace he::scribe
@@ -56,6 +57,17 @@ namespace he::scribe
         uint32_t vertexCount{ 0 };
     };
 
+    struct RetainedAabb
+    {
+        Vec2f min{ Limits<float>::Max, Limits<float>::Max };
+        Vec2f max{ -Limits<float>::Max, -Limits<float>::Max };
+
+        bool IsEmpty() const
+        {
+            return (max.x < min.x) || (max.y < min.y);
+        }
+    };
+
     class RetainedTextModel
     {
     public:
@@ -72,6 +84,7 @@ namespace he::scribe
         Vec2f GetOrigin() const { return m_origin; }
         float GetScale() const { return m_scale; }
         Vec4f GetForegroundColor() const { return m_foregroundColor; }
+        RetainedAabb GetAabb() const { return m_aabb; }
         void SetOrigin(const Vec2f& origin);
         void SetScale(float scale);
         void SetForegroundColor(const Vec4f& color);
@@ -85,8 +98,11 @@ namespace he::scribe
         friend class Renderer;
 
         bool UpdateRenderData() const;
+        bool EnsurePreparedGlyphResources() const;
         const GlyphResource* GetPreparedGlyphResource(uint32_t drawIndex) const;
         void ClearPreparedGlyphResources() const;
+        void RebuildLocalAabb();
+        void UpdateAabbFromLocal();
         void ClearTransformedVertexCache() const;
         void InvalidateGeometry() const;
         void InvalidateColor() const;
@@ -106,6 +122,8 @@ namespace he::scribe
         mutable bool m_hasCachedGeometry{ false };
         mutable bool m_hasCachedColor{ false };
         mutable uint32_t m_geometryCacheGeneration{ 0 };
+        RetainedAabb m_localAabb{};
+        RetainedAabb m_aabb{};
         uint32_t m_estimatedVertexCount{ 0 };
     };
 }

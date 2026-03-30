@@ -59,6 +59,21 @@ namespace he::scribe
             };
         }
 
+        void ExpandAabb(RetainedAabb& aabb, const Vec2f& point)
+        {
+            if (aabb.IsEmpty())
+            {
+                aabb.min = point;
+                aabb.max = point;
+                return;
+            }
+
+            aabb.min.x = Min(aabb.min.x, point.x);
+            aabb.min.y = Min(aabb.min.y, point.y);
+            aabb.max.x = Max(aabb.max.x, point.x);
+            aabb.max.y = Max(aabb.max.y, point.y);
+        }
+
         DrawGlyphDesc BuildShapeDrawDesc(const RetainedVectorImageModel& model, const RetainedVectorImageDraw& draw, const GlyphResource& glyph)
         {
             DrawGlyphDesc desc{};
@@ -66,6 +81,17 @@ namespace he::scribe
             desc.position = model.GetOrigin();
             desc.size = { model.GetScale(), model.GetScale() };
             desc.color = MultiplyColor(draw.color, model.GetTint());
+            desc.offset = draw.offset;
+            return desc;
+        }
+
+        DrawGlyphDesc BuildLocalShapeDrawDesc(const RetainedVectorImageDraw& draw, const GlyphResource& glyph)
+        {
+            DrawGlyphDesc desc{};
+            desc.glyph = &glyph;
+            desc.position = { 0.0f, 0.0f };
+            desc.size = { 1.0f, 1.0f };
+            desc.color = draw.color;
             desc.offset = draw.offset;
             return desc;
         }
@@ -90,6 +116,19 @@ namespace he::scribe
                 draw.size.y * model.GetScale()
             };
             desc.color = MultiplyColor(draw.color, model.GetTint());
+            desc.basisX = draw.basisX;
+            desc.basisY = draw.basisY;
+            desc.offset = draw.offset;
+            return desc;
+        }
+
+        DrawGlyphDesc BuildLocalTextDrawDesc(const RetainedTextDraw& draw, const GlyphResource& glyph)
+        {
+            DrawGlyphDesc desc{};
+            desc.glyph = &glyph;
+            desc.position = draw.position;
+            desc.size = draw.size;
+            desc.color = draw.color;
             desc.basisX = draw.basisX;
             desc.basisY = draw.basisY;
             desc.offset = draw.offset;
@@ -447,7 +486,17 @@ namespace he::scribe
                 baselineOffsetY);
         }
 
-        return !m_draws.IsEmpty() || !m_textDraws.IsEmpty();
+        if (!m_draws.IsEmpty() || !m_textDraws.IsEmpty())
+        {
+            if (desc.context->IsInitialized() && desc.context->GetRenderer().IsInitialized())
+            {
+                RebuildLocalAabb(desc.context->GetRenderer());
+                UpdateAabbFromLocal();
+            }
+            return true;
+        }
+
+        return false;
     }
 
     void RetainedVectorImageModel::Clear()
@@ -456,7 +505,7 @@ namespace he::scribe
         {
             GlyphAtlas* const sharedShapeAtlas = m_sharedShapeAtlas;
             bool releasedSharedShapeAtlas = false;
-            if (m_context->GetRenderer().IsInitialized())
+            if (m_context->IsInitialized() && m_context->GetRenderer().IsInitialized())
             {
                 Renderer& renderer = m_context->GetRenderer();
                 for (GlyphResource& resource : m_shapeResources)
@@ -534,6 +583,8 @@ namespace he::scribe
         m_hasCachedColor = false;
         m_geometryCacheGeneration = 0;
         m_viewBoxSize = { 0.0f, 0.0f };
+        m_localAabb = {};
+        m_aabb = {};
         m_estimatedVertexCount = 0;
     }
 
@@ -545,6 +596,7 @@ namespace he::scribe
         }
 
         m_origin = origin;
+        UpdateAabbFromLocal();
         InvalidateGeometry();
     }
 
@@ -556,6 +608,7 @@ namespace he::scribe
         }
 
         m_scale = scale;
+        UpdateAabbFromLocal();
         InvalidateGeometry();
     }
 
@@ -640,6 +693,73 @@ namespace he::scribe
 
         out = &resource;
         return true;
+    }
+
+    void RetainedVectorImageModel::RebuildLocalAabb(Renderer& renderer)
+    {
+        m_localAabb = {};
+
+        PackedGlyphVertex transformedVertices[ScribeGlyphVertexCount]{};
+        for (const RetainedVectorImageDraw& draw : m_draws)
+        {
+            const GlyphResource* shapeResource = nullptr;
+            const bool ok = TryGetPreparedShapeResource(
+                draw.shapeIndex,
+                GetShapeResourceKind(draw),
+                draw.strokeStyle,
+                renderer,
+                shapeResource);
+            if (!ok || (shapeResource == nullptr))
+            {
+                continue;
+            }
+
+            TransformDrawVertices(transformedVertices, BuildLocalShapeDrawDesc(draw, *shapeResource));
+            for (uint32_t vertexIndex = 0; vertexIndex < shapeResource->vertexCount; ++vertexIndex)
+            {
+                ExpandAabb(m_localAabb, { transformedVertices[vertexIndex].pos.x, transformedVertices[vertexIndex].pos.y });
+            }
+        }
+
+        for (const RetainedTextDraw& draw : m_textDraws)
+        {
+            const GlyphResource* glyphResource = nullptr;
+            const bool ok = (draw.flags & RetainedTextDrawFlagStroke) != 0
+                ? m_context->TryGetStrokedGlyphResource(GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, draw.strokeStyle, glyphResource)
+                : m_context->TryGetGlyphResource(GetFontFaceHandle(draw.fontFaceIndex), draw.glyphIndex, glyphResource);
+            if (!ok || (glyphResource == nullptr))
+            {
+                continue;
+            }
+
+            TransformDrawVertices(transformedVertices, BuildLocalTextDrawDesc(draw, *glyphResource));
+            for (uint32_t vertexIndex = 0; vertexIndex < glyphResource->vertexCount; ++vertexIndex)
+            {
+                ExpandAabb(m_localAabb, { transformedVertices[vertexIndex].pos.x, transformedVertices[vertexIndex].pos.y });
+            }
+        }
+    }
+
+    void RetainedVectorImageModel::UpdateAabbFromLocal()
+    {
+        if (m_localAabb.IsEmpty())
+        {
+            m_aabb = {};
+            return;
+        }
+
+        const float scaledMinX = m_localAabb.min.x * m_scale;
+        const float scaledMinY = m_localAabb.min.y * m_scale;
+        const float scaledMaxX = m_localAabb.max.x * m_scale;
+        const float scaledMaxY = m_localAabb.max.y * m_scale;
+        m_aabb.min = {
+            m_origin.x + Min(scaledMinX, scaledMaxX),
+            m_origin.y + Min(scaledMinY, scaledMaxY)
+        };
+        m_aabb.max = {
+            m_origin.x + Max(scaledMinX, scaledMaxX),
+            m_origin.y + Max(scaledMinY, scaledMaxY)
+        };
     }
 
     bool RetainedVectorImageModel::UpdateRenderData(Renderer& renderer) const

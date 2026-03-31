@@ -829,6 +829,43 @@ namespace he::rhi::d3d12
         return fence->d3dFence->GetCompletedValue();
     }
 
+    Result DeviceImpl::CreateTimestampQuerySet(const TimestampQuerySetDesc& desc, TimestampQuerySet*& out)
+    {
+        out = nullptr;
+
+        if (!HE_VERIFY(desc.count > 0, HE_MSG("Timestamp query set must contain at least one query.")))
+        {
+            return Result::InvalidParameter;
+        }
+
+        D3D12_QUERY_HEAP_DESC d3dDesc{};
+        d3dDesc.Count = desc.count;
+        d3dDesc.NodeMask = 0;
+        d3dDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+
+        ID3D12QueryHeap* d3dQueryHeap = nullptr;
+        HRESULT hr = m_d3dDevice->CreateQueryHeap(&d3dDesc, IID_PPV_ARGS(&d3dQueryHeap));
+        if (FAILED(hr))
+            return MakeResult(hr);
+
+        HE_DX_SET_NAME(d3dQueryHeap, desc.name);
+
+        TimestampQuerySetImpl* querySet = m_instance->m_allocator.New<TimestampQuerySetImpl>();
+        querySet->type = desc.type;
+        querySet->count = desc.count;
+        querySet->d3dQueryHeap = d3dQueryHeap;
+
+        out = querySet;
+        return Result::Success;
+    }
+
+    void DeviceImpl::DestroyTimestampQuerySet(TimestampQuerySet* querySet_)
+    {
+        TimestampQuerySetImpl* querySet = static_cast<TimestampQuerySetImpl*>(querySet_);
+        HE_DX_SAFE_RELEASE(querySet->d3dQueryHeap);
+        m_instance->m_allocator.Delete(querySet);
+    }
+
     Result DeviceImpl::CreateComputePipeline(const ComputePipelineDesc& desc, ComputePipeline*& out)
     {
         out = nullptr;

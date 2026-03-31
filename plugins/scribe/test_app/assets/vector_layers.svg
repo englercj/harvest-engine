@@ -1,0 +1,11 @@
+<svg viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
+  <path fill="#0f172a" d="M0 0 L240 0 L240 160 L0 160 Z" />
+  <path fill="#1d4ed8" d="M18 118 Q88 54 162 104 Q204 132 222 126 L222 152 L18 152 Z" />
+  <g transform="translate(24 18)">
+    <path fill="#f8fafc" d="M20 82 L64 34 L108 82 L108 116 L20 116 Z" />
+    <path fill="#fb7185" d="M64 20 L82 48 L64 76 L46 48 Z" />
+    <path fill="#fcd34d" d="M136 22 Q154 4 170 22 Q154 40 136 22 Z" />
+    <path fill="#34d399" d="M122 94 Q146 62 170 94 Q146 126 122 94 Z" />
+    <path fill="#38bdf8" d="M118 74 L162 74 L162 92 L118 92 Z" />
+  </g>
+</svg>

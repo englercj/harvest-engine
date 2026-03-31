@@ -124,6 +124,23 @@ HE_TEST(core, range_ops, RangeCopy)
             HE_EXPECT(a[i].copyAssigned);
         }
     }
+
+    // same-sized trivially-copyable mixed types should still use assignment conversion semantics
+    {
+        struct Src
+        {
+            uint32_t value;
+            operator uint32_t() const { return value + 10u; }
+        };
+
+        uint32_t dst[] = { 0u, 0u, 0u };
+        const Src src[] = { { 1u }, { 2u }, { 7u } };
+
+        RangeCopy(dst, src, HE_LENGTH_OF(dst));
+        HE_EXPECT_EQ(dst[0], 11u);
+        HE_EXPECT_EQ(dst[1], 12u);
+        HE_EXPECT_EQ(dst[2], 17u);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -195,6 +212,23 @@ HE_TEST(core, range_ops, RangeMove)
             HE_EXPECT(!a[i].copyAssigned);
             HE_EXPECT(a[i].moveAssigned);
         }
+    }
+
+    // same-sized trivially-copyable mixed types should still use assignment conversion semantics
+    {
+        struct Src
+        {
+            uint32_t value;
+            operator uint32_t() const { return value + 10u; }
+        };
+
+        uint32_t dst[] = { 0u, 0u, 0u };
+        Src src[] = { { 1u }, { 2u }, { 7u } };
+
+        RangeMove(dst, src, HE_LENGTH_OF(dst));
+        HE_EXPECT_EQ(dst[0], 11u);
+        HE_EXPECT_EQ(dst[1], 12u);
+        HE_EXPECT_EQ(dst[2], 17u);
     }
 }
 
@@ -509,6 +543,18 @@ HE_TEST(core, range_ops, RangeEqual)
         HE_EXPECT(RangeEqual(sa, sa));
         HE_EXPECT(RangeEqual(sb, sb));
         HE_EXPECT(!RangeEqual(sa, sb));
+    }
+
+    // floating-point ranges should follow operator== semantics rather than bitwise equality
+    {
+        const float positiveZero[] = { 0.0f, 1.0f };
+        const float negativeZero[] = { -0.0f, 1.0f };
+        const float nanValue = BitCast<float>(0x7fc00000u);
+        const float nanA[] = { nanValue };
+        const float nanB[] = { nanValue };
+
+        HE_EXPECT(RangeEqual(positiveZero, negativeZero, HE_LENGTH_OF(positiveZero)));
+        HE_EXPECT(!RangeEqual(nanA, nanB, HE_LENGTH_OF(nanA)));
     }
 
     // trivial range of chars, should loop and compare

@@ -31,6 +31,44 @@
 
 namespace he::window::win32
 {
+    static bool HandleNonClientButton(ViewImpl* view, Application* app, LRESULT hittest)
+    {
+        switch (hittest)
+        {
+            case HTMINBUTTON:
+                view->Minimize();
+                return true;
+
+            case HTMAXBUTTON:
+                view->ToggleMaximize();
+                return true;
+
+            case HTCLOSE:
+            {
+                ViewRequestCloseEvent ev(view);
+                app->OnEvent(ev);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static bool ShouldDispatchPointerToApp(HWND hWnd, const POINT& point)
+    {
+        const LPARAM lParam = MAKELPARAM(point.x, point.y);
+        const LRESULT hittest = ::SendMessageW(hWnd, WM_NCHITTEST, 0, lParam);
+        switch (hittest)
+        {
+            case HTCLIENT:
+            case HTBORDER:
+            case HTNOWHERE:
+                return true;
+        }
+
+        return false;
+    }
+
     static Key TranslateKey(WPARAM wparam, LPARAM lparam)
     {
         int32_t vkey = wparam & 0xff;
@@ -208,6 +246,12 @@ namespace he::window::win32
                 ViewRequestCloseEvent ev(view);
                 app->OnEvent(ev);
                 return 0;
+            }
+            case WM_NCLBUTTONUP:
+            {
+                if (HandleNonClientButton(view, app, static_cast<LRESULT>(wParam)))
+                    return 0;
+                break;
             }
             case WM_MOVE:
             {
@@ -492,13 +536,14 @@ namespace he::window::win32
 
                 // Check for a few events that we want to handle, and forward anything else over to
                 // the default windows proc.
+                if (message == WM_NCPOINTERUP && HandleNonClientButton(view, app, hittest))
+                    return 0;
+
                 bool defProc = true;
                 switch (hittest)
                 {
                     case HTCLIENT:
                     case HTBORDER:
-                    case HTMINBUTTON:
-                    case HTMAXBUTTON:
                     case HTNOWHERE:
                         defProc = false;
                         break;
@@ -1079,6 +1124,9 @@ namespace he::window::win32
 
     void DeviceImpl::DispatchPointerEventMouse(View* view, const POINTER_INFO& info)
     {
+        if (!ShouldDispatchPointerToApp(static_cast<ViewImpl*>(view)->m_window, info.ptPixelLocation))
+            return;
+
         PointerEvent data(EventKind::PointerDown, view);
         data.pointerId = info.pointerId;
         data.pointerKind = PointerKind::Mouse;
@@ -1092,6 +1140,9 @@ namespace he::window::win32
 
     void DeviceImpl::DispatchPointerEventPen(View* view, const POINTER_PEN_INFO& info)
     {
+        if (!ShouldDispatchPointerToApp(static_cast<ViewImpl*>(view)->m_window, info.pointerInfo.ptPixelLocation))
+            return;
+
         const INT32 tiltX = HasFlag(info.penMask, PEN_MASK_TILT_X) ? info.tiltX : 0;
         const INT32 tiltY = HasFlag(info.penMask, PEN_MASK_TILT_Y) ? info.tiltY : 0;
         const UINT32 rotation = HasFlag(info.penMask, PEN_MASK_ROTATION) ? info.rotation : 0;
@@ -1110,6 +1161,9 @@ namespace he::window::win32
 
     void DeviceImpl::DispatchPointerEventTouch(View* view, const POINTER_TOUCH_INFO& info)
     {
+        if (!ShouldDispatchPointerToApp(static_cast<ViewImpl*>(view)->m_window, info.pointerInfo.ptPixelLocation))
+            return;
+
         const RECT contact = HasFlag(info.touchMask, TOUCH_MASK_CONTACTAREA) ? info.rcContact : RECT{};
         const UINT32 rotation = HasFlag(info.touchMask, TOUCH_MASK_ORIENTATION) ? info.orientation : 0;
         const UINT32 pressure = HasFlag(info.touchMask, TOUCH_MASK_PRESSURE) ? info.pressure : 0;

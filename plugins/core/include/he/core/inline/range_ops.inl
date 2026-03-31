@@ -8,6 +8,15 @@
 
 namespace he
 {
+    template <typename T>
+    inline constexpr bool _IsCharLike = IsAnyOf<UnwrapEnum<RemoveCV<T>>, char, signed char, unsigned char>;
+
+    template <typename T>
+    inline constexpr bool _IsMemEqualSafe =
+        _IsCharLike<T>
+        || (IsIntegral<T> && !IsSame<RemoveCV<T>, bool>)
+        || IsEnum<T>;
+
     struct _RangePartitionResult
     {
         uint32_t lessEnd;
@@ -335,9 +344,9 @@ namespace he
     template <typename T, CopyAssignableTo<T> U>
     constexpr void RangeCopy(T* dst, const U* src, uint32_t count)
     {
-        if constexpr (!IsVolatile<T>
+        if constexpr ((IsSame<RemoveCV<T>, RemoveCV<U>> || (_IsCharLike<T> && _IsCharLike<U>))
+            && !IsVolatile<T>
             && !IsVolatile<U>
-            && sizeof(T) == sizeof(U)
             && IsTriviallyCopyable<T>
             && IsTriviallyCopyable<U>)
         {
@@ -357,9 +366,9 @@ namespace he
     template <typename T, MoveAssignableTo<T> U>
     constexpr void RangeMove(T* dst, U* src, uint32_t count)
     {
-        if constexpr (!IsVolatile<T>
+        if constexpr ((IsSame<RemoveCV<T>, RemoveCV<U>> || (_IsCharLike<T> && _IsCharLike<U>))
+            && !IsVolatile<T>
             && !IsVolatile<U>
-            && sizeof(T) == sizeof(U)
             && IsTriviallyCopyable<T>
             && IsTriviallyCopyable<U>)
         {
@@ -382,9 +391,8 @@ namespace he
         // Range of char-sized types can be memset
         if constexpr (!IsVolatile<T>
             && !IsVolatile<V>
-            && sizeof(T) == sizeof(V)
-            && IsAnyOf<UnwrapEnum<T>, bool, char, signed char, unsigned char>
-            && IsAnyOf<UnwrapEnum<V>, bool, char, signed char, unsigned char>)
+            && _IsCharLike<T>
+            && _IsCharLike<V>)
         {
             if (!IsConstantEvaluated())
             {
@@ -499,9 +507,8 @@ namespace he
     {
         if constexpr (!IsVolatile<T>
             && !IsVolatile<U>
-            && sizeof(T) == sizeof(U)
-            && IsScalar<T>
-            && IsScalar<U>)
+            && IsSame<RemoveCV<T>, RemoveCV<U>>
+            && _IsMemEqualSafe<T>)
         {
             if (!IsConstantEvaluated())
             {
@@ -525,9 +532,8 @@ namespace he
     {
         if constexpr (!IsVolatile<T>
             && !IsVolatile<U>
-            && sizeof(T) == sizeof(U)
-            && IsScalar<T>
-            && IsScalar<U>
+            && IsSame<RemoveCV<T>, RemoveCV<U>>
+            && _IsMemEqualSafe<T>
             && IsSame<Decay<F>, EqualTo<T>>)
         {
             if (!IsConstantEvaluated())

@@ -19,12 +19,17 @@ namespace he::rhi::null
         void BeginGroup(const char* msg) override;
         void EndGroup() override;
         void SetMarker(const char* msg) override;
+        void WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index) override;
+        void ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset = 0) override;
 
         void Copy(const Buffer* src, const Buffer* dst, const BufferCopy* region = nullptr) override;
         void Copy(const Texture* src, const Texture* dst, const TextureCopy* region = nullptr) override;
 
         void Copy(const Buffer* src, const Texture* dst, const BufferTextureCopy& region) override;
         void Copy(const Texture* src, const Buffer* dst, const BufferTextureCopy& region) override;
+
+    private:
+        uint64_t m_nextTimestamp{ 0 };
     };
 
     class ComputeCmdListImpl final : public ComputeCmdList
@@ -36,6 +41,8 @@ namespace he::rhi::null
         void BeginGroup(const char* msg) override;
         void EndGroup() override;
         void SetMarker(const char* msg) override;
+        void WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index) override;
+        void ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset = 0) override;
 
         void Copy(const Buffer* src, const Buffer* dst, const BufferCopy* region = nullptr) override;
         void Copy(const Texture* src, const Texture* dst, const TextureCopy* region = nullptr) override;
@@ -62,6 +69,9 @@ namespace he::rhi::null
 
         void RWBarrier(const Buffer* buffer) override;
         void RWBarrier(const Texture* texture) override;
+
+    private:
+        uint64_t m_nextTimestamp{ 0 };
     };
 
     class RenderCmdListImpl final : public RenderCmdList
@@ -73,6 +83,8 @@ namespace he::rhi::null
         void BeginGroup(const char* msg) override;
         void EndGroup() override;
         void SetMarker(const char* msg) override;
+        void WriteTimestamp(const TimestampQuerySet* querySet, uint32_t index) override;
+        void ResolveTimestamps(const TimestampQuerySet* querySet, uint32_t firstIndex, uint32_t count, const Buffer* dst, uint32_t dstOffset = 0) override;
 
         void Copy(const Buffer* src, const Buffer* dst, const BufferCopy* region = nullptr) override;
         void Copy(const Texture* src, const Texture* dst, const TextureCopy* region = nullptr) override;
@@ -126,6 +138,9 @@ namespace he::rhi::null
 
         void Draw(const DrawDesc& desc) override;
         void DrawIndexed(const DrawIndexedDesc& desc) override;
+
+    private:
+        uint64_t m_nextTimestamp{ 0 };
     };
 }
 

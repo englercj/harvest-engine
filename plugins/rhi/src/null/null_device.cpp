@@ -4,6 +4,7 @@
 
 #include "null_cmd_list.h"
 #include "null_instance.h"
+#include "null_resources.h"
 
 #include "he/rhi/config.h"
 #include "he/rhi/device.h"
@@ -19,12 +20,19 @@ namespace he::rhi::null
 
     Result DeviceImpl::CreateBuffer([[maybe_unused]] const BufferDesc& desc, Buffer*& out)
     {
-        out = nullptr;
+        BufferImpl* buffer = m_instance->GetAllocator().New<BufferImpl>(m_instance->GetAllocator());
+        buffer->heapType = desc.heapType;
+        buffer->usage = desc.usage;
+        buffer->size = desc.size;
+        buffer->stride = desc.stride;
+        buffer->data.Resize(desc.size);
+        out = buffer;
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyBuffer([[maybe_unused]] Buffer* buffer)
+    void DeviceImpl::DestroyBuffer(Buffer* buffer)
     {
+        m_instance->GetAllocator().Delete(static_cast<BufferImpl*>(buffer));
     }
 
     Result DeviceImpl::CreateBufferView([[maybe_unused]] const BufferViewDesc& desc, BufferView*& out)
@@ -47,9 +55,10 @@ namespace he::rhi::null
     {
     }
 
-    void*DeviceImpl:: Map([[maybe_unused]] Buffer* buffer, [[maybe_unused]] uint32_t offset, [[maybe_unused]] uint32_t size)
+    void*DeviceImpl:: Map(Buffer* buffer_, uint32_t offset, [[maybe_unused]] uint32_t size)
     {
-        return nullptr;
+        BufferImpl* buffer = static_cast<BufferImpl*>(buffer_);
+        return buffer->data.Data() + offset;
     }
 
     void DeviceImpl::Unmap([[maybe_unused]] Buffer* buffer)
@@ -140,37 +149,53 @@ namespace he::rhi::null
 
     Result DeviceImpl::CreateCpuFence([[maybe_unused]] const CpuFenceDesc& desc, CpuFence*& out)
     {
-        out = nullptr;
+        out = m_instance->GetAllocator().New<CpuFenceImpl>();
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyCpuFence([[maybe_unused]] CpuFence* fence)
+    void DeviceImpl::DestroyCpuFence(CpuFence* fence)
     {
+        m_instance->GetAllocator().Delete(static_cast<CpuFenceImpl*>(fence));
     }
 
     Result DeviceImpl::CreateGpuFence([[maybe_unused]] const GpuFenceDesc& desc, GpuFence*& out)
     {
-        out = nullptr;
+        out = m_instance->GetAllocator().New<GpuFenceImpl>();
         return Result::Success;
     }
 
-    void DeviceImpl::DestroyGpuFence([[maybe_unused]] GpuFence* fence)
+    void DeviceImpl::DestroyGpuFence(GpuFence* fence)
     {
+        m_instance->GetAllocator().Delete(static_cast<GpuFenceImpl*>(fence));
     }
 
-    bool DeviceImpl::WaitForFence([[maybe_unused]] const CpuFence* fence, [[maybe_unused]] uint32_t timeoutMs)
+    bool DeviceImpl::WaitForFence(const CpuFence* fence_, [[maybe_unused]] uint32_t timeoutMs)
     {
-        return true;
+        return static_cast<const CpuFenceImpl*>(fence_)->signaled;
     }
 
-    bool DeviceImpl::IsFenceSignaled([[maybe_unused]] const CpuFence* fence)
+    bool DeviceImpl::IsFenceSignaled(const CpuFence* fence)
     {
-        return true;
+        return WaitForFence(fence, 0);
     }
 
-    uint64_t DeviceImpl::GetFenceValue([[maybe_unused]] const GpuFence* fence)
+    uint64_t DeviceImpl::GetFenceValue(const GpuFence* fence_)
     {
-        return 0;
+        return static_cast<const GpuFenceImpl*>(fence_)->value;
+    }
+
+    Result DeviceImpl::CreateTimestampQuerySet(const TimestampQuerySetDesc& desc, TimestampQuerySet*& out)
+    {
+        TimestampQuerySetImpl* querySet = m_instance->GetAllocator().New<TimestampQuerySetImpl>(m_instance->GetAllocator());
+        querySet->type = desc.type;
+        querySet->timestamps.Resize(desc.count);
+        out = querySet;
+        return Result::Success;
+    }
+
+    void DeviceImpl::DestroyTimestampQuerySet(TimestampQuerySet* querySet)
+    {
+        m_instance->GetAllocator().Delete(static_cast<TimestampQuerySetImpl*>(querySet));
     }
 
     Result DeviceImpl::CreateComputePipeline([[maybe_unused]] const ComputePipelineDesc& desc, ComputePipeline*& out)

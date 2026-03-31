@@ -74,6 +74,7 @@ namespace he::rhi
     struct Sampler {};              ///< Definition of how to read a texel from a shader input.
     struct Shader {};               ///< Program that executes in a render or compute pipeline.
     struct SwapChain {};            ///< Series of framebuffers used to present graphics.
+    struct TimestampQuerySet {};    ///< Collection of GPU timestamp queries that can be written by a command list.
     struct Texture {};              ///< Series of pixels that live in a GPU heap.
     struct TextureView {};          ///< Read-only view of a texture as a particular format and type.
     struct VertexBufferFormat {};   ///< Definition of the format of a buffer of vertices.
@@ -832,6 +833,18 @@ namespace he::rhi
     /// Descriptor for creating a GPU fence.
     struct GpuFenceDesc
     {
+    };
+
+    /// Descriptor for creating a timestamp query set.
+    struct TimestampQuerySetDesc
+    {
+        /// Type of command list that will write timestamps into this query set.
+        CmdListType type{ CmdListType::Render };
+
+        /// Number of timestamps that can be written into this query set.
+        uint32_t count{ 0 };
+
+        HE_RHI_NAME_MEMBER();
     };
 
     // --------------------------------------------------------------------------------------------

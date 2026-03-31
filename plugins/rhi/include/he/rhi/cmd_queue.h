@@ -33,6 +33,9 @@ namespace he::rhi
         /// Puts the current thread into a wait state. Blocks until the queue has flushed
         /// all commands on the GPU.
         virtual void WaitForFlush() = 0;
+
+        /// Gets the frequency of timestamp values written by this queue in ticks per second.
+        virtual uint64_t GetTimestampFrequency() const = 0;
     };
 
     /// Command queue for submitting copy command lists.

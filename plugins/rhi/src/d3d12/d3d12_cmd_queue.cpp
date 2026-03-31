@@ -106,6 +106,13 @@ namespace he::rhi::d3d12
             return Result::FromLastError();
         }
 
+        hr = m_d3dCmdQueue->GetTimestampFrequency(&m_timestampFrequency);
+        if (FAILED(hr))
+        {
+            HE_LOGF_ERROR(he_rhi, "Failed to query command queue timestamp frequency.");
+            return m_device->MakeResult(hr);
+        }
+
         m_d3dFence->Signal(m_nextFenceValue);
         return Result::Success;
     }

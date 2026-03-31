@@ -1,0 +1,95 @@
+// Copyright Chad Engler
+
+plugin he.scribe version="0.1.0" license="UNLICENSED" {
+    authors { "Chad Engler" email=englercj@live.com }
+
+    module he_scribe_assets kind=lib_static group="engine/libs" {
+        files { "assets/include/**"; "assets/src/**" }
+        include_dirs { "assets/src" }
+
+        schema_compile "c++" scope=public {
+            files { "assets/include/he/scribe/schema/scribe_assets.hsc" }
+            include_dirs { "assets/include"; "../assets/assets/include"; "../editor/include" }
+            dependencies { he_assets; he_editor }
+        }
+
+        public {
+            dependencies { freetype; he_assets; he_core; he_schema }
+            include_dirs { "assets/include"; "${module.gen_dir}/include" }
+        }
+    }
+
+    module he_scribe kind=lib_static group="engine/libs" {
+        files { "runtime/include/**"; "runtime/src/**" }
+        include_dirs { "runtime/src"; "${module.gen_dir}/runtime/src"; }
+
+        public {
+            dependencies { harfbuzz; he_core; he_math; he_rhi; he_scribe_assets }
+            include_dirs { "runtime/include" }
+        }
+
+        when platform.system=windows {
+            shader_compile "sm_6_0" scope=private {
+                files { "runtime/src/shaders/scribe.slang" }
+                include_dirs { "runtime/src/shaders" }
+            }
+
+            shader_compile "sm_6_0" scope=private {
+                files { "runtime/src/shaders/solid.slang" }
+                include_dirs { "runtime/src/shaders" }
+            }
+        }
+
+        when platform.system=linux {
+            shader_compile "glsl_450" scope=private {
+                files { "runtime/src/shaders/scribe.slang" }
+                include_dirs { "runtime/src/shaders" }
+            }
+
+            shader_compile "glsl_450" scope=private {
+                files { "runtime/src/shaders/solid.slang" }
+                include_dirs { "runtime/src/shaders" }
+            }
+        }
+    }
+
+    module he_scribe_editor kind=lib_static group="engine/libs" {
+        files { "editor/include/**"; "editor/src/**" }
+        include_dirs { "editor/src" }
+
+        public {
+            dependencies { freetype; harfbuzz; he_assets_editor; he_editor; he_scribe_assets }
+            include_dirs { "editor/include" }
+        }
+    }
+
+    module he_scribe_docs kind=custom group="_internal/docs" {
+        files { "README.md"; "docs/**"; "third_party/**" }
+    }
+
+    module he_scribe_tests kind=lib_static group="engine/tests" {
+        files { "test/**" }
+        include_dirs { "editor/src" }
+
+        public {
+            dependencies { freetype; harfbuzz; he_scribe; he_scribe_editor }
+        }
+    }
+
+    module he_scribe_test_app kind=app_windowed group="engine/tests" {
+        files {
+            "test_app/**"
+            "editor/src/font_compile_geometry.cpp"
+            "editor/src/font_compile_geometry.h"
+            "editor/src/font_import_utils.cpp"
+            "editor/src/font_import_utils.h"
+            "editor/src/image_compile_geometry.cpp"
+            "editor/src/image_compile_geometry.h"
+        }
+        include_dirs { "test_app"; "editor/src" }
+
+        public {
+            dependencies { freetype; harfbuzz; he_core; he_math; he_rhi; he_scribe; he_window }
+        }
+    }
+}
